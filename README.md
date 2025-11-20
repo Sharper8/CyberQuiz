@@ -1,50 +1,142 @@
 ## CyberQuiz
 
-For full setup and deployment instructions, see DEPLOYMENT.md.
+On-premise, containerized quiz app built with Next.js 16 and PostgreSQL. All Supabase dependencies have been completely removed.
 
-**Use your preferred IDE**
+### Tech Stack
+- Next.js 16 (App Router)
+- PostgreSQL 15 (Docker)
+- Tailwind CSS + shadcn/ui
+- JWT-based auth (bcrypt/jsonwebtoken)
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Quick Start
 
-Follow these steps:
+Prerequisites: Node.js 18+, npm, Docker
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+```bash
+# 1) Clone
+git clone <REPO_URL>
+cd Cyber_Quizz
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# 2) Environment setup
+cp .env.local.example .env.local
 
-# Step 3: Install the necessary dependencies.
-npm i
+# 3) Start database (first time initializes schema + admin user)
+docker-compose up -d postgres
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4) Install dependencies
+npm install
+
+# 5) Run dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+**Access:**
+- App: http://localhost:3000
+- Admin: http://localhost:3000/admin-login (admin@cyberquiz.local / admin123)
+- PgAdmin: http://localhost:5050 (admin@admin.com / admin)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## Project Structure
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+Cyber_Quizz/
+├── app/                    # Next.js App Router (pages + API routes)
+│   ├── api/               # REST endpoints (auth, questions, scores, chat)
+│   ├── admin/            # Admin panel page
+│   ├── admin-login/      # Admin login page
+│   ├── quiz/             # Quiz page
+│   ├── score/            # Score/results page
+│   ├── layout.tsx        # Root layout
+│   └── page.tsx          # Home page
+├── src/
+│   ├── components/       # UI components
+│   ├── hooks/           # Custom React hooks
+│   └── lib/             # Utilities (db, API client, utils)
+├── database/            # PostgreSQL schema + seeds
+├── public/              # Static assets
+├── docker-compose.yml   # Container orchestration
+├── Dockerfile           # Next.js production image
+├── DEPLOYMENT.md        # Full deployment guide
+└── package.json         # Dependencies + scripts
+```
 
-## What technologies are used for this project?
+**Config files in root** (required by tooling):
+- `next.config.mjs` - Next.js configuration
+- `tailwind.config.ts` - Tailwind CSS
+- `postcss.config.js` - PostCSS (for Tailwind)
+- `tsconfig.json` - TypeScript
+- `eslint.config.js` - ESLint
+- `components.json` - shadcn/ui
 
-This project is built with:
+---
 
-- Next.js 16 (App Router)
-- TypeScript
-- React
-- PostgreSQL (Dockerized)
-- shadcn-ui
-- Tailwind CSS
+## Common Tasks
+
+**Development:**
+```bash
+npm run dev       # Start dev server
+npm run build     # Production build
+npm run start     # Start production server
+npm run lint      # Lint code
+```
+
+**Database:**
+```bash
+docker-compose up -d postgres          # Start database
+docker-compose down -v                 # Stop + remove volumes
+docker logs cyberquiz-postgres         # View logs
+```
+
+---
+
+## Production Deployment
+
+```bash
+docker-compose up -d --build
+```
+
+Update `.env.local` for production:
+```env
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=cyberquiz
+DB_USER=cyberquiz
+DB_PASSWORD=<strong-password>
+JWT_SECRET=<generate-random-secret>
+NODE_ENV=production
+```
+
+Generate JWT secret:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+See `DEPLOYMENT.md` for complete production setup.
+
+---
+
+## Security
+
+- **Change default credentials** in production
+- **Use strong JWT secret** (minimum 32 characters)
+- **Enable HTTPS** in production
+- **Restrict database access** with firewall rules
+- **Regular backups** of PostgreSQL volumes
+
+---
+
+## License
+
+MIT - See LICENSE file
+
+---
+
+## 📂 Project Organization
+
+Wondering about the config files in root? See [`docs/CONFIG_FILES_EXPLAINED.md`](docs/CONFIG_FILES_EXPLAINED.md)
+
+Want to restructure into a monorepo? See [`docs/REORGANIZATION_OPTIONS.md`](docs/REORGANIZATION_OPTIONS.md)
+
