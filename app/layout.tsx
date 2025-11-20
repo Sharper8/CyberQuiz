@@ -1,0 +1,51 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "../src/index.css";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Providers } from "./providers";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "CyberQuiz - Teste ta vigilance numérique",
+  description: "Quiz interactif sur la cybersécurité alimenté par l'IA. Testez vos connaissances en matière de sécurité numérique à travers différents modes de jeu.",
+  authors: [{ name: "CyberQuiz" }],
+  openGraph: {
+    title: "CyberQuiz - Teste ta vigilance numérique",
+    description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
+    type: "website",
+    images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@Lovable",
+    images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="fr">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      </head>
+      <body className={inter.className}>
+        <Providers>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            {children}
+          </TooltipProvider>
+        </Providers>
+      </body>
+    </html>
+  );
+}
