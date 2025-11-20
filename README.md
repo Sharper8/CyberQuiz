@@ -1,4 +1,6 @@
-# Welcome
+## CyberQuiz
+
+For full setup and deployment instructions, see DEPLOYMENT.md.
 
 **Use your preferred IDE**
 
@@ -40,8 +42,9 @@ npm run dev
 
 This project is built with:
 
-- Vite
+- Next.js 16 (App Router)
 - TypeScript
 - React
+- PostgreSQL (Dockerized)
 - shadcn-ui
 - Tailwind CSS

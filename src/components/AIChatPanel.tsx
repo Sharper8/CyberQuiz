@@ -46,13 +46,10 @@ export default function AIChatPanel({ question, userAnswer, correctAnswer, onClo
     setIsLoading(true);
 
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/explain-answer`;
-      
-      const response = await fetch(CHAT_URL, {
+      const response = await fetch('/api/chat', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
           messages: isInitial ? [userMsg] : [...messages, userMsg],

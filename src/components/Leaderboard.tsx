@@ -1,16 +1,9 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { Trophy, Medal } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api, Score } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Score {
-  id: string;
-  pseudo: string;
-  score: number;
-  total_questions: number;
-  mode: string;
-  created_at: string;
-}
 
 export default function Leaderboard() {
   const [scores, setScores] = useState<Score[]>([]);
@@ -22,15 +15,8 @@ export default function Leaderboard() {
 
   const fetchScores = async () => {
     try {
-      const { data, error } = await supabase
-        .from("scores")
-        .select("*")
-        .order("score", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setScores(data || []);
+      const data = await api.getScores(10);
+      setScores(data);
     } catch (error) {
       console.error("Error fetching scores:", error);
     } finally {
