@@ -72,16 +72,16 @@ export default function Leaderboard() {
                 <div className="flex items-center gap-3">
                   {getMedalIcon(index)}
                   <div>
-                    <div className="font-semibold">{score.pseudo}</div>
+                    <div className="font-semibold">{score.username}</div>
                     <div className="text-xs text-muted-foreground">
-                      Mode: {score.mode}
+                      {score.topic ? `Topic: ${score.topic}` : 'General Quiz'}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-primary">{score.score} pts</div>
                   <div className="text-xs text-muted-foreground">
-                    {score.score}/{score.total_questions}
+                    {score.score}/{score.totalQuestions} ({score.accuracyPercentage.toFixed(0)}%)
                   </div>
                 </div>
               </div>
