@@ -13,12 +13,14 @@ export interface Question {
 }
 
 export interface Score {
-  id: string;
-  pseudo: string;
+  id: number;
+  rank: number;
+  username: string;
   score: number;
-  total_questions: number;
-  mode: string;
-  created_at: string;
+  totalQuestions: number;
+  accuracyPercentage: number;
+  topic: string | null;
+  completedAt: Date;
 }
 
 export interface User {
@@ -77,22 +79,9 @@ class ApiClient {
   async getScores(limit = 10): Promise<Score[]> {
     const res = await fetch(`${this.baseUrl}/scores?limit=${limit}`);
     if (!res.ok) throw new Error('Failed to fetch scores');
-    return res.json();
-  }
-
-  async saveScore(data: {
-    pseudo: string;
-    score: number;
-    total_questions: number;
-    mode: string;
-  }): Promise<Score> {
-    const res = await fetch(`${this.baseUrl}/scores`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error('Failed to save score');
-    return res.json();
+    const data = await res.json();
+    // API returns { leaderboard: [...], count: N, limit: N }
+    return data.leaderboard || [];
   }
 
   // Auth
