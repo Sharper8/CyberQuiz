@@ -1,52 +1,56 @@
-import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-secret-change-me';
 
-// POST /api/auth/login
+// POST /api/auth/login (admin login for now)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
-    
+    const { email, password } = body as { email?: string; password?: string };
+
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 });
     }
-    
-    // For demo purposes, check against hardcoded admin
-    // In production, you'd have a users table
-    const isAdmin = email === 'admin@cyberquiz.local' && password === 'admin123';
-    
-    if (!isAdmin) {
+
+    // Lookup admin user
+    const admin = await prisma.adminUser.findUnique({ where: { email } });
+    if (!admin) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
-    
+
+    const passwordValid = await bcrypt.compare(password, admin.passwordHash);
+    if (!passwordValid) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
     // Create JWT token
     const token = jwt.sign(
-      { email, role: 'admin' },
+      { adminId: admin.id, email: admin.email, role: admin.role },
       JWT_SECRET,
       { expiresIn: '24h' }
     );
-    
+
     // Set HTTP-only cookie
     const cookieStore = await cookies();
     cookieStore.set('auth-token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 86400, // 24 hours
+      maxAge: 60 * 60 * 24, // 24 hours
       path: '/',
     });
-    
-    return NextResponse.json({ 
-      success: true, 
-      user: { email, role: 'admin' } 
+
+    return NextResponse.json({
+      success: true,
+      user: { email: admin.email, role: admin.role },
+      token,
     });
-  } catch (error: any) {
-    console.error('Auth error:', error);
+  } catch (error) {
+    console.error('[Auth/login] Error:', error);
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 });
   }
 }

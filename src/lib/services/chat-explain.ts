@@ -108,8 +108,11 @@ Example JSON response:
     // Fallback to pre-generated explanation
     return {
       explanation: question.explanation,
-      tips: [`Study category: ${question.category}`, 'Review MITRE techniques: ' + question.mitreTechniques.join(', ')],
-      relatedConcepts: question.mitreTechniques,
+      tips: [
+        `Study category: ${question.category}`,
+        `Review MITRE techniques: ${Array.isArray(question.mitreTechniques) ? (question.mitreTechniques as string[]).join(', ') : 'N/A'}`
+      ],
+      relatedConcepts: Array.isArray(question.mitreTechniques) ? (question.mitreTechniques as string[]) : [],
     };
   }
 }

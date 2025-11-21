@@ -1,8 +1,8 @@
 import { prisma } from '../db/prisma';
 import { qdrant, upsertEmbedding, searchSimilar } from '../db/qdrant';
-import { AIProvider } from './providers/base';
+import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
-import { buildGenerationPrompt } from './prompts/generation';
+import { buildGenerationPrompt } from '../ai/prompts/generation';
 
 interface GenerationContext {
   topic: string;
