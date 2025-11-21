@@ -73,12 +73,7 @@ export async function acceptQuestion(
     where: { id: questionId },
     data: {
       status: 'accepted',
-      metadata: {
-        update: {
-          adminReviewNote: reason || 'Accepted by admin',
-          adminReviewedAt: new Date(),
-        },
-      },
+      // metadata update fields removed (adminReviewNote/adminReviewedAt not in schema)
     },
   });
 
@@ -116,12 +111,7 @@ export async function rejectQuestion(
     data: {
       status: 'rejected',
       isRejected: true, // Soft delete flag prevents regeneration
-      metadata: {
-        update: {
-          adminReviewNote: reason,
-          adminReviewedAt: new Date(),
-        },
-      },
+      // metadata update removed (adminReviewNote/adminReviewedAt not in schema)
     },
   });
 
@@ -136,8 +126,8 @@ export async function rejectQuestion(
  * Bulk accept multiple questions (e.g., admin review batch)
  */
 export async function bulkAcceptQuestions(
-  questionIds: string[],
-  adminId: string
+  questionIds: number[],
+  adminId: number
 ): Promise<number> {
   const result = await prisma.question.updateMany({
     where: {
@@ -162,8 +152,8 @@ export async function bulkAcceptQuestions(
  * Bulk reject multiple questions with reason
  */
 export async function bulkRejectQuestions(
-  questionIds: string[],
-  adminId: string,
+  questionIds: number[],
+  adminId: number,
   reason: string
 ): Promise<number> {
   const result = await prisma.question.updateMany({

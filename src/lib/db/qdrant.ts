@@ -34,7 +34,7 @@ export async function upsertEmbedding(id: number, vector: number[], payload: Emb
       {
         id,
         vector,
-        payload
+        payload: payload as unknown as Record<string, unknown>
       }
     ]
   });
@@ -55,5 +55,5 @@ export async function searchSimilar(vector: number[], limit = 10): Promise<Simil
     vector,
     limit
   });
-  return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as EmbeddingPayload }));
+  return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as unknown as EmbeddingPayload }));
 }

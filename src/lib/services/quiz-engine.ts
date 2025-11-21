@@ -7,22 +7,24 @@ import { Decimal } from '@prisma/client/runtime/library';
  */
 
 export interface QuizSessionState {
-  sessionId: string;
+  sessionId: number;
   username: string;
   warmupComplete: boolean;
   score: number;
   questionsAnswered: number;
-  currentQuestionId?: string;
+  currentQuestionId?: number;
   terminatedEarly: boolean;
 }
 
 /**
  * Initialize a quiz session with warm-up state
  */
-export async function initializeQuizSession(username: string): Promise<QuizSessionState> {
+export async function initializeQuizSession(username: string, topic = 'General', questionCount = 10): Promise<QuizSessionState> {
   const session = await prisma.quizSession.create({
     data: {
       username,
+      topic,
+      questionCount,
       warmupComplete: false,
       score: 0,
     },
@@ -128,7 +130,7 @@ export async function recordAnswer(
   if (!question) throw new Error(`Question ${questionId} not found`);
 
   const isCorrect = userAnswer === question.correctAnswer;
-  const questionsAnswered = session.questions.length + 1; // Increment after this answer
+  const questionsAnswered = session.sessionQuestions.length + 1; // Increment after this answer
   const isWarmupQuestion = questionsAnswered <= 5;
   let updatedScore = session.score;
   let shouldTerminate = false;
@@ -155,7 +157,7 @@ export async function recordAnswer(
       questionId,
       userAnswer,
       isCorrect,
-      timeSpentSeconds: 0, // Will be populated by client timing
+      timeTaken: 0, // Will be populated by client timing if needed
     },
   });
 
@@ -182,10 +184,13 @@ export async function recordAnswer(
 export async function completeQuizSession(sessionId: number): Promise<number> {
   const session = await prisma.quizSession.findUnique({
     where: { id: sessionId },
-    include: { questions: { select: { questionId: true } } },
+    include: { sessionQuestions: { select: { questionId: true } } },
   });
 
   if (!session) throw new Error(`Session ${sessionId} not found`);
+
+  const totalQuestions = session.sessionQuestions.length;
+  const accuracyPercentage = totalQuestions > 0 ? (session.score / totalQuestions) * 100 : 0;
 
   // Create score record for leaderboard
   const score = await prisma.score.create({
@@ -193,6 +198,9 @@ export async function completeQuizSession(sessionId: number): Promise<number> {
       sessionId: session.id,
       username: session.username,
       score: session.score,
+      totalQuestions,
+      accuracyPercentage: new Decimal(accuracyPercentage),
+      topic: session.topic,
     },
   });
 
@@ -203,7 +211,7 @@ export async function completeQuizSession(sessionId: number): Promise<number> {
  * Cache next question answer on server side (for reconnection recovery)
  * Client can reconstruct quiz state if connection drops
  */
-export async function cacheNextQuestion(sessionId: string, nextQuestionId?: string): Promise<void> {
+export async function cacheNextQuestion(sessionId: number, nextQuestionId?: number): Promise<void> {
   // Store in Redis or in-memory cache (implementation depends on deployment model)
   // For now, just update session's currentQuestionId
   if (nextQuestionId) {
@@ -220,10 +228,10 @@ export async function cacheNextQuestion(sessionId: string, nextQuestionId?: stri
 /**
  * Get quiz session summary
  */
-export async function getSessionSummary(sessionId: string): Promise<QuizSessionState | null> {
+export async function getSessionSummary(sessionId: number): Promise<QuizSessionState | null> {
   const session = await prisma.quizSession.findUnique({
     where: { id: sessionId },
-    include: { questions: { select: { questionId: true } } },
+    include: { sessionQuestions: { select: { questionId: true } } },
   });
 
   if (!session) return null;
@@ -233,7 +241,7 @@ export async function getSessionSummary(sessionId: string): Promise<QuizSessionS
     username: session.username,
     warmupComplete: session.warmupComplete,
     score: session.score,
-    questionsAnswered: session.questions.length,
+    questionsAnswered: session.sessionQuestions.length,
     terminatedEarly: false, // Would need additional field to track this
   };
 }

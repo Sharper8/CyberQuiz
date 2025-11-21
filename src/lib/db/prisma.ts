@@ -5,27 +5,9 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const prisma: PrismaClient =
   globalForPrisma.prisma ||
-  new PrismaClient({
-    log: [
-      { level: 'query', emit: 'event' },
-      { level: 'error', emit: 'event' },
-      { level: 'warn', emit: 'event' }
-    ]
-  });
+  new PrismaClient();
 
-prisma.$on('query', (e) => {
-  if (process.env.LOG_QUERIES === 'true') {
-    console.info('[prisma.query]', { query: e.query, params: e.params, durationMs: e.duration });
-  }
-});
-
-prisma.$on('error', (e) => {
-  console.error('[prisma.error]', e);
-});
-
-prisma.$on('warn', (e) => {
-  console.warn('[prisma.warn]', e);
-});
+// Simplified client: removed event logging to avoid type issues with newer Prisma typings.
 
 if (!globalForPrisma.prisma) {
   globalForPrisma.prisma = prisma;

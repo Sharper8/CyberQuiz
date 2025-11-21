@@ -71,17 +71,9 @@ function QuizPage() {
     }
   }, [timeLeft, answered, mode]);
 
-  const saveScore = async (finalScore: number, totalQuestions: number) => {
-    try {
-      await api.saveScore({
-        pseudo: pseudo || "Anonymous",
-        score: finalScore,
-        total_questions: totalQuestions,
-        mode: mode,
-      });
-    } catch (error) {
-      console.error("Error saving score:", error);
-    }
+  const saveScore = async (_finalScore: number, _totalQuestions: number) => {
+    // Persistence disabled: API endpoint removed. Implement server-side score storage later.
+    return;
   };
 
   const handleAnswer = (answer: boolean | null) => {
