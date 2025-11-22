@@ -1,7 +1,7 @@
-import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db/prisma';
 
-// DELETE /api/questions/[id]
+// DELETE /api/questions/[id] - Soft delete by marking as rejected
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -9,7 +9,14 @@ export async function DELETE(
   try {
     const { id } = await params;
     
-    await pool.query('DELETE FROM questions WHERE id = $1', [id]);
+    // Soft delete: mark as rejected instead of hard delete
+    await prisma.question.update({
+      where: { id: parseInt(id) },
+      data: {
+        isRejected: true,
+        status: 'rejected',
+      },
+    });
     
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -18,7 +25,7 @@ export async function DELETE(
   }
 }
 
-// PATCH /api/questions/[id] - Update a question
+// PATCH /api/questions/[id] - Update question status (accept/reject)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -26,20 +33,57 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { validated } = body;
+    const { status, validated } = body;
     
-    const result = await pool.query(
-      'UPDATE questions SET validated = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
-      [validated, id]
-    );
+    // Support both new status field and legacy validated field
+    let updateData: any = {};
     
-    if (result.rows.length === 0) {
-      return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+    if (status !== undefined) {
+      updateData.status = status;
+      updateData.isRejected = status === 'rejected';
+    } else if (validated !== undefined) {
+      // Legacy support: convert validated boolean to status
+      updateData.status = validated ? 'accepted' : 'to_review';
+      updateData.isRejected = !validated;
     }
     
-    return NextResponse.json(result.rows[0]);
+    const question = await prisma.question.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        metadata: true,
+      },
+    });
+    
+    return NextResponse.json(question);
   } catch (error: any) {
     console.error('Database error:', error);
     return NextResponse.json({ error: 'Failed to update question' }, { status: 500 });
+  }
+}
+
+// GET /api/questions/[id] - Get single question details
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    
+    const question = await prisma.question.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        metadata: true,
+      },
+    });
+    
+    if (!question) {
+      return NextResponse.json({ error: 'Question not found' }, { status: 404 });
+    }
+    
+    return NextResponse.json(question);
+  } catch (error: any) {
+    console.error('Database error:', error);
+    return NextResponse.json({ error: 'Failed to fetch question' }, { status: 500 });
   }
 }

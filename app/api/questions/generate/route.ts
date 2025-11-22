@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const { topic, difficulty = 'medium' } = validation.data;
 
     // Get AI provider
-    const provider = getAIProvider('ollama');
+    const provider = await getAIProvider('ollama');
 
     // Generate questions to cache
     const cacheSize = await generateQuestionsForCache(

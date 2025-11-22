@@ -30,12 +30,19 @@ export default function AdminPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
     category: "Sécurité",
   });
   const [generating, setGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState<{
+    step: string;
+    message: string;
+    current?: number;
+    total?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -54,13 +61,38 @@ export default function AdminPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     try {
-      await api.deleteQuestion(id);
-      setQuestions(questions.filter(q => q.id !== id));
-      toast.success("Question supprimée");
+      // Always soft delete by marking as rejected
+      await api.updateQuestion(id.toString(), { status: 'rejected' });
+      setQuestions(questions.map(q => 
+        q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
+      ));
+      toast.success("Question rejetée");
     } catch (error: any) {
-      toast.error("Erreur lors de la suppression");
+      toast.error("Erreur lors du rejet");
+    }
+  };
+
+  const handleAccept = async (id: number) => {
+    try {
+      await api.updateQuestion(id.toString(), { status: 'accepted' });
+      setQuestions(questions.map(q => 
+        q.id === id ? { ...q, status: 'accepted' as const, isRejected: false } : q
+      ));
+      toast.success("Question acceptée et ajoutée au pool");
+    } catch (error: any) {
+      toast.error("Erreur lors de l'acceptation");
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      await api.deleteQuestion(id.toString());
+      setQuestions(questions.filter(q => q.id !== id));
+      toast.success("Question rejetée");
+    } catch (error: any) {
+      toast.error("Erreur lors du rejet");
     }
   };
 
@@ -81,27 +113,66 @@ export default function AdminPage() {
 
   const handleGenerateQuestions = async () => {
     setGenerating(true);
+    setGenerationProgress({ step: 'init', message: 'Démarrage...' });
+    
     try {
-      // This would call an AI generation endpoint
-      toast.info("Génération IA - À implémenter");
-      // fetchQuestions();
+      // Use streaming endpoint for real-time progress
+      const response = await fetch('/api/questions/generate-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          topic: 'Cybersécurité',
+          difficulty: 'medium',
+          count: 5
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start generation');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
+            if (eventMatch) {
+              const [, event, dataStr] = eventMatch;
+              const data = JSON.parse(dataStr);
+
+              if (event === 'progress') {
+                setGenerationProgress(data);
+                toast.info(data.message, { duration: 2000 });
+              } else if (event === 'complete') {
+                toast.success('Questions générées avec succès!');
+                await fetchQuestions();
+              } else if (event === 'error') {
+                toast.error(data.message);
+              }
+            }
+          }
+        }
+      }
     } catch (error: any) {
       toast.error(error.message || "Erreur lors de la génération");
     } finally {
       setGenerating(false);
-    }
-  };
-
-  const handleToggleValidation = async (id: string, currentStatus: boolean) => {
-    try {
-      await api.updateQuestion(id, { validated: !currentStatus });
-
-      setQuestions(questions.map(q => 
-        q.id === id ? { ...q, validated: !currentStatus } : q
-      ));
-      toast.success(currentStatus ? "Question invalidée" : "Question validée");
-    } catch (error: any) {
-      toast.error("Erreur lors de la mise à jour");
+      setGenerationProgress(null);
     }
   };
 
@@ -116,11 +187,17 @@ export default function AdminPage() {
     );
   }
 
+  // Filter questions based on selected filter
+  const filteredQuestions = filter === 'all' 
+    ? questions 
+    : questions.filter(q => q.status === filter);
+
   const stats = {
     total: questions.length,
-    validated: questions.filter(q => q.validated).length,
-    pending: questions.filter(q => !q.validated).length,
-    aiGenerated: questions.filter(q => q.ai_generated).length,
+    accepted: questions.filter(q => q.status === 'accepted').length,
+    pending: questions.filter(q => q.status === 'to_review').length,
+    rejected: questions.filter(q => q.status === 'rejected' || q.isRejected).length,
+    aiGenerated: questions.filter(q => q.aiProvider !== 'manual' && q.aiProvider !== 'seed').length,
   };
 
   return (
@@ -147,15 +224,15 @@ export default function AdminPage() {
             <p className="text-3xl font-bold text-primary">{stats.total}</p>
           </div>
           <div className="bg-card border border-border rounded-lg p-6">
-            <p className="text-muted-foreground text-sm mb-1">Validées</p>
-            <p className="text-3xl font-bold text-secondary">{stats.validated}</p>
+            <p className="text-muted-foreground text-sm mb-1">Acceptées</p>
+            <p className="text-3xl font-bold text-secondary">{stats.accepted}</p>
           </div>
           <div className="bg-card border border-border rounded-lg p-6">
             <p className="text-muted-foreground text-sm mb-1">En attente</p>
             <p className="text-3xl font-bold text-cyber-red">{stats.pending}</p>
           </div>
           <div className="bg-card border border-border rounded-lg p-6">
-            <p className="text-muted-foreground text-sm mb-1">IA</p>
+            <p className="text-muted-foreground text-sm mb-1">Générées IA</p>
             <p className="text-3xl font-bold text-cyber-blue">{stats.aiGenerated}</p>
           </div>
         </div>
@@ -227,87 +304,196 @@ export default function AdminPage() {
             onClick={handleGenerateQuestions}
             disabled={generating}
           >
-            <Sparkles className="h-5 w-5 mr-2" />
-            {generating ? "Génération..." : "Générer avec IA"}
+            {generating ? (
+              <>
+                <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
+                {generationProgress?.message || "Génération..."}
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-5 w-5 mr-2" />
+                Générer avec IA
+              </>
+            )}
           </CyberButton>
         </div>
 
+        {/* Generation Progress Display */}
+        {generating && generationProgress && (
+          <div className="bg-card border border-primary rounded-lg p-6">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-primary">
+                  Génération en cours...
+                </h3>
+                {generationProgress.current !== undefined && generationProgress.total && (
+                  <span className="text-sm text-muted-foreground">
+                    {generationProgress.current}/{generationProgress.total}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {generationProgress.message}
+                </p>
+                
+                {generationProgress.total && (
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-primary h-full transition-all duration-300 ease-out"
+                      style={{ 
+                        width: `${((generationProgress.current || 0) / generationProgress.total) * 100}%` 
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="animate-pulse">●</div>
+                <span>
+                  Étape: <span className="font-mono text-primary">{generationProgress.step}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Questions List */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold">Banque de questions ({questions.length})</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold">Banque de questions ({filteredQuestions.length})</h2>
+            
+            {/* Filter Tabs */}
+            <div className="flex gap-2">
+              <CyberButton
+                variant={filter === 'all' ? 'primary' : 'outline'}
+                size="default"
+                onClick={() => setFilter('all')}
+              >
+                Toutes ({questions.length})
+              </CyberButton>
+              <CyberButton
+                variant={filter === 'to_review' ? 'primary' : 'outline'}
+                size="default"
+                onClick={() => setFilter('to_review')}
+              >
+                En attente ({stats.pending})
+              </CyberButton>
+              <CyberButton
+                variant={filter === 'accepted' ? 'primary' : 'outline'}
+                size="default"
+                onClick={() => setFilter('accepted')}
+              >
+                Pool actif ({stats.accepted})
+              </CyberButton>
+              <CyberButton
+                variant={filter === 'rejected' ? 'primary' : 'outline'}
+                size="default"
+                onClick={() => setFilter('rejected')}
+              >
+                Rejetées ({stats.rejected})
+              </CyberButton>
+            </div>
+          </div>
           
-          {questions.length === 0 ? (
+          {filteredQuestions.length === 0 ? (
             <div className="bg-card border border-border rounded-lg p-12 text-center">
               <p className="text-xl text-muted-foreground">
-                Aucune question pour le moment
+                Aucune question {filter !== 'all' ? `dans la catégorie "${filter}"` : ''}
               </p>
             </div>
           ) : (
-            questions.map((question) => (
-              <div
-                key={question.id}
-                className="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="text-primary border-primary">
-                        {question.category}
-                      </Badge>
-                      {question.ai_generated && (
-                        <Badge variant="secondary" className="gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          IA
+            filteredQuestions.map((question) => {
+              // Parse JSON fields if they're strings
+              const questionText = question.questionText || question.question || '';
+              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const isAiGenerated = question.aiProvider !== 'manual' && question.aiProvider !== 'seed';
+              
+              return (
+                <div
+                  key={question.id}
+                  className="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="outline" className="text-primary border-primary">
+                          {question.category}
                         </Badge>
+                        {isAiGenerated && (
+                          <Badge variant="secondary" className="gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            IA ({question.aiProvider})
+                          </Badge>
+                        )}
+                        {question.status === 'accepted' ? (
+                          <Badge className="bg-secondary text-secondary-foreground gap-1">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Dans le pool
+                          </Badge>
+                        ) : question.status === 'rejected' ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="h-3 w-3" />
+                            Rejetée
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="gap-1 border-cyber-red text-cyber-red">
+                            <XCircle className="h-3 w-3" />
+                            En attente
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-lg font-medium mb-2">{questionText}</p>
+                      {question.explanation && (
+                        <p className="text-sm text-muted-foreground mb-2">
+                          <span className="font-semibold">Explication:</span> {question.explanation}
+                        </p>
                       )}
-                      {question.validated ? (
-                        <Badge className="bg-secondary text-secondary-foreground gap-1">
-                          <CheckCircle2 className="h-3 w-3" />
-                          Validée
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="gap-1">
-                          <XCircle className="h-3 w-3" />
-                          En attente
-                        </Badge>
+                      <p className="text-sm text-muted-foreground">
+                        Réponse correcte : <span className="font-semibold text-foreground">
+                          {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
+                        </span>
+                        {question.difficulty && (
+                          <span className="ml-4">
+                            Difficulté: {(Number(question.difficulty) * 100).toFixed(0)}%
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      {question.status === 'to_review' && (
+                        <>
+                          <CyberButton
+                            variant="correct"
+                            onClick={() => handleAccept(question.id)}
+                          >
+                            <CheckCircle2 className="h-4 w-4 mr-1" />
+                            Accepter
+                          </CyberButton>
+                          <CyberButton
+                            variant="incorrect"
+                            onClick={() => handleReject(question.id)}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Rejeter
+                          </CyberButton>
+                        </>
+                      )}
+                      {question.status !== 'rejected' && (
+                        <CyberButton
+                          variant="outline"
+                          onClick={() => handleDelete(question.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </CyberButton>
                       )}
                     </div>
-                    <p className="text-lg font-medium mb-2">{question.question}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Réponse correcte : <span className="font-semibold text-foreground">
-                        {question.answer ? "OUI" : "NON"}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <CyberButton
-                      variant={question.validated ? "outline" : "correct"}
-                      onClick={() => handleToggleValidation(question.id, question.validated)}
-                      size="default"
-                    >
-                      {question.validated ? (
-                        <>
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Invalider
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Valider
-                        </>
-                      )}
-                    </CyberButton>
-                    <CyberButton
-                      variant="incorrect"
-                      onClick={() => handleDelete(question.id)}
-                      size="default"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </CyberButton>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

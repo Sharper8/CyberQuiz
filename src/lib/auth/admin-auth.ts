@@ -11,16 +11,26 @@ if (!JWT_SECRET || JWT_SECRET.length < 32) {
 
 /**
  * Verify admin JWT token from request
- * Checks Authorization header for "Bearer <token>"
+ * Checks Authorization header for "Bearer <token>" OR cookie for "auth-token"
  */
 export async function verifyAdminToken(request: NextRequest): Promise<number | null> {
   try {
+    let token: string | null = null;
+    
+    // Check Authorization header first
     const authHeader = request.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.slice(7); // Remove "Bearer "
+    }
+    
+    // Fallback to cookie
+    if (!token) {
+      token = request.cookies.get('auth-token')?.value || null;
+    }
+    
+    if (!token) {
       return null;
     }
-
-    const token = authHeader.slice(7); // Remove "Bearer "
 
     const decoded = jwt.verify(token, JWT_SECRET) as {
       adminId: number;

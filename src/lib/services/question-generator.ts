@@ -153,5 +153,145 @@ export async function generateQuestionsForCache(
   return cacheCount + generated.length;
 }
 
+/**
+ * Generate questions with real-time progress callbacks
+ * Used for streaming progress updates to the UI
+ */
+export async function generateQuestionsWithProgress(
+  topic: string,
+  provider: AIProvider,
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium',
+  onProgress?: (data: { step: string; message: string; current?: number; total?: number }) => void
+): Promise<number> {
+  // Check current cache size for this topic
+  onProgress?.({ 
+    step: 'cache_check', 
+    message: `Vérification du cache pour "${topic}"...` 
+  });
+
+  const cacheCount = await prisma.question.count({
+    where: {
+      category: topic,
+      status: 'to_review',
+      isRejected: false,
+    },
+  });
+
+  if (cacheCount >= CACHE_TARGET) {
+    onProgress?.({ 
+      step: 'cache_full', 
+      message: `Cache déjà rempli (${cacheCount} questions)` 
+    });
+    return cacheCount;
+  }
+
+  const targetCount = CACHE_TARGET - cacheCount;
+  onProgress?.({ 
+    step: 'generation_start', 
+    message: `Génération de ${targetCount} questions...`,
+    current: 0,
+    total: targetCount
+  });
+
+  const generated: any[] = [];
+
+  for (let i = 0; i < targetCount; i++) {
+    try {
+      onProgress?.({ 
+        step: 'generating', 
+        message: `Génération de la question ${i + 1}/${targetCount}...`,
+        current: i,
+        total: targetCount
+      });
+
+      const { question, embedding } = await generateSingleQuestion({
+        topic,
+        difficulty,
+        attemptCount: 0,
+        provider,
+      });
+
+      onProgress?.({ 
+        step: 'validating', 
+        message: `Validation de la qualité (${i + 1}/${targetCount})...`,
+        current: i,
+        total: targetCount
+      });
+
+      // Validate question quality
+      const validation = await provider.validateQuestion(question);
+
+      onProgress?.({ 
+        step: 'storing', 
+        message: `Enregistrement de la question ${i + 1}/${targetCount}...`,
+        current: i,
+        total: targetCount
+      });
+
+      // Store in database with to_review status
+      const stored = await prisma.question.create({
+        data: {
+          questionText: question.questionText,
+          options: question.options,
+          correctAnswer: question.correctAnswer,
+          explanation: question.explanation,
+          difficulty: new Decimal(question.estimatedDifficulty),
+          qualityScore: new Decimal(validation.qualityScore),
+          category: topic,
+          questionType: 'true-false',
+          status: 'to_review',
+          aiProvider: provider.name,
+          mitreTechniques: question.mitreTechniques || [],
+          tags: question.tags || [],
+          metadata: {
+            create: {
+              embeddingId: `q_${Date.now()}_${i}`,
+              validationScore: new Decimal(validation.qualityScore),
+              validatorModel: provider.name,
+            },
+          },
+        },
+      });
+
+      // Upsert embedding
+      await upsertEmbedding(stored.id, embedding, {
+        question_id: stored.id,
+        question_text: question.questionText,
+        category: topic,
+        difficulty: question.estimatedDifficulty,
+        tags: question.tags || [],
+        created_at: new Date().toISOString(),
+      });
+
+      generated.push(stored.id);
+      
+      onProgress?.({ 
+        step: 'completed', 
+        message: `Question ${i + 1}/${targetCount} générée avec succès`,
+        current: i + 1,
+        total: targetCount
+      });
+    } catch (error) {
+      console.error(`[QuestionGenerator] Failed to generate question ${i + 1}:`, error);
+      onProgress?.({ 
+        step: 'error', 
+        message: `Erreur lors de la génération ${i + 1}: ${error instanceof Error ? error.message : 'Unknown'}`,
+        current: i,
+        total: targetCount
+      });
+      // Continue with next question
+    }
+  }
+
+  onProgress?.({ 
+    step: 'done', 
+    message: `✅ ${generated.length} questions générées et prêtes pour validation`,
+    current: targetCount,
+    total: targetCount
+  });
+
+  return cacheCount + generated.length;
+}
+
 // Import Decimal from prisma for type safety
 import { Decimal } from '@prisma/client/runtime/library';
