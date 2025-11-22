@@ -7,7 +7,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "docker:init": "docker-compose up -d && sleep 10 && npm run db:setup"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -86,6 +90,10 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "prisma": "^5.20.0"
+    "prisma": "^5.20.0",
+    "tsx": "^4.7.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

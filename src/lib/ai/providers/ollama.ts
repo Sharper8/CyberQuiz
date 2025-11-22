@@ -27,12 +27,40 @@ async function postJSON<T>(url: string, body: any): Promise<T> {
 }
 
 function extractJSONFromStreamed(raw: string): any {
-  // Some models may include leading text. Attempt to find first '{' and last '}'
-  const start = raw.indexOf('{');
-  const end = raw.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new Error('No JSON object found in model output');
-  const slice = raw.slice(start, end + 1);
-  return JSON.parse(slice);
+  // Ollama streams response in chunks like {"response":"text","done":false}
+  // We need to extract just the response field and combine them
+  const lines = raw.split('\n').filter(line => line.trim());
+  let fullResponse = '';
+  
+  for (const line of lines) {
+    try {
+      const chunk = JSON.parse(line);
+      if (chunk.response) {
+        fullResponse += chunk.response;
+      }
+    } catch (e) {
+      // Skip invalid JSON lines
+      continue;
+    }
+  }
+  
+  // Now extract JSON from the accumulated response text
+  const start = fullResponse.indexOf('{');
+  const end = fullResponse.lastIndexOf('}');
+  
+  if (start === -1 || end === -1) {
+    console.error('Raw response:', fullResponse);
+    throw new Error('No JSON object found in model output');
+  }
+  
+  const slice = fullResponse.slice(start, end + 1);
+  
+  try {
+    return JSON.parse(slice);
+  } catch (e) {
+    console.error('Failed to parse JSON slice:', slice);
+    throw new Error(`Invalid JSON in model output: ${e}`);
+  }
 }
 
 export class OllamaProvider implements AIProvider {

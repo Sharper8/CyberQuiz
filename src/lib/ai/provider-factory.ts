@@ -32,28 +32,40 @@ function initializeProviders(): void {
  * Get provider by name
  * Validates provider is available before returning
  */
-export function getAIProvider(preferredName?: string): AIProvider {
+export async function getAIProvider(preferredName?: string): Promise<AIProvider> {
   initializeProviders();
 
-  if (preferredName === 'openai' && openaiProvider?.isAvailable()) {
-    logger.debug('[ProviderFactory] Using OpenAI provider');
-    return openaiProvider;
+  if (preferredName === 'openai' && openaiProvider) {
+    const available = await openaiProvider.isAvailable();
+    if (available) {
+      logger.debug('[ProviderFactory] Using OpenAI provider');
+      return openaiProvider;
+    }
   }
 
-  if (preferredName === 'ollama' && ollamaProvider?.isAvailable()) {
-    logger.debug('[ProviderFactory] Using Ollama provider');
-    return ollamaProvider;
+  if (preferredName === 'ollama' && ollamaProvider) {
+    const available = await ollamaProvider.isAvailable();
+    if (available) {
+      logger.debug('[ProviderFactory] Using Ollama provider');
+      return ollamaProvider;
+    }
   }
 
   // Fallback: try Ollama first (local), then OpenAI
-  if (ollamaProvider?.isAvailable()) {
-    logger.debug('[ProviderFactory] Using Ollama provider (fallback)');
-    return ollamaProvider;
+  if (ollamaProvider) {
+    const available = await ollamaProvider.isAvailable();
+    if (available) {
+      logger.debug('[ProviderFactory] Using Ollama provider (fallback)');
+      return ollamaProvider;
+    }
   }
 
-  if (openaiProvider?.isAvailable()) {
-    logger.debug('[ProviderFactory] Using OpenAI provider (fallback)');
-    return openaiProvider;
+  if (openaiProvider) {
+    const available = await openaiProvider.isAvailable();
+    if (available) {
+      logger.debug('[ProviderFactory] Using OpenAI provider (fallback)');
+      return openaiProvider;
+    }
   }
 
   throw new Error('No AI provider available');

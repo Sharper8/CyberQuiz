@@ -2,14 +2,31 @@
 "use client";
 
 export interface Question {
-  id: string;
-  question: string;
-  answer: boolean;
+  id: number;
+  questionText: string;
+  options: string | string[]; // JSON string or parsed array
+  correctAnswer: string;
+  explanation: string;
+  difficulty: number;
+  qualityScore?: number;
   category: string;
-  ai_generated: boolean;
-  validated: boolean;
-  created_at: string;
-  updated_at: string;
+  questionType: string;
+  status: 'to_review' | 'accepted' | 'rejected';
+  isRejected: boolean;
+  aiProvider: string;
+  mitreTechniques?: string | string[];
+  tags?: string | string[];
+  createdAt: string;
+  updatedAt: string;
+  metadata?: any;
+  
+  // Legacy fields for backward compatibility
+  question?: string;
+  answer?: boolean;
+  ai_generated?: boolean;
+  validated?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Score {
@@ -65,13 +82,34 @@ class ApiClient {
     if (!res.ok) throw new Error('Failed to delete question');
   }
 
-  async updateQuestion(id: string, data: { validated: boolean }): Promise<Question> {
+  async updateQuestion(
+    id: string, 
+    data: { validated?: boolean; status?: 'to_review' | 'accepted' | 'rejected' }
+  ): Promise<Question> {
     const res = await fetch(`${this.baseUrl}/questions/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error('Failed to update question');
+    return res.json();
+  }
+
+  async generateQuestions(data: { 
+    topic: string; 
+    difficulty?: 'easy' | 'medium' | 'hard';
+    count?: number;
+  }): Promise<{ topic: string; difficulty: string; cacheSize: number; message: string }> {
+    const res = await fetch(`${this.baseUrl}/questions/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Include cookies for auth
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Failed to generate questions');
+    }
     return res.json();
   }
 
