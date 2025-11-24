@@ -1,0 +1,132 @@
+// Prisma schema for CyberQuiz baseline
+// Generated per implementation plan version 1.0.0
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core question entity
+model Question {
+  id              Int               @id @default(autoincrement())
+  questionText    String            @db.Text
+  options         Json              // For T/F: ["True", "False"]; user gets right/wrong feedback
+  correctAnswer   String
+  explanation     String            @db.Text
+  difficulty      Decimal           @db.Decimal(5,2) // 0-1 scale (AI-generated, immutable)
+  qualityScore    Decimal?          @db.Decimal(5,2)
+  category        String            // e.g. network-security, with theme + difficulty stored
+  questionType    String            @default("true-false") // Only true-false for MVP
+  status          String            @default("to_review") // to_review | accepted | rejected
+  isRejected      Boolean           @default(false) // Soft delete flag for generation engine
+  aiProvider      String            // ollama | openai | anthropic
+  mitreTechniques Json?             // ["T1059", ...]
+  tags            Json?             // ["privilege-escalation", ...]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  metadata        QuestionMetadata?
+  responses       ResponseHistory[]
+  sessionQuestions QuizSessionQuestion[]
+
+  @@index([category])
+  @@index([difficulty])
+  @@index([status])
+  @@index([isRejected])
+  @@index([createdAt])
+}
+
+model QuestionMetadata {
+  questionId         Int        @id
+  question           Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  embeddingId        String
+  difficultyComponents Json?    // { complexity: 0.8, verbosity: 0.6, ambiguity: 0.3 }
+  validationScore    Decimal?   @db.Decimal(5,2)
+  validatorModel     String?
+  generatedPromptHash String?
+  conceptTags        Json?
+  createdAt          DateTime   @default(now())
+}
+
+model QuizSession {
+  id             Int                  @id @default(autoincrement())
+  username       String               // Required for leaderboard; uniqueness enforced per quiz session
+  topic          String
+  questionCount  Int
+  startTime      DateTime             @default(now())
+  endTime        DateTime?
+  status         String               @default("in_progress") // in_progress | completed | abandoned
+  score          Int                  @default(0)
+  warmupComplete Boolean              @default(false) // After 5 questions in classical mode
+  createdAt      DateTime             @default(now())
+  responses      ResponseHistory[]
+  sessionQuestions QuizSessionQuestion[]
+  scoreRecord    Score?
+
+  @@index([username])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model QuizSessionQuestion {
+  session   QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId Int
+  question  Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId Int
+  questionOrder Int
+  @@id([sessionId, questionId])
+}
+
+model ResponseHistory {
+  id          Int         @id @default(autoincrement())
+  session     QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId   Int
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId  Int
+  userAnswer  String
+  isCorrect   Boolean
+  timeTaken   Int?        // seconds
+  answeredAt  DateTime    @default(now())
+}
+
+model Score {
+  id                Int         @id @default(autoincrement())
+  session           QuizSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId         Int         @unique
+  username          String      // Denormalized from session for leaderboard sorting
+  score             Int
+  totalQuestions    Int
+  accuracyPercentage Decimal     @db.Decimal(5,2)
+  timeTaken         Int?         // seconds
+  topic             String?
+  createdAt         DateTime     @default(now())
+}
+
+model AIRequestLog {
+  id          Int       @id @default(autoincrement())
+  provider    String
+  model       String
+  operation   String    // generate | validate | embed
+  promptHash  String
+  latencyMs   Int?
+  tokenCount  Int?
+  status      String    // success | failure
+  errorMessage String?
+  createdAt   DateTime  @default(now())
+
+  @@index([provider])
+  @@index([createdAt])
+  @@index([status])
+}
+
+model AdminUser {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  role         String    @default("admin")
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+}
