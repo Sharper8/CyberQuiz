@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Cyber dark theme */
+    --background: 215 28% 7%;
+    --foreground: 210 40% 98%;
+
+    --card: 215 25% 10%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 215 25% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Electric blue primary */
+    --primary: 217 91% 60%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Neon green secondary */
+    --secondary: 142 71% 45%;
+    --secondary-foreground: 215 28% 7%;
+
+    --muted: 215 20% 15%;
+    --muted-foreground: 217 10% 60%;
+
+    --accent: 142 71% 45%;
+    --accent-foreground: 215 28% 7%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 215 20% 20%;
+    --input: 215 20% 20%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.75rem;
+
+    /* Cyber gradients */
+    --gradient-cyber: linear-gradient(135deg, hsl(217 91% 60%), hsl(142 71% 45%));
+    --gradient-dark: linear-gradient(180deg, hsl(215 28% 7%), hsl(215 25% 10%));
+    
+    /* Neon glows */
+    --glow-blue: 0 0 20px hsl(217 91% 60% / 0.5);
+    --glow-green: 0 0 20px hsl(142 71% 45% / 0.5);
+    
+    /* Cyber accents */
+    --cyber-blue: 217 91% 60%;
+    --cyber-green: 142 71% 45%;
+    --cyber-purple: 270 70% 60%;
+    --cyber-red: 0 84% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Cyber animations */
+  @keyframes pulse-glow {
+    0%, 100% {
+      filter: drop-shadow(0 0 8px hsl(var(--primary) / 0.5));
+    }
+    50% {
+      filter: drop-shadow(0 0 20px hsl(var(--primary) / 0.8));
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes cyber-scan {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out;
+  }
+
+  /* Cyber gradient text */
+  .text-gradient {
+    background: var(--gradient-cyber);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Neon border effect */
+  .border-neon {
+    border: 1px solid hsl(var(--primary));
+    box-shadow: 0 0 10px hsl(var(--primary) / 0.3);
+  }
+
+  .border-neon-green {
+    border: 1px solid hsl(var(--secondary));
+    box-shadow: 0 0 10px hsl(var(--secondary) / 0.3);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
