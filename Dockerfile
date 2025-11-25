@@ -1,9 +1,9 @@
-# Dockerize Next.js app
-FROM node:20-alpine AS base
+# Dockerize Next.js app - Using Debian Bullseye for Prisma compatibility (has libssl1.1)
+FROM node:20-bullseye-slim AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy package files
@@ -16,14 +16,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set build-time environment variables
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_SUPABASE_PROJECT_ID
-
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-ENV NEXT_PUBLIC_SUPABASE_PROJECT_ID=$NEXT_PUBLIC_SUPABASE_PROJECT_ID
+# Generate Prisma Client
+RUN npx prisma generate
 
 # Build Next.js
 RUN npm run build
@@ -32,10 +26,13 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
+# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default)
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
 
@@ -47,6 +44,16 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy startup script and set permissions
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-startup.sh ./
+RUN chmod +x docker-startup.sh
+
+# Copy Prisma schema and migrations for runtime
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
+
 USER nextjs
 
 EXPOSE 3000
@@ -54,4 +61,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+# Run startup script (migrations + admin creation) then start server
+CMD ["./docker-startup.sh"]
