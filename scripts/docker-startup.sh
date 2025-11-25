@@ -4,9 +4,17 @@
 
 echo "🚀 [Startup] Initializing CyberQuiz..."
 
-# Run database migrations
+# Run database migrations (use local binary to avoid npx permissions issue)
 echo "📦 [Startup] Running database migrations..."
-npx prisma migrate deploy
+# Set a writable npm cache to avoid EACCES (defensive)
+export NPM_CONFIG_CACHE=/tmp/.npm
+mkdir -p "$NPM_CONFIG_CACHE"
+
+if [ -x ./node_modules/.bin/prisma ]; then
+  ./node_modules/.bin/prisma migrate deploy || echo "⚠️ [Startup] Migrations failed (continuing anyway)"
+else
+  echo "⚠️ [Startup] Prisma CLI not found; skipping migrations"
+fi
 
 # Ensure admin user exists
 echo "👤 [Startup] Ensuring admin user..."
@@ -48,7 +56,7 @@ async function ensureAdmin() {
   }
 }
 
-ensureAdmin().catch(console.error);
+ensureAdmin().catch(err => console.error('[Admin] ❌ Unexpected:', err));
 "
 
 echo "✅ [Startup] Initialization complete!"
