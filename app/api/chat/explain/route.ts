@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get AI provider (prefer Ollama)
-    const provider = getAIProvider('ollama');
+    const provider = await getAIProvider('ollama');
 
     // Generate explanation
     const explanation = await explainAnswer({
