@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3100:3000"
     environment:
       - NODE_ENV=production
       # Database
@@ -16,7 +16,7 @@ services:
       # Qdrant Vector DB
       - QDRANT_URL=http://qdrant:6333
       # Auth
-      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
       # Admin User
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@cyberquiz.fr}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
@@ -27,9 +27,6 @@ services:
         condition: service_started
       ollama:
         condition: service_started
-    volumes:
-      - ./.next:/app/.next
-      - ./node_modules:/app/node_modules
     restart: unless-stopped
     networks:
       - cyberquiz-network
@@ -78,13 +75,14 @@ services:
     restart: unless-stopped
     networks:
       - cyberquiz-network
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    # GPU support (optional, comment out if no GPU available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
     # Pull model on first startup
     entrypoint: ["/bin/sh", "-c"]
     command:
