@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering for admin login
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";

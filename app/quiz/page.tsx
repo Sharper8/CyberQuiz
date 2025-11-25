@@ -1,5 +1,8 @@
 "use client";
 
+// Ensure quiz page is always rendered dynamically
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle, Clock, Trophy, MessageCircle } from "lucide-react";

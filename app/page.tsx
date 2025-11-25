@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering for client-only homepage
+export const dynamic = 'force-dynamic';
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Target, Clock, FolderTree, User, UserCog } from "lucide-react";

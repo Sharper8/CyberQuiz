@@ -19,8 +19,9 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build Next.js
-RUN npm run build
+# Build Next.js (with diagnostic wrapper)
+COPY scripts/build-wrapper.sh ./scripts/build-wrapper.sh
+RUN chmod +x ./scripts/build-wrapper.sh && ./scripts/build-wrapper.sh
 
 # Production image, copy all the files and run next
 FROM base AS runner

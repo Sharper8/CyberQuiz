@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering to ensure no build-time data assumptions
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from "react";
 import { CheckCircle2, XCircle, Sparkles, Plus, Trash2, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";

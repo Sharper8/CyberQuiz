@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering for score page with query params
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Trophy, Award, Target, Home, RotateCcw } from "lucide-react";
