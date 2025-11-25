@@ -17,6 +17,9 @@ services:
       - QDRANT_URL=http://qdrant:6333
       # Auth
       - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      # Admin User
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@cyberquiz.fr}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,6 +33,7 @@ services:
     restart: unless-stopped
     networks:
       - cyberquiz-network
+      - reverse-proxy
 
   # PostgreSQL Database (on-prem replacement for Supabase)
   postgres:
@@ -124,6 +128,8 @@ services:
 networks:
   cyberquiz-network:
     driver: bridge
+  reverse-proxy:
+    external: true
 
 volumes:
   postgres-data:
