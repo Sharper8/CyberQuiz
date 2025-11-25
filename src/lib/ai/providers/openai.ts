@@ -13,13 +13,14 @@ function parseJSON(raw: string): any {
 
 export class OpenAIProvider implements AIProvider {
   name = 'openai';
-  private client: OpenAI;
-  private generationModel: string;
-  private validationModel: string;
-  private embeddingModel: string;
-  private enabled: boolean;
+  private client: OpenAI | null = null;
+  private generationModel: string | null = null;
+  private validationModel: string | null = null;
+  private embeddingModel: string | null = null;
+  private enabled: boolean = false;
 
-  constructor() {
+  private ensureInitialized() {
+    if (this.client) return;
     const env = getEnv();
     this.enabled = env.ALLOW_EXTERNAL_AI === 'true' && !!env.OPENAI_API_KEY;
     this.client = new OpenAI({ apiKey: env.OPENAI_API_KEY });
@@ -28,11 +29,17 @@ export class OpenAIProvider implements AIProvider {
     this.embeddingModel = process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-large';
   }
 
+  constructor() {
+    // Defer initialization to avoid build-time env validation
+  }
+
   async isAvailable(): Promise<boolean> {
+    this.ensureInitialized();
     return this.enabled;
   }
 
   async generateQuestion(params: QuestionGenerationParams): Promise<GeneratedQuestion> {
+    this.ensureInitialized();
     if (!this.enabled) throw new Error('OpenAI provider disabled');
     const prompt = buildGenerationPrompt({
       topic: params.topic,
@@ -61,6 +68,7 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async validateQuestion(question: GeneratedQuestion): Promise<ValidationResult> {
+    this.ensureInitialized();
     if (!this.enabled) throw new Error('OpenAI provider disabled');
     const prompt = buildValidationPrompt({
       questionText: question.questionText,
@@ -88,6 +96,7 @@ export class OpenAIProvider implements AIProvider {
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
+    this.ensureInitialized();
     if (!this.enabled) throw new Error('OpenAI provider disabled');
     const embedding = await this.client.embeddings.create({
       model: this.embeddingModel,
