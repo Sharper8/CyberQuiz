@@ -10,14 +10,26 @@ echo "📦 [Startup] Running database migrations..."
 export NPM_CONFIG_CACHE=/tmp/.npm
 mkdir -p "$NPM_CONFIG_CACHE"
 
-if [ -x ./node_modules/.bin/prisma ]; then
+# Try multiple Prisma CLI locations
+if command -v prisma >/dev/null 2>&1; then
+  echo "✓ [Startup] Using global Prisma CLI"
+  prisma migrate deploy || echo "⚠️ [Startup] Migrations failed (continuing anyway)"
+elif [ -x ./node_modules/.bin/prisma ]; then
+  echo "✓ [Startup] Using local Prisma CLI"
   ./node_modules/.bin/prisma migrate deploy || echo "⚠️ [Startup] Migrations failed (continuing anyway)"
 else
-  echo "⚠️ [Startup] Prisma CLI not found; skipping migrations"
+  echo "❌ [Startup] Prisma CLI not found - migrations skipped!"
+  echo "   Database tables may not exist. Install Prisma CLI or run migrations manually."
 fi
 
 # Ensure admin user exists
 echo "👤 [Startup] Ensuring admin user..."
+# Load .env into environment for this shell (so Node inherits it)
+if [ -f "./.env" ]; then
+  set -a
+  . ./.env
+  set +a
+fi
 node -e "
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
@@ -34,7 +46,17 @@ async function ensureAdmin() {
     });
 
     if (existing) {
-      console.log('[Admin] User already exists:', adminEmail);
+      const matches = await bcrypt.compare(adminPassword, existing.passwordHash);
+      if (!matches) {
+        const newHash = await bcrypt.hash(adminPassword, 10);
+        await prisma.adminUser.update({
+          where: { id: existing.id },
+          data: { passwordHash: newHash },
+        });
+        console.log('[Admin] 🔄 Updated admin password for:', adminEmail);
+      } else {
+        console.log('[Admin] User already exists:', adminEmail);
+      }
       return;
     }
 

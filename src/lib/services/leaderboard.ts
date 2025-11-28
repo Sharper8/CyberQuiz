@@ -175,6 +175,63 @@ export async function cleanupOldScores(): Promise<number> {
 }
 
 /**
+ * Record a new score
+ */
+export async function recordScore(data: {
+  username: string;
+  score: number;
+  totalQuestions: number;
+  topic: string | null;
+}): Promise<LeaderboardEntry> {
+  const accuracyPercentage = (data.score / data.totalQuestions) * 100;
+
+  // Create a quiz session first (required by Score model)
+  const session = await prisma.quizSession.create({
+    data: {
+      username: data.username,
+      topic: data.topic || 'General',
+      questionCount: data.totalQuestions,
+      status: 'completed',
+      score: data.score,
+      warmupComplete: true,
+      endTime: new Date(),
+    },
+  });
+
+  const score = await prisma.score.create({
+    data: {
+      sessionId: session.id,
+      username: data.username,
+      score: data.score,
+      totalQuestions: data.totalQuestions,
+      accuracyPercentage,
+      topic: data.topic,
+    },
+  });
+
+  // Get rank
+  const betterScores = await prisma.score.count({
+    where: {
+      score: { gt: score.score },
+      createdAt: {
+        gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      },
+    },
+  });
+
+  return {
+    id: score.id,
+    rank: betterScores + 1,
+    username: score.username,
+    score: score.score,
+    totalQuestions: score.totalQuestions,
+    accuracyPercentage: Number(score.accuracyPercentage),
+    topic: score.topic,
+    completedAt: score.createdAt,
+  };
+}
+
+/**
  * Invalidate/refresh cache after quiz completion
  * In production, could be Redis cache invalidation
  * For MVP with small user base, recompute on-demand

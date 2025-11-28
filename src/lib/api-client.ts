@@ -122,6 +122,22 @@ class ApiClient {
     return data.leaderboard || [];
   }
 
+  async submitScore(data: {
+    username: string;
+    score: number;
+    totalQuestions: number;
+    topic?: string;
+    quizType?: string;
+  }): Promise<Score> {
+    const res = await fetch(`${this.baseUrl}/scores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to submit score');
+    return res.json();
+  }
+
   // Auth
   async login(email: string, password: string): Promise<{ user: User }> {
     const res = await fetch(`${this.baseUrl}/auth/login`, {
