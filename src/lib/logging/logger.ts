@@ -21,8 +21,11 @@ const transports: winston.transport[] = [
   }),
 ];
 
-// File logging for production and important events
-if (NODE_ENV === 'production') {
+// File logging disabled in containerized production (use Docker logs instead)
+// In non-containerized environments, file logging can be re-enabled via ENABLE_FILE_LOGS=true
+const enableFileLogs = process.env.ENABLE_FILE_LOGS === 'true' && NODE_ENV !== 'production';
+
+if (enableFileLogs) {
   transports.push(
     new winston.transports.File({
       filename: 'logs/error.log',
@@ -32,39 +35,49 @@ if (NODE_ENV === 'production') {
     new winston.transports.File({
       filename: 'logs/combined.log',
       format,
+    }),
+    new winston.transports.File({
+      filename: 'logs/audit.log',
+      level: 'info',
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.json()
+      ),
     })
   );
 }
 
-// Audit trail log for admin actions
-transports.push(
-  new winston.transports.File({
-    filename: 'logs/audit.log',
-    level: 'info',
-    format: winston.format.combine(
-      winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-      winston.format.json()
-    ),
-  })
-);
+// Exception and rejection handlers also use file logging only when enabled
+const exceptionHandlers: winston.transport[] = [
+  new winston.transports.Console({ format }),
+];
+
+const rejectionHandlers: winston.transport[] = [
+  new winston.transports.Console({ format }),
+];
+
+if (enableFileLogs) {
+  exceptionHandlers.push(
+    new winston.transports.File({
+      filename: 'logs/exceptions.log',
+      format,
+    })
+  );
+  rejectionHandlers.push(
+    new winston.transports.File({
+      filename: 'logs/rejections.log',
+      format,
+    })
+  );
+}
 
 export const logger = winston.createLogger({
   level: LOG_LEVEL,
   format,
   defaultMeta: { service: 'cyber-quiz' },
   transports,
-  exceptionHandlers: [
-    new winston.transports.File({
-      filename: 'logs/exceptions.log',
-      format,
-    }),
-  ],
-  rejectionHandlers: [
-    new winston.transports.File({
-      filename: 'logs/rejections.log',
-      format,
-    }),
-  ],
+  exceptionHandlers,
+  rejectionHandlers,
 });
 
 /**
