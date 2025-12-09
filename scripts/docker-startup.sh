@@ -4,6 +4,12 @@
 
 echo "🚀 [Startup] Initializing CyberQuiz..."
 
+# Remove .env file if present (Next.js standalone copies it, but we use container env vars)
+if [ -f "./.env" ]; then
+  rm -f ./.env
+  echo "✓ [Startup] Removed local .env (using container environment)"
+fi
+
 # Run database migrations (use local binary to avoid npx permissions issue)
 echo "📦 [Startup] Running database migrations..."
 # Set a writable npm cache to avoid EACCES (defensive)
@@ -24,12 +30,11 @@ fi
 
 # Ensure admin user exists
 echo "👤 [Startup] Ensuring admin user..."
-# Load .env into environment for this shell (so Node inherits it)
-if [ -f "./.env" ]; then
-  set -a
-  . ./.env
-  set +a
-fi
+# Preserve container environment (docker-compose sets DATABASE_URL correctly)
+# Don't load .env if we're in a container with proper DATABASE_URL
+DATABASE_URL="${DATABASE_URL}" \
+ADMIN_EMAIL="${ADMIN_EMAIL:-admin@cyberquiz.fr}" \
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-changeme}" \
 node -e "
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
