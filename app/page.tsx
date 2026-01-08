@@ -5,9 +5,15 @@ import { useRouter } from "next/navigation";
 import { Shield, Target, Clock, FolderTree, User, UserCog } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import ModeCard from "@/components/ModeCard";
-import Leaderboard from "@/components/Leaderboard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import CyberBackground from "@/components/CyberBackground";
+import dynamic from "next/dynamic";
+
+const Leaderboard = dynamic(() => import("@/components/Leaderboard"), {
+  ssr: false,
+  loading: () => <div className="h-64 animate-pulse bg-muted rounded-lg" />
+});
 
 export default function Home() {
   const [pseudo, setPseudo] = useState("");
@@ -43,20 +49,31 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-background/50 to-background" />
-        </div>
+    <div className="min-h-screen relative overflow-hidden">
+      <CyberBackground />
 
-        <div className="relative z-10 container mx-auto px-4 pt-20 pb-32">
-          <div className="flex flex-col items-center text-center space-y-6 animate-slide-up">
-            <Shield className="h-20 w-20 text-primary animate-pulse-glow" />
-            <h1 className="text-5xl md:text-7xl font-bold">
-              <span className="text-gradient">CyberQuiz</span>
+      {/* Admin Button - Fixed top right */}
+      <div className="fixed top-4 right-4 z-50">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push("/admin-login")}
+          className="gap-2 bg-gray-900/80 backdrop-blur-sm border-cyan-500/50 hover:bg-gray-900 hover:border-cyan-400 text-white"
+        >
+          <UserCog className="h-4 w-4" />
+          Admin
+        </Button>
+      </div>
+
+      {/* Hero Section */}
+      <div className="relative overflow-hidden z-10">
+        <div className="relative z-10 container mx-auto px-4 pt-12 pb-16">
+          <div className="flex flex-col items-center text-center space-y-4 animate-slide-up">
+            <Shield className="h-16 w-16 text-cyan-400 animate-pulse-glow" style={{filter: 'drop-shadow(0 0 20px rgba(0, 255, 255, 0.8))'}} />
+            <h1 className="text-4xl md:text-5xl font-bold">
+              <span className="bg-gradient-to-r from-cyan-400 to-cyan-200 bg-clip-text text-transparent">CyberQuiz</span>
             </h1>
-            <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl">
+            <p className="text-lg md:text-xl text-gray-300">
               Teste ta vigilance numérique ⚡
             </p>
           </div>
@@ -64,32 +81,20 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 -mt-16 relative z-20">
+      <div className="container mx-auto px-4 -mt-8 relative z-20">
         <div className="max-w-4xl mx-auto space-y-8">
-          {/* Admin Button */}
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push("/admin-login")}
-              className="gap-2"
-            >
-              <UserCog className="h-4 w-4" />
-              Admin
-            </Button>
-          </div>
           {/* Pseudo Input */}
-          <div className="bg-card border border-border rounded-lg p-8 shadow-xl">
+          <div className="bg-gray-900/60 backdrop-blur-md border border-cyan-500/30 rounded-lg p-8 shadow-2xl" style={{boxShadow: '0 0 30px rgba(0, 255, 255, 0.1)'}}>
             <div className="flex items-center gap-3 mb-4">
-              <User className="h-5 w-5 text-primary" />
-              <label className="text-lg font-semibold">Ton pseudo</label>
+              <User className="h-5 w-5 text-cyan-400" />
+              <label className="text-lg font-semibold text-white">Ton pseudo</label>
             </div>
             <Input
               type="text"
               placeholder="Entrez votre pseudo..."
               value={pseudo}
               onChange={(e) => setPseudo(e.target.value)}
-              className="h-14 text-lg bg-muted border-border focus:border-primary transition-colors"
+              className="h-14 text-lg bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-400 focus:border-cyan-400 focus:ring-cyan-400 transition-colors"
               maxLength={20}
             />
           </div>
@@ -105,7 +110,7 @@ export default function Home() {
                   key={mode.id}
                   {...mode}
                   onClick={() => setSelectedMode(mode.id)}
-                  className={selectedMode === mode.id ? "border-secondary shadow-[0_0_30px_hsl(var(--secondary)/0.3)]" : ""}
+                  isActive={selectedMode === mode.id}
                 />
               ))}
             </div>

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Trophy, Award, Target, Home, RotateCcw } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
+import CyberBackground from "@/components/CyberBackground";
 
 // Mock leaderboard data
 const mockLeaderboard = [
@@ -51,8 +52,9 @@ function ScorePage() {
   const MedalIcon = medal.icon;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl space-y-8 animate-slide-up">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+      <CyberBackground />
+      <div className="w-full max-w-5xl space-y-8 animate-slide-up relative z-20">
         {/* Your Score */}
         <div className="bg-card border-2 border-primary rounded-lg p-8 text-center shadow-2xl shadow-primary/20">
           <MedalIcon className={`h-20 w-20 mx-auto mb-4 ${medal.color} animate-pulse-glow`} />

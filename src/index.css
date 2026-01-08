@@ -55,6 +55,35 @@ All colors MUST be HSL.
     --cyber-purple: 270 70% 60%;
     --cyber-red: 0 84% 60%;
   }
+
+  .colorblind {
+    /* Alternative palette for colorblindness (Protanopia/Deuteranopia friendly) */
+    --cyber-green: 200 100% 37%; /* Blue instead of green */
+    --cyber-red: 25 95% 45%;   /* Orange instead of red */
+    --secondary: 200 100% 37%;
+    --destructive: 25 95% 45%;
+  }
+
+  .high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --primary: 217 100% 70%;
+    --secondary: 142 100% 70%;
+    --card: 0 0% 5%;
+    --muted-foreground: 0 0% 90%;
+  }
+
+  .reduced-motion *, .low-power * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .low-power {
+    --glow-blue: none;
+    --glow-green: none;
+  }
 }
 
 @layer base {
@@ -95,6 +124,19 @@ All colors MUST be HSL.
     100% {
       transform: translateY(100%);
     }
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
   }
 
   .animate-pulse-glow {

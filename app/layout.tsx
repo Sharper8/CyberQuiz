@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Providers } from "./providers";
+import { AccessibilitySettings } from "@/components/AccessibilitySettings";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,9 +41,15 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <TooltipProvider>
+            <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-primary focus:text-primary-foreground focus:p-4 focus:rounded-lg">
+              Passer au contenu principal
+            </a>
             <Toaster />
             <Sonner />
-            {children}
+            <main id="main-content">
+              {children}
+            </main>
+            <AccessibilitySettings />
           </TooltipProvider>
         </Providers>
       </body>

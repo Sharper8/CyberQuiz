@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, XCircle, Clock, Trophy, MessageCircle } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
+import CyberBackground from "@/components/CyberBackground";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import AIChatPanel from "@/components/AIChatPanel";
@@ -113,8 +114,9 @@ function QuizPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-3xl space-y-6 animate-slide-up">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+      <CyberBackground />
+      <div className="w-full max-w-3xl space-y-6 animate-slide-up relative z-20">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-primary">
