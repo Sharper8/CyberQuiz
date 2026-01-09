@@ -6,6 +6,10 @@ For development (no GPU required):
 
 ```bash
 # 1. Start all services (PostgreSQL, Qdrant, Ollama, PgAdmin)
+# Use either the modern Docker CLI or the older docker-compose binary:
+# Preferred (Docker CLI):
+docker compose -f docker-compose.dev.yml up -d
+# or (if you have the docker-compose binary):
 docker-compose -f docker-compose.dev.yml up -d
 
 # 2. Wait for Ollama to download models (this takes 5-10 minutes first time)
@@ -59,7 +63,7 @@ npm run dev
 |---------|-----|-------------|
 | **Main App** | http://localhost:3000 | - |
 | **Admin Panel** | http://localhost:3000/admin-login | admin@cyberquiz.fr / password123 |
-| **PgAdmin** | http://localhost:5050 | admin@cyberquiz.local / admin |
+| **PgAdmin** | http://localhost:5050 | admin@cyberquiz.fr / admin |
 | **Qdrant Dashboard** | http://localhost:6333/dashboard | - |
 
 ---
@@ -94,13 +98,13 @@ Click the "Générer avec IA" button in admin panel:
 ### "Ollama not running" error
 ```bash
 # Check if Ollama container is running
-docker-compose -f docker-compose.dev.yml ps ollama
+docker compose -f docker-compose.dev.yml ps ollama
 
 # View Ollama logs
-docker-compose -f docker-compose.dev.yml logs ollama
+docker compose -f docker-compose.dev.yml logs ollama
 
 # Restart Ollama
-docker-compose -f docker-compose.dev.yml restart ollama
+docker compose -f docker-compose.dev.yml restart ollama
 ```
 
 ### "No questions available"
@@ -169,7 +173,15 @@ docker-compose -f docker-compose.dev.yml logs -f ollama
 
 ## Environment Variables
 
-Create `.env.local` for local overrides:
+Environment files
+
+Create `.env.dev` for local development and `.env.prod` for production overrides.
+
+`docker-compose.dev.yml` reads `.env.dev` (via `env_file`) and passes those values into containers. Keep all runtime configuration in `.env.dev` for development.
+
+If you prefer to supply a different env file at runtime, use the `--env-file` flag shown below.
+
+Create `.env.dev` for local overrides (example):
 
 ```env
 # Database (auto-configured by docker-compose)
@@ -190,6 +202,22 @@ OPENAI_API_KEY=your-key-here
 # Auth
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 ```
+
+Usage notes
+- **Development (recommended):** put all dev values in `.env.dev` and run:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+- **Run with a specific env file (alternate):**
+
+```bash
+docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
+```
+
+- **Production:** create/populate `.env.prod` with production values and run your production compose (or pass `--env-file .env.prod`).
+
 
 ---
 
