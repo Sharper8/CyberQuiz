@@ -28,11 +28,11 @@ const CyberButton = forwardRef<HTMLButtonElement, CyberButtonProps>(
             "before:from-secondary before:via-cyber-green before:to-secondary": variant === "secondary",
             
             // Correct answer
-            "bg-cyber-green text-background shadow-[0_0_20px_hsl(var(--cyber-green)/0.4)]":
+            "bg-secondary text-background shadow-[0_0_20px_hsl(var(--secondary)/0.4)]":
               variant === "correct",
             
             // Incorrect answer
-            "bg-cyber-red text-foreground shadow-[0_0_20px_hsl(var(--cyber-red)/0.4)]":
+            "bg-destructive text-destructive-foreground shadow-[0_0_20px_hsl(var(--destructive)/0.4)]":
               variant === "incorrect",
             
             // Outline

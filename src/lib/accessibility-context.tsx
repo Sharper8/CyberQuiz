@@ -2,10 +2,11 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 
+export type ColorBlindnessType = "none" | "protanopia" | "deuteranopia" | "tritanopia" | "achromatopsia";
+
 type AccessibilitySettings = {
-  colorBlindMode: boolean;
+  colorBlindMode: ColorBlindnessType;
   highContrast: boolean;
-  reducedMotion: boolean;
   fontSize: "normal" | "large" | "extra-large";
   lowPowerMode: boolean;
 };
@@ -19,9 +20,8 @@ const AccessibilityContext = createContext<AccessibilityContextType | undefined>
 
 export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<AccessibilitySettings>({
-    colorBlindMode: false,
+    colorBlindMode: "none",
     highContrast: false,
-    reducedMotion: false,
     fontSize: "normal",
     lowPowerMode: false,
   });
@@ -43,15 +43,14 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
     const root = window.document.documentElement;
     
     // Classes
-    if (settings.colorBlindMode) root.classList.add("colorblind");
-    else root.classList.remove("colorblind");
+    root.classList.remove("cb-protanopia", "cb-deuteranopia", "cb-tritanopia", "cb-achromatopsia");
+    if (settings.colorBlindMode !== "none") {
+      root.classList.add(`cb-${settings.colorBlindMode}`);
+    }
     
     if (settings.highContrast) root.classList.add("high-contrast");
     else root.classList.remove("high-contrast");
     
-    if (settings.reducedMotion) root.classList.add("reduced-motion");
-    else root.classList.remove("reduced-motion");
-
     if (settings.lowPowerMode) root.classList.add("low-power");
     else root.classList.remove("low-power");
 

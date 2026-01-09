@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAccessibility } from "@/lib/accessibility-context";
-import { Settings, Eye, Wind, Zap, Type, Palette } from "lucide-react";
+import { Settings, Eye, Zap, Type, Palette } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,12 +35,23 @@ export function AccessibilitySettings() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        <DropdownMenuCheckboxItem
-          checked={settings.colorBlindMode}
-          onCheckedChange={(checked) => updateSettings({ colorBlindMode: checked })}
-        >
-          <Palette className="h-4 w-4 mr-2" /> Mode Daltonisme
-        </DropdownMenuCheckboxItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Palette className="h-4 w-4 mr-2" /> Mode Daltonisme
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuRadioGroup 
+              value={settings.colorBlindMode} 
+              onValueChange={(v) => updateSettings({ colorBlindMode: v as any })}
+            >
+              <DropdownMenuRadioItem value="none">Désactivé</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="protanopia">Protanopie (Rouge)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="deuteranopia">Deutéranopie (Vert)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="tritanopia">Tritanopie (Bleu-Jaune)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="achromatopsia">Achromatopsie (Gris)</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         
         <DropdownMenuCheckboxItem
           checked={settings.highContrast}
@@ -49,13 +60,6 @@ export function AccessibilitySettings() {
           <Eye className="h-4 w-4 mr-2" /> Contraste Élevé
         </DropdownMenuCheckboxItem>
         
-        <DropdownMenuCheckboxItem
-          checked={settings.reducedMotion}
-          onCheckedChange={(checked) => updateSettings({ reducedMotion: checked })}
-        >
-          <Wind className="h-4 w-4 mr-2" /> Réactions Réduites
-        </DropdownMenuCheckboxItem>
-
         <DropdownMenuCheckboxItem
           checked={settings.lowPowerMode}
           onCheckedChange={(checked) => updateSettings({ lowPowerMode: checked })}

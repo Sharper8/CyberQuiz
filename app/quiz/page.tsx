@@ -119,13 +119,13 @@ function QuizPage() {
       <div className="w-full max-w-3xl space-y-6 animate-slide-up relative z-20">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-secondary">
             <Trophy className="h-6 w-6" />
             <span className="text-2xl font-bold">{score}</span>
           </div>
           
           {mode === "chrono" && (
-            <div className="flex items-center gap-2 text-secondary">
+            <div className="flex items-center gap-2 text-primary">
               <Clock className="h-6 w-6" />
               <span className="text-2xl font-bold">{timeLeft}s</span>
             </div>
@@ -136,9 +136,9 @@ function QuizPage() {
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Question {currentQuestionIndex + 1}/{mockQuestions.length}</span>
-            <span className="text-primary font-medium">{currentQuestion.category}</span>
+            <span className="text-secondary font-medium">{currentQuestion.category}</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className="h-2 bg-secondary/20" />
         </div>
 
         {/* Question Card */}
@@ -172,24 +172,26 @@ function QuizPage() {
             <div className="space-y-4">
               <div className={`text-center p-6 rounded-lg ${
                 selectedAnswer === currentQuestion.answer 
-                  ? "bg-cyber-green/20 border-2 border-cyber-green" 
-                  : "bg-cyber-red/20 border-2 border-cyber-red"
+                  ? "bg-secondary/10 border-2 border-secondary" 
+                  : "bg-destructive/10 border-2 border-destructive"
               }`}>
                 <div className="flex items-center justify-center gap-3 mb-2">
                   {selectedAnswer === currentQuestion.answer ? (
                     <>
-                      <CheckCircle2 className="h-8 w-8 text-cyber-green" />
-                      <span className="text-2xl font-bold text-cyber-green">Bonne réponse !</span>
+                      <CheckCircle2 className="h-8 w-8 text-secondary" />
+                      <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
                     </>
                   ) : (
                     <>
-                      <XCircle className="h-8 w-8 text-cyber-red" />
-                      <span className="text-2xl font-bold text-cyber-red">Mauvaise réponse 😅</span>
+                      <XCircle className="h-8 w-8 text-destructive" />
+                      <span className="text-2xl font-bold text-destructive">Mauvaise réponse 😅</span>
                     </>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  La bonne réponse était : <span className="font-bold">{currentQuestion.answer ? "OUI" : "NON"}</span>
+                  La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
+                    {currentQuestion.answer ? "OUI" : "NON"}
+                  </span>
                 </p>
               </div>
               
