@@ -8,8 +8,9 @@ build/
 
 # Environment files
 .env
-.env.local
-.env.*.local
+# keep .env.example tracked
+.env.dev
+.env.prod
 
 # OS and editor junk
 .DS_Store
