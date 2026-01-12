@@ -6,6 +6,11 @@ coverage/
 dist/
 build/
 
+# Runtime artifacts
+logs/
+cookiejar/
+tsconfig.tsbuildinfo
+
 # Environment files
 .env
 # keep .env.example tracked

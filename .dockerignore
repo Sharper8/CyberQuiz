@@ -5,6 +5,14 @@ out/
 # Dependencies
 node_modules/
 
+# Runtime artifacts
+logs/
+cookiejar/
+
+# Git and CI metadata
+.git/
+.github/
+
 # Environment
 .env
 .env.local
