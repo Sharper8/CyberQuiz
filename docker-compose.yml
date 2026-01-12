@@ -1,0 +1,135 @@
+services:
+  # Next.js App
+  nextjs-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3100:3000"
+    environment:
+      - NODE_ENV=production
+      # Database
+      - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
+      # AI Providers
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - ALLOW_EXTERNAL_AI=false
+      # Qdrant Vector DB
+      - QDRANT_URL=http://qdrant:6333
+      # Auth
+      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
+      # Admin User
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@cyberquiz.fr}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - cyberquiz-network
+      - reverse-proxy
+
+  # PostgreSQL Database (on-prem replacement for Supabase)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: cyberquiz
+      POSTGRES_USER: cyberquiz
+      POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cyberquiz -d cyberquiz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - cyberquiz-network
+
+  # Qdrant Vector Database for semantic search
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - cyberquiz-network
+
+  # Ollama AI Provider (local LLM)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - cyberquiz-network
+    # GPU support (optional, comment out if no GPU available)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    # Pull model on first startup
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        ollama pull llama3.1:8b
+        ollama pull nomic-embed-text
+        wait
+
+  # Optional: PgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@cyberquiz.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - cyberquiz-network
+
+  # Optional: PostgREST for REST API over PostgreSQL
+  # Uncomment when ready to replace Supabase client calls
+  # postgrest:
+  #   image: postgrest/postgrest:latest
+  #   ports:
+  #     - "3001:3000"
+  #   environment:
+  #     PGRST_DB_URI: postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
+  #     PGRST_DB_SCHEMA: public
+  #     PGRST_DB_ANON_ROLE: web_anon
+  #   depends_on:
+  #     - postgres
+  #   restart: unless-stopped
+  #   networks:
+  #     - cyberquiz-network
+
+networks:
+  cyberquiz-network:
+    driver: bridge
+  reverse-proxy:
+    external: true
+
+volumes:
+  postgres-data:
+  qdrant-data:
+  ollama-data:
