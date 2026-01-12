@@ -9,7 +9,6 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 RUN npm ci
-
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
@@ -27,6 +26,7 @@ ENV NODE_ENV=production
 # Build Next.js
 RUN npm run build
 
+# Production image, copy all the files and run next
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
@@ -67,6 +67,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modu
 USER nextjs
 
 EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Run startup script (migrations + admin creation) then start server
+CMD ["./docker-startup.sh"]
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"

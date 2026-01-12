@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { CheckCircle2, XCircle, Sparkles, Plus, Trash2, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
@@ -44,11 +44,19 @@ export default function AdminPage() {
     current?: number;
     total?: number;
   } | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!authLoading) {
       fetchQuestions();
     }
+
+    // Cleanup on unmount: abort any ongoing generation
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [authLoading]);
 
   const fetchQuestions = async () => {
@@ -116,12 +124,17 @@ export default function AdminPage() {
     setGenerating(true);
     setGenerationProgress({ step: 'init', message: 'Démarrage...' });
     
+    // Create abort controller for this generation request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    
     try {
       // Use streaming endpoint for real-time progress
       const response = await fetch('/api/questions/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        signal: abortController.signal,
         body: JSON.stringify({
           topic: 'Cybersécurité',
           difficulty: 'medium',
@@ -154,24 +167,34 @@ export default function AdminPage() {
             const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
             if (eventMatch) {
               const [, event, dataStr] = eventMatch;
-              const data = JSON.parse(dataStr);
+              try {
+                const data = JSON.parse(dataStr);
 
-              if (event === 'progress') {
-                setGenerationProgress(data);
-                toast.info(data.message, { duration: 2000 });
-              } else if (event === 'complete') {
-                toast.success('Questions générées avec succès!');
-                await fetchQuestions();
-              } else if (event === 'error') {
-                toast.error(data.message);
+                if (event === 'progress') {
+                  setGenerationProgress(data);
+                  toast.info(data.message, { duration: 2000 });
+                } else if (event === 'complete') {
+                  toast.success('Questions générées avec succès!');
+                  await fetchQuestions();
+                  setGenerating(false);
+                  setGenerationProgress(null);
+                } else if (event === 'error') {
+                  toast.error(data.message);
+                  setGenerating(false);
+                  setGenerationProgress(null);
+                }
+              } catch (parseError) {
+                console.error('Failed to parse event data:', parseError);
               }
             }
           }
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la génération");
-    } finally {
+      // Don't show error toast if the error was due to abort (page refresh/unmount)
+      if (error.name !== 'AbortError') {
+        toast.error(error.message || "Erreur lors de la génération");
+      }
       setGenerating(false);
       setGenerationProgress(null);
     }
