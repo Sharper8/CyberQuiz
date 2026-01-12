@@ -1,11 +1,9 @@
 "use client";
 
-// Force dynamic rendering to ensure no build-time data assumptions
-export const dynamic = 'force-dynamic';
-
 import { useState, useEffect } from "react";
 import { CheckCircle2, XCircle, Sparkles, Plus, Trash2, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
+import CyberBackground from "@/components/CyberBackground";
 import { Badge } from "@/components/ui/badge";
 import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
@@ -181,8 +179,9 @@ export default function AdminPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        <CyberBackground />
+        <div className="text-center relative z-20">
           <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
           <p className="text-muted-foreground">Chargement...</p>
         </div>
@@ -204,8 +203,9 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen relative overflow-hidden p-6">
+      <CyberBackground />
+      <div className="max-w-6xl mx-auto space-y-6 relative z-20">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

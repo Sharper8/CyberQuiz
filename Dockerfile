@@ -9,8 +9,6 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 RUN npm ci
-# Install Prisma CLI for production migrations
-RUN npm install -g prisma@5.22.0
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -18,22 +16,18 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Clean any existing build artifacts to ensure fresh build
-RUN rm -rf .next
-
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build Next.js - script already copied via COPY . .
-RUN chmod +x ./scripts/build-wrapper.sh && ./scripts/build-wrapper.sh
+# Build Next.js
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default) and Prisma CLI globally for migrations at runtime
+# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default)
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN npm install -g prisma@5.22.0
 
 ENV NODE_ENV=production
 

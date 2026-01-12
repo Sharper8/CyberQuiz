@@ -1,12 +1,10 @@
 "use client";
 
-// Force dynamic rendering for admin login
-export const dynamic = 'force-dynamic';
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import CyberButton from "@/components/CyberButton";
+import CyberBackground from "@/components/CyberBackground";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -34,8 +32,9 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-6">
+      <CyberBackground />
+      <div className="w-full max-w-md relative z-20">
         <div className="bg-card border border-border rounded-lg p-8 shadow-[0_0_30px_hsl(var(--primary)/0.2)]">
           <div className="flex items-center justify-center mb-6">
             <Shield className="h-12 w-12 text-primary" />

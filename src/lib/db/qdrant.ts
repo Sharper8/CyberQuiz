@@ -1,26 +1,11 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { getEnv } from '../validators/env';
 
-// Lazy initialization to avoid build-time env validation
-let qdrantClient: QdrantClient | null = null;
+const env = getEnv();
 
-function getQdrantClient(): QdrantClient {
-  if (!qdrantClient) {
-    const env = getEnv();
-    qdrantClient = new QdrantClient({
-      url: env.QDRANT_URL,
-      apiKey: env.QDRANT_API_KEY
-    });
-  }
-  return qdrantClient;
-}
-
-export const qdrant = new Proxy({} as QdrantClient, {
-  get: (target, prop) => {
-    const client = getQdrantClient();
-    const value = (client as any)[prop];
-    return typeof value === 'function' ? value.bind(client) : value;
-  }
+export const qdrant = new QdrantClient({
+  url: env.QDRANT_URL,
+  apiKey: env.QDRANT_API_KEY
 });
 
 const COLLECTION = 'cyberquiz_questions';

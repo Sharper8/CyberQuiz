@@ -5,22 +5,22 @@
 For development (no GPU required):
 
 ```bash
-# 1. Start all services (Next.js, PostgreSQL, Qdrant, Ollama, PgAdmin)
-# Use either the modern Docker CLI or the older docker-compose binary:
-# Preferred (Docker CLI):
-docker compose -f docker-compose.dev.yml up -d
-# or (if you have the docker-compose binary):
+# 1. Start all services (PostgreSQL, Qdrant, Ollama, PgAdmin)
 docker-compose -f docker-compose.dev.yml up -d
 
 # 2. Wait for Ollama to download models (this takes 5-10 minutes first time)
 docker-compose -f docker-compose.dev.yml logs -f ollama
 
-# 3. Install deps and start Next.js dev server
+# 3. Once Ollama is ready, run migrations and seed
 npm install
+npx prisma migrate deploy
+npm run db:seed
+
+# 4. Start Next.js dev server
 npm run dev
 ```
 
-**That's it!** Open http://localhost:3333
+**That's it!** Open http://localhost:3000
 
 ---
 
@@ -49,7 +49,7 @@ npm run dev
 
 ### 🛠️ **PgAdmin** (Port 5050)
 - Database management UI
-- Login: set in `.env.dev` (`PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD`)
+- Login: admin@cyberquiz.local / admin
 
 ---
 
@@ -57,9 +57,9 @@ npm run dev
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Main App** | http://localhost:3333 | - |
-| **Admin Panel** | http://localhost:3333/admin-login | from `.env.dev` (`ADMIN_EMAIL` / `ADMIN_PASSWORD`) |
-| **PgAdmin** | http://localhost:5050 | admin@cyberquiz.fr / admin |
+| **Main App** | http://localhost:3000 | - |
+| **Admin Panel** | http://localhost:3000/admin-login | admin@cyberquiz.fr / password123 |
+| **PgAdmin** | http://localhost:5050 | admin@cyberquiz.local / admin |
 | **Qdrant Dashboard** | http://localhost:6333/dashboard | - |
 
 ---
@@ -94,13 +94,13 @@ Click the "Générer avec IA" button in admin panel:
 ### "Ollama not running" error
 ```bash
 # Check if Ollama container is running
-docker compose -f docker-compose.dev.yml ps ollama
+docker-compose -f docker-compose.dev.yml ps ollama
 
 # View Ollama logs
-docker compose -f docker-compose.dev.yml logs ollama
+docker-compose -f docker-compose.dev.yml logs ollama
 
 # Restart Ollama
-docker compose -f docker-compose.dev.yml restart ollama
+docker-compose -f docker-compose.dev.yml restart ollama
 ```
 
 ### "No questions available"
@@ -169,62 +169,27 @@ docker-compose -f docker-compose.dev.yml logs -f ollama
 
 ## Environment Variables
 
-Environment files
-
-Create `.env.dev` for local development and `.env.prod` for production overrides.
-
-`docker-compose.dev.yml` reads `.env.dev` (via `env_file`) and passes those values into containers. Keep all runtime configuration in `.env.dev` for development.
-
-If you prefer to supply a different env file at runtime, use the `--env-file` flag shown below.
-
-Create `.env.dev` for local overrides (example):
+Create `.env.local` for local overrides:
 
 ```env
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=cyberquiz
-DB_USER=cyberquiz
-DB_PASSWORD=changeme
+# Database (auto-configured by docker-compose)
+DATABASE_URL="postgresql://cyberquiz:changeme@localhost:5432/cyberquiz"
 
 # Ollama (auto-configured by docker-compose)
-OLLAMA_BASE_URL="http://ollama:11434"
+OLLAMA_BASE_URL="http://localhost:11434"
 OLLAMA_GENERATION_MODEL="llama3.1:8b"
 OLLAMA_EMBED_MODEL="nomic-embed-text"
 
 # Qdrant (auto-configured by docker-compose)
-QDRANT_URL="http://qdrant:6333"
+QDRANT_URL="http://localhost:6333"
 
 # Optional: OpenAI Fallback
 ALLOW_EXTERNAL_AI=false
 OPENAI_API_KEY=your-key-here
 
-# Admin
-ADMIN_EMAIL=admin@cyberquiz.fr
-ADMIN_PASSWORD=change-this-secure-password
-
-# PgAdmin
-PGADMIN_DEFAULT_EMAIL=admin@cyberquiz.fr
-PGADMIN_DEFAULT_PASSWORD=change-this-secure-password
-
 # Auth
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 ```
-
-Usage notes
-- **Development (recommended):** put all dev values in `.env.dev` and run:
-
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
-
-- **Run with a specific env file (alternate):**
-
-```bash
-docker compose --env-file .env.dev -f docker-compose.dev.yml up -d
-```
-
-- **Production:** create/populate `.env.prod` with production values and run your production compose (or pass `--env-file .env.prod`).
-
 
 ---
 

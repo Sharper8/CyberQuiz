@@ -1,19 +1,28 @@
 "use client";
 
-// Force dynamic rendering for score page with query params
-export const dynamic = 'force-dynamic';
-
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Trophy, Award, Target, Home, RotateCcw } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
-import { api, Score } from "@/lib/api-client";
+import CyberBackground from "@/components/CyberBackground";
+
+// Mock leaderboard data
+const mockLeaderboard = [
+  { pseudo: "CyberNinja", score: 10, mode: "chrono" },
+  { pseudo: "SecureMax", score: 9, mode: "classic" },
+  { pseudo: "HackerPro", score: 9, mode: "thematic" },
+  { pseudo: "NetGuard", score: 8, mode: "classic" },
+  { pseudo: "DataShield", score: 8, mode: "chrono" },
+  { pseudo: "FirewallKing", score: 7, mode: "thematic" },
+  { pseudo: "PhishFighter", score: 7, mode: "classic" },
+  { pseudo: "CodeBreaker", score: 6, mode: "chrono" },
+  { pseudo: "SecureGirl", score: 6, mode: "classic" },
+  { pseudo: "CyberWatch", score: 5, mode: "thematic" },
+];
 
 function ScorePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [leaderboard, setLeaderboard] = useState<Score[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const score = parseInt(searchParams.get("score") || "0");
   const total = parseInt(searchParams.get("total") || "10");
@@ -21,21 +30,6 @@ function ScorePage() {
   const pseudo = searchParams.get("pseudo") || "Joueur";
 
   const percentage = Math.round((score / total) * 100);
-
-  useEffect(() => {
-    fetchLeaderboard();
-  }, []);
-
-  const fetchLeaderboard = async () => {
-    try {
-      const data = await api.getScores(10);
-      setLeaderboard(data);
-    } catch (error) {
-      console.error("Error fetching leaderboard:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getModeLabel = (mode: string) => {
     const labels: Record<string, string> = {
@@ -58,8 +52,9 @@ function ScorePage() {
   const MedalIcon = medal.icon;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl space-y-8 animate-slide-up">
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+      <CyberBackground />
+      <div className="w-full max-w-5xl space-y-8 animate-slide-up relative z-20">
         {/* Your Score */}
         <div className="bg-card border-2 border-primary rounded-lg p-8 text-center shadow-2xl shadow-primary/20">
           <MedalIcon className={`h-20 w-20 mx-auto mb-4 ${medal.color} animate-pulse-glow`} />
@@ -109,44 +104,34 @@ function ScorePage() {
           </div>
 
           <div className="divide-y divide-border">
-            {loading ? (
-              <div className="p-8 text-center text-muted-foreground">
-                Chargement du classement...
-              </div>
-            ) : leaderboard.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                Aucun score enregistré pour le moment
-              </div>
-            ) : (
-              leaderboard.map((entry, index) => (
-                <div
-                  key={entry.id}
-                  className={`flex items-center justify-between p-4 transition-colors hover:bg-muted/50 ${
-                    entry.username === pseudo && entry.score === score ? "bg-primary/10" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${
-                      index === 0 ? "bg-yellow-500/20 text-yellow-400" :
-                      index === 1 ? "bg-gray-400/20 text-gray-300" :
-                      index === 2 ? "bg-orange-500/20 text-orange-400" :
-                      "bg-muted text-muted-foreground"
-                    }`}>
-                      {index + 1}
-                    </div>
-                    <div>
-                      <div className="font-semibold">{entry.username}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {entry.topic || 'Quiz général'}
-                      </div>
-                    </div>
+            {mockLeaderboard.map((entry, index) => (
+              <div
+                key={index}
+                className={`flex items-center justify-between p-4 transition-colors hover:bg-muted/50 ${
+                  entry.pseudo === pseudo && entry.score === score ? "bg-primary/10" : ""
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${
+                    index === 0 ? "bg-yellow-500/20 text-yellow-400" :
+                    index === 1 ? "bg-gray-400/20 text-gray-300" :
+                    index === 2 ? "bg-orange-500/20 text-orange-400" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {index + 1}
                   </div>
-                  <div className="text-2xl font-bold text-primary">
-                    {entry.score}
+                  <div>
+                    <div className="font-semibold">{entry.pseudo}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Mode {getModeLabel(entry.mode)}
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
+                <div className="text-2xl font-bold text-primary">
+                  {entry.score}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

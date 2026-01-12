@@ -1,48 +1,48 @@
 ## CyberQuiz
 
-On-premise, containerized quiz app built with Next.js 16, PostgreSQL, Qdrant and Ollama. Supabase has been fully removed.
+On-premise, containerized quiz app built with Next.js 16 and PostgreSQL. All Supabase dependencies have been completely removed.
 
 ### Tech Stack
 - Next.js 16 (App Router)
 - PostgreSQL 15 (Docker)
-- Qdrant (embeddings)
-- Ollama (local LLM)
 - Tailwind CSS + shadcn/ui
 - JWT-based auth (bcrypt/jsonwebtoken)
 
 ---
 
-## Quick Start (Dev)
+## Quick Start
 
 Prerequisites: Node.js 18+, npm, Docker
 
 ```bash
 # 1) Clone
 git clone <REPO_URL>
-cd CyberQuiz
+cd Cyber_Quizz
 
 # 2) Environment setup
-cp .env.dev.example .env.dev
+cp .env.local.example .env.local
 
-# 3) Start all services
-docker compose -f docker-compose.dev.yml up -d
+# 3) Start database (first time initializes schema + admin user)
+docker-compose up -d postgres
 
-# 4) Install deps and run dev server
+# 4) Install dependencies
 npm install
+
+# 5) Run dev server
 npm run dev
 ```
 
 **Access:**
-- App: http://localhost:3333
-- Admin: http://localhost:3333/admin-login (credentials from `.env.dev` → `ADMIN_EMAIL` / `ADMIN_PASSWORD`)
-- PgAdmin: http://localhost:5050 (set in `.env.dev` → `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD`)
+- App: http://localhost:3000
+- Admin: http://localhost:3000/admin-login (admin@cyberquiz.local / admin123)
+- PgAdmin: http://localhost:5050 (admin@admin.com / admin)
 
 ---
 
 ## Project Structure
 
 ```
-CyberQuiz/
+Cyber_Quizz/
 ├── app/                    # Next.js App Router (pages + API routes)
 │   ├── api/               # REST endpoints (auth, questions, scores, chat)
 │   ├── admin/            # Admin panel page
@@ -53,20 +53,23 @@ CyberQuiz/
 │   └── page.tsx          # Home page
 ├── src/
 │   ├── components/       # UI components
-│   ├── hooks/            # Custom React hooks
-│   └── lib/              # Utilities (db, API client, utils)
-├── prisma/               # Prisma schema + migrations + seed
-├── public/               # Static assets
-├── docker-compose.dev.yml# Dev containers (Next.js, Postgres, Qdrant, Ollama, PgAdmin)
-├── Dockerfile            # Next.js production image
-├── docs/                 # Additional documentation
-├── scripts/              # Startup and helper scripts
-└── package.json          # Dependencies + scripts
+│   ├── hooks/           # Custom React hooks
+│   └── lib/             # Utilities (db, API client, utils)
+├── database/            # PostgreSQL schema + seeds
+├── public/              # Static assets
+├── docker-compose.yml   # Container orchestration
+├── Dockerfile           # Next.js production image
+├── DEPLOYMENT.md        # Full deployment guide
+└── package.json         # Dependencies + scripts
 ```
 
-Config files in root (required by tooling):
-- `next.config.mjs`  · `tailwind.config.ts` · `postcss.config.js` · `tsconfig.json`
-- `eslint.config.js` · `components.json`
+**Config files in root** (required by tooling):
+- `next.config.mjs` - Next.js configuration
+- `tailwind.config.ts` - Tailwind CSS
+- `postcss.config.js` - PostCSS (for Tailwind)
+- `tsconfig.json` - TypeScript
+- `eslint.config.js` - ESLint
+- `components.json` - shadcn/ui
 
 ---
 
@@ -82,38 +85,58 @@ npm run lint      # Lint code
 
 **Database:**
 ```bash
-docker compose -f docker-compose.dev.yml up -d postgres  # Start DB
-docker compose -f docker-compose.dev.yml down -v         # Stop + remove volumes
-docker logs cyberquiz-postgres                           # View logs
+docker-compose up -d postgres          # Start database
+docker-compose down -v                 # Stop + remove volumes
+docker logs cyberquiz-postgres         # View logs
 ```
 
 ---
 
-## Deployment
+## Production Deployment
 
-For production, use your CI to build the image with the provided [Dockerfile](Dockerfile) and run your compose. Update environment accordingly (prefer a `.env.prod`).
+```bash
+docker-compose up -d --build
+```
+
+Update `.env.local` for production:
+```env
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=cyberquiz
+DB_USER=cyberquiz
+DB_PASSWORD=<strong-password>
+JWT_SECRET=<generate-random-secret>
+NODE_ENV=production
+```
 
 Generate JWT secret:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete setup.
+See `DEPLOYMENT.md` for complete production setup.
 
 ---
 
 ## Security
 
-- Change default credentials in production
-- Use strong JWT secret (32+ chars)
-- Enable HTTPS in production
-- Restrict database access with firewall rules
-- Regular backups of PostgreSQL volumes
+- **Change default credentials** in production
+- **Use strong JWT secret** (minimum 32 characters)
+- **Enable HTTPS** in production
+- **Restrict database access** with firewall rules
+- **Regular backups** of PostgreSQL volumes
 
 ---
 
-## 📂 More Docs
+## License
 
-- Config overview: [docs/CONFIG_FILES_EXPLAINED.md](docs/CONFIG_FILES_EXPLAINED.md)
-- Quickstart (detailed): [QUICKSTART.md](QUICKSTART.md)
+MIT - See LICENSE file
+
+---
+
+## 📂 Project Organization
+
+Wondering about the config files in root? See [`docs/CONFIG_FILES_EXPLAINED.md`](docs/CONFIG_FILES_EXPLAINED.md)
+
+Want to restructure into a monorepo? See [`docs/REORGANIZATION_OPTIONS.md`](docs/REORGANIZATION_OPTIONS.md)
 

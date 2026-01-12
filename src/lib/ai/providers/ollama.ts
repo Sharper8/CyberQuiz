@@ -65,13 +65,12 @@ function extractJSONFromStreamed(raw: string): any {
 
 export class OllamaProvider implements AIProvider {
   name = 'ollama';
-  private baseUrl: string | null = null;
-  private generationModel: string | null = null;
-  private embeddingModel: string | null = null;
-  private validationModel: string | null = null;
+  private baseUrl: string;
+  private generationModel: string;
+  private embeddingModel: string;
+  private validationModel: string;
 
-  private ensureInitialized() {
-    if (this.baseUrl) return;
+  constructor() {
     const env = getEnv();
     this.baseUrl = env.OLLAMA_BASE_URL || 'http://localhost:11434';
     this.generationModel = process.env.OLLAMA_GENERATION_MODEL || 'llama3.1:8b';
@@ -79,13 +78,8 @@ export class OllamaProvider implements AIProvider {
     this.validationModel = process.env.OLLAMA_VALIDATION_MODEL || this.generationModel;
   }
 
-  constructor() {
-    // Defer initialization to avoid build-time env validation
-  }
-
   async isAvailable(): Promise<boolean> {
     try {
-      this.ensureInitialized();
       const res = await fetch(`${this.baseUrl}/api/tags`);
       return res.ok;
     } catch {
@@ -94,7 +88,6 @@ export class OllamaProvider implements AIProvider {
   }
 
   async generateQuestion(params: QuestionGenerationParams): Promise<GeneratedQuestion> {
-    this.ensureInitialized();
     const prompt = buildGenerationPrompt({
       topic: params.topic,
       difficulty: params.difficulty,
@@ -138,7 +131,6 @@ export class OllamaProvider implements AIProvider {
   }
 
   async validateQuestion(question: GeneratedQuestion): Promise<ValidationResult> {
-    this.ensureInitialized();
     const prompt = buildValidationPrompt({
       questionText: question.questionText,
       options: question.options,
@@ -165,7 +157,6 @@ export class OllamaProvider implements AIProvider {
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    this.ensureInitialized();
     const result = await postJSON<OllamaEmbeddingsResponse>(`${this.baseUrl}/api/embeddings`, {
       model: this.embeddingModel,
       prompt: text
