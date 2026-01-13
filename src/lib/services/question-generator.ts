@@ -3,6 +3,7 @@ import { qdrant, upsertEmbedding, searchSimilar } from '../db/qdrant';
 import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
+import { Decimal } from '@prisma/client/runtime/library';
 
 interface GenerationContext {
   topic: string;
@@ -325,5 +326,146 @@ export async function generateQuestionsWithProgress(
   return cacheCount + generated.length;
 }
 
-// Import Decimal from prisma for type safety
-import { Decimal } from '@prisma/client/runtime/library';
+/**
+ * Generate questions to maintain target pool size based on settings
+ * Logs generation activity to GenerationLog table
+ */
+export async function generateToMaintainPool(
+  provider: AIProvider,
+  topic?: string,
+  difficulty?: 'easy' | 'medium' | 'hard'
+): Promise<{ poolSize: number; generatedCount: number; failedCount: number; durationMs: number }> {
+  const startTime = Date.now();
+
+  try {
+    // Get generation settings
+    let settings = await prisma.generationSettings.findFirst();
+    if (!settings) {
+      settings = await prisma.generationSettings.create({
+        data: {
+          targetPoolSize: 50,
+          autoGenerateEnabled: true,
+          generationTopic: 'Cybersecurity',
+          generationDifficulty: 'medium',
+          maxConcurrentGeneration: 5,
+        },
+      });
+    }
+
+    if (!settings.autoGenerateEnabled) {
+      return { poolSize: 0, generatedCount: 0, failedCount: 0, durationMs: Date.now() - startTime };
+    }
+
+    const generationTopic = topic || settings.generationTopic;
+    const generationDifficulty = difficulty || (settings.generationDifficulty as 'easy' | 'medium' | 'hard');
+    const targetSize = settings.targetPoolSize;
+    const maxBatchSize = settings.maxConcurrentGeneration;
+
+    // Get current pool size
+    const poolSize = await prisma.question.count({
+      where: {
+        category: generationTopic,
+        status: 'to_review',
+        isRejected: false,
+      },
+    });
+
+    const poolSizeBeforeGen = poolSize;
+
+    if (poolSize >= targetSize) {
+      console.info(`[PoolMaintenance] Pool size (${poolSize}) already meets target (${targetSize})`);
+      return { poolSize, generatedCount: 0, failedCount: 0, durationMs: Date.now() - startTime };
+    }
+
+    const neededCount = Math.min(targetSize - poolSize, maxBatchSize);
+    console.info(`[PoolMaintenance] Generating ${neededCount} questions to reach target of ${targetSize}`);
+
+    let generatedCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < neededCount; i++) {
+      try {
+        const { question, embedding } = await generateSingleQuestion({
+          topic: generationTopic,
+          difficulty: generationDifficulty,
+          attemptCount: 0,
+          provider,
+        });
+
+        const validation = await provider.validateQuestion(question);
+        const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+
+        const stored = await prisma.question.create({
+          data: {
+            questionText: question.questionText,
+            options: question.options,
+            correctAnswer: String(question.correctAnswer),
+            explanation: question.explanation,
+            difficulty: new Decimal(question.estimatedDifficulty || 0.5),
+            qualityScore: new Decimal(qualityScore),
+            category: generationTopic,
+            questionType: 'true-false',
+            status: 'to_review',
+            aiProvider: provider.name,
+            mitreTechniques: question.mitreTechniques || [],
+            tags: question.tags || [],
+            metadata: {
+              create: {
+                embeddingId: `q_${Date.now()}_${i}`,
+                validationScore: new Decimal(qualityScore),
+                validatorModel: provider.name,
+              },
+            },
+          },
+        });
+
+        await upsertEmbedding(stored.id, embedding, {
+          question_id: stored.id,
+          question_text: question.questionText,
+          category: generationTopic,
+          difficulty: question.estimatedDifficulty,
+          tags: question.tags || [],
+          created_at: new Date().toISOString(),
+        });
+
+        generatedCount++;
+      } catch (error) {
+        console.error(`[PoolMaintenance] Failed to generate question ${i + 1}:`, error);
+        failedCount++;
+      }
+    }
+
+    const durationMs = Date.now() - startTime;
+    const poolSizeAfterGen = await prisma.question.count({
+      where: {
+        category: generationTopic,
+        status: 'to_review',
+        isRejected: false,
+      },
+    });
+
+    // Log the generation activity
+    await prisma.generationLog.create({
+      data: {
+        settingsId: settings.id,
+        topic: generationTopic,
+        difficulty: generationDifficulty,
+        batchSize: neededCount,
+        generatedCount,
+        savedCount: generatedCount,
+        failedCount,
+        poolSizeBeforeGen,
+        poolSizeAfterGen,
+        durationMs,
+        completedAt: new Date(),
+      },
+    });
+
+    console.info(`[PoolMaintenance] Generated ${generatedCount} questions in ${durationMs}ms`);
+    return { poolSize: poolSizeAfterGen, generatedCount, failedCount, durationMs };
+  } catch (error) {
+    console.error('[PoolMaintenance] Error:', error);
+    throw error;
+  }
+}
+

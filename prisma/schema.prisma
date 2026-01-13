@@ -130,3 +130,32 @@ model AdminUser {
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
 }
+model GenerationSettings {
+  id                    Int       @id @default(autoincrement())
+  targetPoolSize        Int       @default(50) // Target number of to_review questions to maintain
+  autoGenerateEnabled   Boolean   @default(true) // Enable auto-generation when pool falls below target
+  generationTopic       String    @default("Cybersecurity") // Default topic for auto-generation
+  generationDifficulty  String    @default("medium") // default|easy|medium|hard
+  maxConcurrentGeneration Int    @default(5) // Max questions to generate in one batch
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  generationLogs        GenerationLog[]
+}
+
+model GenerationLog {
+  id                 Int       @id @default(autoincrement())
+  settingsId         Int
+  settings           GenerationSettings @relation(fields: [settingsId], references: [id])
+  topic              String
+  difficulty         String
+  batchSize          Int
+  generatedCount     Int
+  savedCount         Int
+  failedCount        Int
+  poolSizeBeforeGen  Int
+  poolSizeAfterGen   Int
+  durationMs         Int
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
+  error              String?
+}
