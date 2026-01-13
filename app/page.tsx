@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Target, Clock, FolderTree, User, UserCog } from "lucide-react";
+import { Shield, Target, Clock, FolderTree, User, UserCog, AlertCircle } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import ModeCard from "@/components/ModeCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import CyberBackground from "@/components/CyberBackground";
 import dynamic from "next/dynamic";
 
@@ -18,7 +19,34 @@ const Leaderboard = dynamic(() => import("@/components/Leaderboard"), {
 export default function Home() {
   const [pseudo, setPseudo] = useState("");
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [error, setError] = useState("");
   const router = useRouter();
+
+  // Profanity blocklist (matches backend validation)
+  const PROFANITY_LIST = [
+    'badword',
+    'insult',
+    'offensive',
+    // Add more as needed
+  ];
+
+  const validateUsername = (username: string): string | null => {
+    // Min/max length
+    if (username.length < 3) return 'Pseudo au minimum 3 caractères';
+    if (username.length > 32) return 'Pseudo au maximum 32 caractères';
+    
+    // Format: only alphanumeric, underscores, hyphens
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return 'Pseudo: uniquement lettres, chiffres, tirets et underscores';
+    }
+    
+    // Profanity check
+    if (PROFANITY_LIST.some((word) => username.toLowerCase().includes(word))) {
+      return 'Pseudo contient du langage inapproprié';
+    }
+    
+    return null;
+  };
 
   const modes = [
     {
@@ -42,10 +70,17 @@ export default function Home() {
   ];
 
   const handleStart = () => {
-    if (pseudo.trim()) {
-      const mode = selectedMode || "classic";
-      router.push(`/quiz?mode=${mode}&pseudo=${encodeURIComponent(pseudo)}`);
+    const trimmed = pseudo.trim();
+    const validationError = validateUsername(trimmed);
+    
+    if (validationError) {
+      setError(validationError);
+      return;
     }
+    
+    setError(""); // Clear error on successful validation
+    const mode = selectedMode || "classic";
+    router.push(`/quiz?mode=${mode}&pseudo=${encodeURIComponent(trimmed)}`);
   };
 
   return (
@@ -93,10 +128,19 @@ export default function Home() {
               type="text"
               placeholder="Entrez votre pseudo..."
               value={pseudo}
-              onChange={(e) => setPseudo(e.target.value)}
+              onChange={(e) => {
+                setPseudo(e.target.value);
+                setError(""); // Clear error when user starts typing
+              }}
               className="h-14 text-lg bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-400 focus:border-cyan-400 focus:ring-cyan-400 transition-colors"
-              maxLength={20}
+              maxLength={32}
             />
+            {error && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Mode Selection - Optional, hidden by default */}
@@ -121,7 +165,7 @@ export default function Home() {
             <CyberButton
               size="xl"
               onClick={handleStart}
-              disabled={!pseudo.trim()}
+              disabled={!pseudo.trim() || !!error}
               className="min-w-[300px]"
             >
               Commencer le quiz
