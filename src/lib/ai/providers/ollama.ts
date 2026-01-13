@@ -83,7 +83,15 @@ export class OllamaProvider implements AIProvider {
   async isAvailable(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/api/tags`);
-      return res.ok;
+      if (!res.ok) return false;
+      
+      // Check if required models are loaded
+      const data = await res.json();
+      const models = data.models || [];
+      const hasGenerationModel = models.some((m: any) => m.name.includes(this.generationModel.split(':')[0]));
+      const hasEmbeddingModel = models.some((m: any) => m.name.includes(this.embeddingModel.split(':')[0]));
+      
+      return hasGenerationModel && hasEmbeddingModel;
     } catch {
       return false;
     }
@@ -107,7 +115,13 @@ export class OllamaProvider implements AIProvider {
         options: { temperature: 0.7 }
       })
     });
-    if (!res.ok) throw new Error(`Generation failed ${res.status}`);
+    
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error(`Model ${this.generationModel} not loaded yet. Please wait for Ollama to finish downloading models.`);
+      }
+      throw new Error(`Generation failed ${res.status}`);
+    }
 
     // Stream accumulate
     const reader = res.body!.getReader();

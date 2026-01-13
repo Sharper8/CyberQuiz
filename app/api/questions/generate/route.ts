@@ -48,6 +48,18 @@ export async function POST(request: NextRequest) {
 
     // Get AI provider
     const provider = await getAIProvider('ollama');
+    
+    // Check if provider is ready (models loaded)
+    const isReady = await provider.isAvailable();
+    if (!isReady) {
+      return NextResponse.json(
+        {
+          error: 'AI provider not ready',
+          message: 'Ollama models are still being downloaded. Please wait a few minutes and try again.',
+        },
+        { status: 503 } // Service Unavailable
+      );
+    }
 
     // Generate questions to cache
     const cacheSize = await generateQuestionsForCache(
