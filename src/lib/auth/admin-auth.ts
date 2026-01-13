@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import jwt, { SignOptions } from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../db/prisma';
 
 const JWT_SECRET = process.env.JWT_SECRET || '';
@@ -73,7 +74,7 @@ export function generateAdminToken(adminId: number): string {
 
 /**
  * Verify admin password
- * In production, use bcryptjs
+ * Use bcryptjs for password verification
  */
 export async function verifyAdminCredentials(
   email: string,
@@ -88,9 +89,9 @@ export async function verifyAdminCredentials(
       return null;
     }
 
-    // TODO: Use bcryptjs.compare(password, admin.passwordHash)
-    // For now, simple comparison
-    if (password !== admin.passwordHash) {
+    // Use bcryptjs to compare password with hash
+    const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
+    if (!isPasswordValid) {
       return null;
     }
 

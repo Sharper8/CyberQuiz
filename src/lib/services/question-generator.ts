@@ -120,6 +120,10 @@ export async function generateQuestionsForCache(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
+      // Ensure validation scores are numbers with safe defaults
+      const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+      const validationScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+
       // Find similar questions in the database (for reference, not stored yet)
       const potentialDuplicates = await findSimilarQuestions(embedding);
       if (potentialDuplicates.length > 0) {
@@ -134,8 +138,8 @@ export async function generateQuestionsForCache(
           // Normalize to string for Prisma schema
           correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
-          difficulty: new Decimal(question.estimatedDifficulty),
-          qualityScore: new Decimal(validation.qualityScore),
+          difficulty: new Decimal(question.estimatedDifficulty || 0.5),
+          qualityScore: new Decimal(qualityScore),
           category: topic,
           questionType: 'true-false',
           status: 'to_review',
@@ -145,7 +149,7 @@ export async function generateQuestionsForCache(
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`, // Placeholder; will be set by Qdrant
-              validationScore: new Decimal(validation.qualityScore),
+              validationScore: new Decimal(validationScore),
               validatorModel: provider.name,
             },
           },

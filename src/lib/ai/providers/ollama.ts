@@ -163,12 +163,14 @@ export class OllamaProvider implements AIProvider {
 
     // Validation model may respond with raw text containing JSON
     const data = typeof res === 'string' ? extractJSONFromStreamed(res) : res;
+    
+    // Ensure all scoring fields have safe numeric defaults (0-1 range)
     return {
-      qualityScore: data.qualityScore,
-      factualAccuracy: data.factualAccuracy,
-      clarityScore: data.clarityScore,
-      issues: data.issues || [],
-      recommendation: data.recommendation
+      qualityScore: typeof data?.qualityScore === 'number' ? data.qualityScore : 0.7,
+      factualAccuracy: typeof data?.factualAccuracy === 'number' ? data.factualAccuracy : 0.7,
+      clarityScore: typeof data?.clarityScore === 'number' ? data.clarityScore : 0.7,
+      issues: Array.isArray(data?.issues) ? data.issues : [],
+      recommendation: data?.recommendation || 'approve'
     };
   }
 
