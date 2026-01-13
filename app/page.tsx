@@ -22,13 +22,54 @@ export default function Home() {
   const [error, setError] = useState("");
   const router = useRouter();
 
-  // Profanity blocklist (matches backend validation)
-  const PROFANITY_LIST = [
-    'badword',
-    'insult',
-    'offensive',
-    // Add more as needed
+  // Comprehensive banned words list (matches backend validation)
+  const BANNED_WORDS = [
+    // English profanity
+    'ass', 'asshole', 'bitch', 'bitches', 'crap', 'damn', 'dammit', 'damnit',
+    'dick', 'dickhead', 'dildo', 'fuck', 'fucked', 'fucker', 'fucking', 'fuckup',
+    'fuckwit', 'hell', 'hellish', 'horny', 'jackass', 'jerk', 'jerkoff', 'nigger',
+    'nigga', 'piss', 'pissed', 'pussy', 'shit', 'shitty', 'slut', 'whore',
+    'wtf', 'wth', 'arsehole', 'arse', 'bollocks', 'bugger', 'cock', 'cockhead',
+    'cunt', 'twat', 'bastard', 'bellend', 'blighter', 'bloody', 'damnable',
+    'freaking', 'frickin', 'goddamn', 'goddam', 'goddamned', "hell's",
+    'hells', 'motherfucker', 'motherfucking', 'prick', 'screw', 'screwed',
+    'shag', 'sodding', 'sod', 'tosser', 'wanker', 'wank', 'douchebag',
+    // French profanity
+    'connard', 'connasse', 'salaud', 'salopard', 'saloperie', 'salope',
+    'con', 'cons', 'conne', 'connes', 'enculé', 'enculée', 'enculés', 'enculées',
+    'fils de pute', 'filsdepute', 'filsdeputa', 'foutre', 'foutaise', 'foutu',
+    'nique', 'niquer', 'putain', 'putasserie', 'pute', 'putefrancaise', 'putan',
+    'débile', 'débiles', 'débilité', 'débilités',
+    'imbécile', 'imbéciles', 'imbécillité',
+    'merde', 'merder', 'merdeur', 'merdeuse', 'merdreux',
+    'sacrebleu', 'sacredieu', 'sacredie', 'sacredios', 'sacredis',
+    'zut', 'zutement', 'zuterie',
+    'couilles', 'couillon', 'couillons', 'couillonnade',
+    'cul', 'culasse', 'culs', 'culerie',
+    'fesse', 'fesses', 'fessefleur',
+    'queue', 'queues',
+    'trou du cul', 'trouducul', 'trous',
+    'bite', 'bites', 'biter', 'bitée',
+    'bidet', 'bidets',
+    'boche', 'boches',
+    'bordel', 'bordels', 'bordelaise', 'bordelaises',
+    'bougre', 'bougres', 'bougrement',
+    'branleur', 'branleuse', 'branleurs', 'branleuses',
+    'chiasse', 'chiasserie', 'chiasseries',
+    'chieur', 'chieuse', 'chieurs', 'chieuses',
+    'couenne', 'couennes',
+    'crasseux', 'crasseuse', 'crasserie', 'crasseries',
+    'crotte', 'crottes', 'crottard', 'crottards',
+    'dégobille', 'dégobilles', 'dégobiller',
+    'dégueulis', 'dégueule', 'dégueulasses',
+    'donzelle', 'donzelles',
+    'dragée', 'dragées',
+    'fange', 'fanges',
+    'faquir', 'faquirs',
+    'fêlé', 'fêlée', 'fêlés', 'fêlées',
   ];
+
+  const BANNED_WORDS_SET = new Set(BANNED_WORDS.map(word => word.toLowerCase()));
 
   const validateUsername = (username: string): string | null => {
     // Min/max length
@@ -41,8 +82,11 @@ export default function Home() {
     }
     
     // Profanity check
-    if (PROFANITY_LIST.some((word) => username.toLowerCase().includes(word))) {
-      return 'Pseudo contient du langage inapproprié';
+    const lowerUsername = username.toLowerCase();
+    for (const bannedWord of BANNED_WORDS_SET) {
+      if (lowerUsername.includes(bannedWord)) {
+        return 'Pseudo contient du langage inapproprié';
+      }
     }
     
     return null;

@@ -12,8 +12,22 @@ interface GenerationContext {
 }
 
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
+const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
+
+/**
+ * Find similar questions for admin review (semantic similarity)
+ * Returns questions with similarity > threshold
+ */
+async function findSimilarQuestions(embedding: number[]): Promise<Array<{id: number, similarity: number}>> {
+  const results = await searchSimilar(embedding, 10);
+  
+  // Filter out exact duplicates (above 0.95) and only show semantic similarities (0.75-0.95)
+  return results
+    .filter(r => r.score > SEMANTIC_SIMILARITY_THRESHOLD && r.score <= DUPLICATE_SIMILARITY_THRESHOLD)
+    .map(r => ({ id: r.id, similarity: Number(r.score.toFixed(2)) }));
+}
 
 /**
  * Generate a single question with duplicate detection and regeneration on duplicate
@@ -105,6 +119,12 @@ export async function generateQuestionsForCache(
 
       // Validate question quality
       const validation = await provider.validateQuestion(question);
+
+      // Find similar questions in the database (for reference, not stored yet)
+      const potentialDuplicates = await findSimilarQuestions(embedding);
+      if (potentialDuplicates.length > 0) {
+        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
+      }
 
       // Store in database with to_review status
       const stored = await prisma.question.create({
@@ -221,6 +241,12 @@ export async function generateQuestionsWithProgress(
 
       // Validate question quality
       const validation = await provider.validateQuestion(question);
+
+      // Find similar questions in the database (for reference, not stored yet)
+      const potentialDuplicates = await findSimilarQuestions(embedding);
+      if (potentialDuplicates.length > 0) {
+        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
+      }
 
       onProgress?.({ 
         step: 'storing', 

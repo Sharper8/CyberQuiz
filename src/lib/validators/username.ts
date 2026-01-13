@@ -1,13 +1,90 @@
 import { z } from 'zod';
 import { prisma } from '../db/prisma';
 
-// Profanity blocklist (minimal example; use dedicated library in production)
-const PROFANITY_LIST = [
-  'badword',
-  'insult',
-  'offensive',
-  // Add more as needed; consider using `better-profanity` package
+// Comprehensive banned words list (English and French profanity)
+const BANNED_WORDS = [
+  // English profanity
+  'ass', 'asshole', 'bitch', 'bitches', 'crap', 'damn', 'dammit', 'damnit',
+  'dick', 'dickhead', 'dildo', 'fuck', 'fucked', 'fucker', 'fucking', 'fuckup',
+  'fuckwit', 'hell', 'hellish', 'horny', 'jackass', 'jerk', 'jerkoff', 'nigger',
+  'nigga', 'piss', 'pissed', 'pussy', 'shit', 'shitty', 'slut', 'whore',
+  'wtf', 'wth', 'arsehole', 'arse', 'bollocks', 'bugger', 'cock', 'cockhead',
+  'cunt', 'twat', 'bastard', 'bellend', 'blighter', 'bloody', 'damnable',
+  'freaking', 'frickin', 'goddamn', 'goddam', 'goddamned', "hell's",
+  'hells', 'motherfucker', 'motherfucking', 'prick', 'screw', 'screwed',
+  'shag', 'sodding', 'sod', 'tosser', 'wanker', 'wank', 'douchebag',
+  
+  // French profanity
+  'connard', 'connasse', 'salaud', 'salopard', 'saloperie', 'salope',
+  'con', 'cons', 'conne', 'connes', 'enculé', 'enculée', 'enculés', 'enculées',
+  'fils de pute', 'filsdepute', 'filsdeputa', 'foutre', 'foutaise', 'foutu',
+  'nique', 'niquer', 'putain', 'putasserie', 'pute', 'putefrancaise', 'putan',
+  'débile', 'débiles', 'débilité', 'débilités',
+  'imbécile', 'imbéciles', 'imbécillité',
+  'merde', 'merder', 'merdeur', 'merdeuse', 'merdreux',
+  'sacrebleu', 'sacredieu', 'sacredie', 'sacredios', 'sacredis',
+  'zut', 'zutement', 'zuterie',
+  'couilles', 'couillon', 'couillons', 'couillonnade',
+  'cul', 'culasse', 'culs', 'culerie',
+  'fesse', 'fesses', 'fessefleur',
+  'queue', 'queues',
+  'trou du cul', 'trouducul', 'trous',
+  'bite', 'bites', 'biter', 'bitée',
+  'bidet', 'bidets',
+  'boche', 'boches',
+  'bordel', 'bordels', 'bordelaise', 'bordelaises',
+  'bougre', 'bougres', 'bougrement',
+  'branleur', 'branleuse', 'branleurs', 'branleuses',
+  'chiasse', 'chiasserie', 'chiasseries',
+  'chieur', 'chieuse', 'chieurs', 'chieuses',
+  'couenne', 'couennes',
+  'crasseux', 'crasseuse', 'crasserie', 'crasseries',
+  'crotte', 'crottes', 'crottard', 'crottards',
+  'dégobille', 'dégobilles', 'dégobiller',
+  'dégueulis', 'dégueule', 'dégueulasses',
+  'donzelle', 'donzelles',
+  'dragée', 'dragées',
+  'fange', 'fanges',
+  'faquir', 'faquirs',
+  'fêlé', 'fêlée', 'fêlés', 'fêlées',
+  'fouille', 'fouilles', 'fouille-merde',
+  'fripouille', 'fripouilles',
+  'frocard', 'frocards',
+  'frusque', 'frusques',
+  'gâterie', 'gâteries',
+  'gland', 'glands',
+  'glette', 'glettes',
+  'gomorrhéen', 'gomorrhéenne', 'gomorrhéens', 'gomorrhéennes',
+  'gourde', 'gourdes', 'gourdin', 'gourdins',
+  'goyim', 'goyims',
+  'grabuge', 'grabuges',
+  'graillon', 'graillons', 'graillonner',
+  'grance', 'grances',
+  'grapaud', 'grapauds',
+  'greluche', 'greluches',
+  'gribiche', 'gribiches',
 ];
+
+// Create a Set for O(1) lookup performance
+const BANNED_WORDS_SET = new Set(BANNED_WORDS.map(word => word.toLowerCase()));
+
+/**
+ * Check if username contains any banned words
+ * @param username The username to check
+ * @returns true if username is clean, false if it contains banned words
+ */
+function isUsernameBanned(username: string): boolean {
+  const lowerUsername = username.toLowerCase();
+  
+  // Check for exact matches and partial matches of banned words
+  for (const bannedWord of BANNED_WORDS_SET) {
+    if (lowerUsername.includes(bannedWord)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 export const UsernameSchema = z
   .string()
@@ -15,7 +92,7 @@ export const UsernameSchema = z
   .max(32, 'Username must be at most 32 characters')
   .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens')
   .refine(
-    (username) => !PROFANITY_LIST.some((word) => username.toLowerCase().includes(word)),
+    (username) => !isUsernameBanned(username),
     'Username contains inappropriate language'
   );
 
