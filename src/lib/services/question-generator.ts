@@ -1,5 +1,5 @@
 import { prisma } from '../db/prisma';
-import { qdrant, upsertEmbedding, searchSimilar } from '../db/qdrant';
+import { qdrant, upsertEmbedding, searchSimilar, ensureCollection } from '../db/qdrant';
 import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
@@ -91,6 +91,13 @@ export async function generateQuestionsForCache(
   provider: AIProvider,
   difficulty: 'easy' | 'medium' | 'hard' = 'medium'
 ): Promise<number> {
+  // Ensure Qdrant collection exists
+  try {
+    await ensureCollection();
+  } catch (error) {
+    console.warn('[QuestionGenerator] Failed to ensure Qdrant collection:', error);
+  }
+
   // Check current cache size for this topic
   const cacheCount = await prisma.question.count({
     where: {
@@ -184,6 +191,13 @@ export async function generateQuestionsWithProgress(
   difficulty: 'easy' | 'medium' | 'hard' = 'medium',
   onProgress?: (data: { step: string; message: string; current?: number; total?: number }) => void
 ): Promise<number> {
+  // Ensure Qdrant collection exists
+  try {
+    await ensureCollection();
+  } catch (error) {
+    console.warn('[QuestionGenerator] Failed to ensure Qdrant collection:', error);
+  }
+
   // Check current cache size for this topic
   onProgress?.({ 
     step: 'cache_check', 
