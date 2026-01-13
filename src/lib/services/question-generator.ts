@@ -111,7 +111,8 @@ export async function generateQuestionsForCache(
         data: {
           questionText: question.questionText,
           options: question.options,
-          correctAnswer: question.correctAnswer,
+          // Normalize to string for Prisma schema
+          correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty),
           qualityScore: new Decimal(validation.qualityScore),
@@ -233,7 +234,8 @@ export async function generateQuestionsWithProgress(
         data: {
           questionText: question.questionText,
           options: question.options,
-          correctAnswer: question.correctAnswer,
+          // Normalize to string for Prisma schema
+          correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty),
           qualityScore: new Decimal(validation.qualityScore),

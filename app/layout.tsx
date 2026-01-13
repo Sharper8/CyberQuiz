@@ -14,16 +14,16 @@ export const metadata: Metadata = {
   title: "CyberQuiz - Teste ta vigilance numérique",
   description: "Quiz interactif sur la cybersécurité alimenté par l'IA. Testez vos connaissances en matière de sécurité numérique à travers différents modes de jeu.",
   authors: [{ name: "CyberQuiz" }],
+  icons: {
+    icon: "/favicon.ico",
+  },
   openGraph: {
     title: "CyberQuiz - Teste ta vigilance numérique",
     description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
     type: "website",
-    images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
   },
   twitter: {
     card: "summary_large_image",
-    site: "@Lovable",
-    images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
   },
 };
 

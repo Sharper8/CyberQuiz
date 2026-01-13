@@ -29,15 +29,36 @@ export interface EmbeddingPayload {
 }
 
 export async function upsertEmbedding(id: number, vector: number[], payload: EmbeddingPayload) {
-  await qdrant.upsert(COLLECTION, {
-    points: [
-      {
-        id,
-        vector,
-        payload: payload as unknown as Record<string, unknown>
-      }
-    ]
-  });
+  // Ensure the collection exists before upserting
+  await ensureCollection();
+
+  try {
+    await qdrant.upsert(COLLECTION, {
+      points: [
+        {
+          id,
+          vector,
+          payload: payload as unknown as Record<string, unknown>
+        }
+      ]
+    });
+  } catch (error: any) {
+    // Retry once if collection was missing
+    if (error?.status === 404) {
+      await ensureCollection();
+      await qdrant.upsert(COLLECTION, {
+        points: [
+          {
+            id,
+            vector,
+            payload: payload as unknown as Record<string, unknown>
+          }
+        ]
+      });
+      return;
+    }
+    throw error;
+  }
 }
 
 export async function deleteEmbedding(id: number) {
@@ -51,9 +72,21 @@ export interface SimilarResult {
 }
 
 export async function searchSimilar(vector: number[], limit = 10): Promise<SimilarResult[]> {
-  const results = await qdrant.search(COLLECTION, {
-    vector,
-    limit
-  });
-  return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as unknown as EmbeddingPayload }));
+  // Ensure the collection exists before searching for duplicates
+  await ensureCollection();
+
+  try {
+    const results = await qdrant.search(COLLECTION, {
+      vector,
+      limit
+    });
+    return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as unknown as EmbeddingPayload }));
+  } catch (error: any) {
+    if (error?.status === 404) {
+      // Create the collection and treat as no duplicates on first run
+      await ensureCollection();
+      return [];
+    }
+    throw error;
+  }
 }

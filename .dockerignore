@@ -5,21 +5,12 @@ out/
 # Dependencies
 node_modules/
 
-# Runtime artifacts
-logs/
-cookiejar/
-
-# Git and CI metadata
-.git/
-.github/
-
 # Environment
 .env
 .env.local
 .env.production.local
 .env.development.local
 .env.test.local
-.env.dev
 
 # Build outputs
 dist/

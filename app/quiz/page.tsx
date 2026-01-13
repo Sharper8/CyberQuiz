@@ -11,7 +11,14 @@ import AIChatPanel from "@/components/AIChatPanel";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 
-// Mock questions for demonstration
+// Profanity blocklist (matches backend validation)
+const PROFANITY_LIST = [
+  'badword',
+  'insult',
+  'offensive',
+];
+
+// Mock questions as fallback only
 const mockQuestions = [
   {
     id: 1,
@@ -45,6 +52,19 @@ const mockQuestions = [
   },
 ];
 
+function validateUsername(username: string): string | null {
+  if (!username) return 'Pseudo requis';
+  if (username.length < 3) return 'Pseudo au minimum 3 caractères';
+  if (username.length > 32) return 'Pseudo au maximum 32 caractères';
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return 'Pseudo: uniquement lettres, chiffres, tirets et underscores';
+  }
+  if (PROFANITY_LIST.some((word) => username.toLowerCase().includes(word))) {
+    return 'Pseudo contient du langage inapproprié';
+  }
+  return null;
+}
+
 function QuizPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -59,6 +79,75 @@ function QuizPage() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [showAIChat, setShowAIChat] = useState(false);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Validate username and fetch questions on mount
+  useEffect(() => {
+    const validateAndFetch = async () => {
+      // Validate username from URL
+      if (!pseudo) {
+        toast.error("Pseudo requis");
+        router.push("/");
+        return;
+      }
+
+      const validationError = validateUsername(pseudo);
+      if (validationError) {
+        toast.error(validationError);
+        router.push("/");
+        return;
+      }
+
+      // Fetch accepted questions from database
+      try {
+        const response = await api.getQuestions();
+        const acceptedQuestions = response.filter(q => q.status === 'accepted');
+        
+        if (acceptedQuestions.length > 0) {
+          // Convert API questions to quiz format
+          const convertedQuestions = acceptedQuestions.map(apiQuestion => {
+            const correctAnswer = 
+              apiQuestion.correctAnswer.toLowerCase() === 'true' || 
+              apiQuestion.correctAnswer === '1' || 
+              apiQuestion.correctAnswer === 'true';
+            
+            return {
+              id: apiQuestion.id,
+              question: apiQuestion.questionText,
+              answer: correctAnswer,
+              category: apiQuestion.category || 'Général'
+            };
+          });
+          setQuestions(convertedQuestions);
+        } else {
+          // Fallback to mock questions if no accepted questions in DB
+          console.log('No accepted questions in database, using fallback mock questions');
+          setQuestions(mockQuestions);
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+        // Use mock questions as fallback on error
+        setQuestions(mockQuestions);
+        setIsLoading(false);
+      }
+    };
+
+    validateAndFetch();
+  }, [pseudo, router]);
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        <CyberBackground />
+        <div className="text-center relative z-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-lg text-muted-foreground">Chargement des questions...</p>
+        </div>
+      </div>
+    );
+  }
 
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;

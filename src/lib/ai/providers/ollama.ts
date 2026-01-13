@@ -56,7 +56,9 @@ function extractJSONFromStreamed(raw: string): any {
   const slice = fullResponse.slice(start, end + 1);
   
   try {
-    return JSON.parse(slice);
+    // Clean out line comments the model sometimes adds (e.g. "// Command and Control")
+    const cleaned = slice.replace(/\/\/.*$/gm, '');
+    return JSON.parse(cleaned);
   } catch (e) {
     console.error('Failed to parse JSON slice:', slice);
     throw new Error(`Invalid JSON in model output: ${e}`);

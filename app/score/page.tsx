@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Trophy, Award, Target, Home, RotateCcw } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
+import { api, type Score } from "@/lib/api-client";
 
-// Mock leaderboard data
+// Mock leaderboard as fallback
 const mockLeaderboard = [
   { pseudo: "CyberNinja", score: 10, mode: "chrono" },
   { pseudo: "SecureMax", score: 9, mode: "classic" },
@@ -28,6 +29,33 @@ function ScorePage() {
   const total = parseInt(searchParams.get("total") || "10");
   const mode = searchParams.get("mode") || "classic";
   const pseudo = searchParams.get("pseudo") || "Joueur";
+
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch leaderboard data on mount
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const scores = await api.getScores(10);
+        // Convert API Score to leaderboard format
+        const formattedLeaderboard = scores.map(score => ({
+          pseudo: score.username,
+          score: score.score,
+          mode: score.topic || "classic"
+        }));
+        setLeaderboard(formattedLeaderboard);
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+        // Use mock leaderboard as fallback
+        setLeaderboard(mockLeaderboard);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
 
   const percentage = Math.round((score / total) * 100);
 
@@ -104,14 +132,20 @@ function ScorePage() {
           </div>
 
           <div className="divide-y divide-border">
-            {mockLeaderboard.map((entry, index) => (
-              <div
-                key={index}
-                className={`flex items-center justify-between p-4 transition-colors hover:bg-muted/50 ${
-                  entry.pseudo === pseudo && entry.score === score ? "bg-primary/10" : ""
-                }`}
-              >
-                <div className="flex items-center gap-4">
+            {isLoading ? (
+              <div className="p-4 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                <p className="text-muted-foreground">Chargement du classement...</p>
+              </div>
+            ) : (
+              leaderboard.map((entry, index) => (
+                <div
+                  key={index}
+                  className={`flex items-center justify-between p-4 transition-colors hover:bg-muted/50 ${
+                    entry.pseudo === pseudo && entry.score === score ? "bg-primary/10" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${
                     index === 0 ? "bg-yellow-500/20 text-yellow-400" :
                     index === 1 ? "bg-gray-400/20 text-gray-300" :
@@ -131,7 +165,8 @@ function ScorePage() {
                   {entry.score}
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
       </div>

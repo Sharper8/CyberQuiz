@@ -6,20 +6,10 @@ coverage/
 dist/
 build/
 
-# Runtime artifacts
-logs/
-cookiejar/
-tsconfig.tsbuildinfo
-
 # Environment files
 .env
 .env.local
 .env.*.local
-.env.dev
-.env.prod
-# keep examples tracked
-!.env.example
-!.env.dev.example
 
 # OS and editor junk
 .DS_Store
@@ -33,3 +23,4 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 bun-debug.log*
+.env.dev
