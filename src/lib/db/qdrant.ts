@@ -51,9 +51,26 @@ export interface SimilarResult {
 }
 
 export async function searchSimilar(vector: number[], limit = 10): Promise<SimilarResult[]> {
+<<<<<<< HEAD
   const results = await qdrant.search(COLLECTION, {
     vector,
     limit
   });
   return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as unknown as EmbeddingPayload }));
+=======
+  try {
+    const results = await qdrant.search(COLLECTION, {
+      vector,
+      limit
+    });
+    return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as unknown as EmbeddingPayload }));
+  } catch (error) {
+    // If collection doesn't exist, return empty results instead of crashing
+    if (error instanceof Error && error.message.includes('Not Found')) {
+      console.warn('[Qdrant] Collection not found, returning empty results');
+      return [];
+    }
+    throw error;
+  }
+>>>>>>> zip-work
 }

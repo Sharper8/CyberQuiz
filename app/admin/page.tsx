@@ -31,6 +31,15 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
+<<<<<<< HEAD
+=======
+  const [similarityModalOpen, setSimilarityModalOpen] = useState(false);
+  const [similarityData, setSimilarityData] = useState<{
+    question: Question;
+    similarQuestions: Array<Question & {similarity: number}>;
+  } | null>(null);
+  const [similarityLoading, setSimilarityLoading] = useState(false);
+>>>>>>> zip-work
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -52,10 +61,39 @@ export default function AdminPage() {
 
   const fetchQuestions = async () => {
     try {
+<<<<<<< HEAD
       const data = await api.getQuestions();
       setQuestions(data);
     } catch (error: any) {
       toast.error("Erreur lors du chargement des questions");
+=======
+      setLoading(true);
+      
+      const response = await fetch('/api/admin/questions/review', {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Send cookies with request
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', response.status, errorData);
+        if (response.status === 401) {
+          // Unauthorized - redirect to login
+          window.location.href = '/admin-login';
+          return;
+        }
+        throw new Error(`Failed to fetch questions: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setQuestions(data.questions || []);
+    } catch (error: any) {
+      console.error('Error fetching questions:', error);
+      toast.error(`Erreur: ${error.message || "Impossible de charger les questions"}`);
+      setQuestions([]);
+>>>>>>> zip-work
     } finally {
       setLoading(false);
     }
@@ -63,17 +101,38 @@ export default function AdminPage() {
 
   const handleDelete = async (id: number) => {
     try {
+<<<<<<< HEAD
       // Always soft delete by marking as rejected
       await api.updateQuestion(id.toString(), { status: 'rejected' });
       setQuestions(questions.map(q => 
         q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
       ));
+=======
+      const response = await fetch('/api/admin/questions/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'reject',
+          questionId: id,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to reject question');
+      }
+      
+      setQuestions(questions.filter(q => q.id !== id));
+>>>>>>> zip-work
       toast.success("Question rejetée");
     } catch (error: any) {
       toast.error("Erreur lors du rejet");
     }
   };
 
+<<<<<<< HEAD
   const handleAccept = async (id: number) => {
     try {
       await api.updateQuestion(id.toString(), { status: 'accepted' });
@@ -81,6 +140,42 @@ export default function AdminPage() {
         q.id === id ? { ...q, status: 'accepted' as const, isRejected: false } : q
       ));
       toast.success("Question acceptée et ajoutée au pool");
+=======
+  const handleViewSimilar = async (id: number) => {
+    try {
+      setSimilarityLoading(true);
+      const data = await api.getSimilarQuestions(id);
+      setSimilarityData(data);
+      setSimilarityModalOpen(true);
+    } catch (error: any) {
+      toast.error("Erreur lors de la récupération des questions similaires");
+    } finally {
+      setSimilarityLoading(false);
+    }
+  };
+
+  const handleAccept = async (id: number) => {
+    try {
+      const response = await fetch('/api/admin/questions/review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'accept',
+          questionId: id,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to accept question');
+      }
+      
+      setQuestions(questions.filter(q => q.id !== id));
+      toast.success("Question acceptée et ajoutée au pool");
+      await fetchQuestions();
+>>>>>>> zip-work
     } catch (error: any) {
       toast.error("Erreur lors de l'acceptation");
     }
@@ -129,7 +224,12 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
+<<<<<<< HEAD
         throw new Error('Failed to start generation');
+=======
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Generation failed: ${response.status}`);
+>>>>>>> zip-work
       }
 
       const reader = response.body?.getReader();
@@ -140,6 +240,11 @@ export default function AdminPage() {
       }
 
       let buffer = '';
+<<<<<<< HEAD
+=======
+      let generationCompleted = false;
+      
+>>>>>>> zip-work
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -153,6 +258,7 @@ export default function AdminPage() {
             const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
             if (eventMatch) {
               const [, event, dataStr] = eventMatch;
+<<<<<<< HEAD
               const data = JSON.parse(dataStr);
 
               if (event === 'progress') {
@@ -163,12 +269,38 @@ export default function AdminPage() {
                 await fetchQuestions();
               } else if (event === 'error') {
                 toast.error(data.message);
+=======
+              try {
+                const data = JSON.parse(dataStr);
+
+                if (event === 'progress') {
+                  setGenerationProgress(data);
+                  toast.info(data.message, { duration: 2000 });
+                } else if (event === 'complete') {
+                  toast.success('Questions générées avec succès!');
+                  generationCompleted = true;
+                } else if (event === 'error') {
+                  toast.error(data.message || 'Error during generation');
+                }
+              } catch (parseError) {
+                console.error('Failed to parse event data:', parseError);
+>>>>>>> zip-work
               }
             }
           }
         }
       }
+<<<<<<< HEAD
     } catch (error: any) {
+=======
+
+      // Only fetch questions if generation was successful
+      if (generationCompleted) {
+        await fetchQuestions();
+      }
+    } catch (error: any) {
+      console.error('Generation error:', error);
+>>>>>>> zip-work
       toast.error(error.message || "Erreur lors de la génération");
     } finally {
       setGenerating(false);
@@ -428,6 +560,14 @@ export default function AdminPage() {
                             IA ({question.aiProvider})
                           </Badge>
                         )}
+<<<<<<< HEAD
+=======
+                        {question.potentialDuplicates && question.potentialDuplicates.length > 0 && (
+                          <Badge variant="outline" className="gap-1 border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50" onClick={() => handleViewSimilar(question.id)}>
+                            ⚠️ {question.potentialDuplicates.length} similaire(s)
+                          </Badge>
+                        )}
+>>>>>>> zip-work
                         {question.status === 'accepted' ? (
                           <Badge className="bg-secondary text-secondary-foreground gap-1">
                             <CheckCircle2 className="h-3 w-3" />
@@ -496,6 +636,75 @@ export default function AdminPage() {
             })
           )}
         </div>
+<<<<<<< HEAD
+=======
+
+        {/* Similarity Comparison Modal */}
+        <Dialog open={similarityModalOpen} onOpenChange={setSimilarityModalOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Comparaison de questions similaires</DialogTitle>
+              <DialogDescription>
+                Vérifiez si ces questions sont effectivement similaires
+              </DialogDescription>
+            </DialogHeader>
+
+            {similarityLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+              </div>
+            ) : similarityData ? (
+              <div className="space-y-6">
+                {/* Generated Question */}
+                <div className="bg-primary/10 border border-primary rounded-lg p-4">
+                  <h3 className="font-semibold text-lg mb-3 text-primary">Question générée (nouvelle)</h3>
+                  <div className="space-y-2">
+                    <p className="font-medium">{similarityData.question.questionText}</p>
+                    <p className="text-sm text-muted-foreground">
+                      <span className="font-semibold">Réponse correcte:</span> {similarityData.question.correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
+                    </p>
+                    {similarityData.question.explanation && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-semibold">Explication:</span> {similarityData.question.explanation}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Similar Questions */}
+                {similarityData.similarQuestions.length > 0 ? (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-lg">Questions similaires dans la base ({similarityData.similarQuestions.length})</h3>
+                    {similarityData.similarQuestions.map((similar) => (
+                      <div key={similar.id} className="bg-card border border-yellow-500/30 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-medium flex-1">{similar.questionText}</h4>
+                          <Badge className="bg-yellow-500/20 text-yellow-700 ml-2">
+                            Similarité: {(similar.similarity * 100).toFixed(1)}%
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-semibold">Réponse correcte:</span> {similar.correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
+                        </p>
+                        {similar.explanation && (
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-semibold">Explication:</span> {similar.explanation}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Statut: {similar.status} | Créée le: {new Date(similar.createdAt).toLocaleDateString('fr-FR')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Aucune question similaire trouvée</p>
+                )}
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+>>>>>>> zip-work
       </div>
     </div>
   );

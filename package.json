@@ -11,6 +11,7 @@
     "lint": "next lint",
     "init": "tsx scripts/init-app.ts",
     "ensure-admin": "tsx scripts/ensure-admin.ts",
+    "populate-qdrant": "tsx scripts/populate-qdrant.ts",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:setup": "npm run db:migrate && npm run db:seed",
