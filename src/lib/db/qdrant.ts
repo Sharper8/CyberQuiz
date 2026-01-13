@@ -51,13 +51,6 @@ export interface SimilarResult {
 }
 
 export async function searchSimilar(vector: number[], limit = 10): Promise<SimilarResult[]> {
-<<<<<<< HEAD
-  const results = await qdrant.search(COLLECTION, {
-    vector,
-    limit
-  });
-  return results.map(r => ({ id: Number(r.id), score: r.score, payload: r.payload as unknown as EmbeddingPayload }));
-=======
   try {
     const results = await qdrant.search(COLLECTION, {
       vector,
@@ -72,5 +65,4 @@ export async function searchSimilar(vector: number[], limit = 10): Promise<Simil
     }
     throw error;
   }
->>>>>>> zip-work
 }

@@ -16,10 +16,7 @@ export interface Question {
   aiProvider: string;
   mitreTechniques?: string | string[];
   tags?: string | string[];
-<<<<<<< HEAD
-=======
   potentialDuplicates?: Array<{id: number, similarity: number}>;
->>>>>>> zip-work
   createdAt: string;
   updatedAt: string;
   metadata?: any;
@@ -117,8 +114,6 @@ class ApiClient {
     return res.json();
   }
 
-<<<<<<< HEAD
-=======
   // Admin - Get similar questions
   async getSimilarQuestions(questionId: number): Promise<{
     question: Question;
@@ -132,7 +127,6 @@ class ApiClient {
     return res.json();
   }
 
->>>>>>> zip-work
   // Scores
   async getScores(limit = 10): Promise<Score[]> {
     const res = await fetch(`${this.baseUrl}/scores?limit=${limit}`);

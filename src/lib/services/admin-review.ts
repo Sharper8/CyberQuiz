@@ -27,10 +27,6 @@ export async function getPendingQuestions(
   total: number;
 }> {
   const where = {
-<<<<<<< HEAD
-    status: 'to_review',
-=======
->>>>>>> zip-work
     isRejected: false,
     ...(category && { category }),
   };
@@ -68,14 +64,9 @@ export async function acceptQuestion(
     throw new Error(`Question ${questionId} not found`);
   }
 
-<<<<<<< HEAD
-  if (question.status !== 'to_review') {
-    throw new Error(`Question ${questionId} is not pending review (status: ${question.status})`);
-=======
   // Allow accepting questions from to_review status (or any other status except rejected)
   if (question.isRejected) {
     throw new Error(`Question ${questionId} has been rejected and cannot be accepted`);
->>>>>>> zip-work
   }
 
   await prisma.question.update({
@@ -111,14 +102,9 @@ export async function rejectQuestion(
     throw new Error(`Question ${questionId} not found`);
   }
 
-<<<<<<< HEAD
-  if (question.status !== 'to_review') {
-    throw new Error(`Question ${questionId} is not pending review (status: ${question.status})`);
-=======
   // Allow rejecting questions from any status except already rejected
   if (question.isRejected) {
     throw new Error(`Question ${questionId} is already rejected`);
->>>>>>> zip-work
   }
 
   await prisma.question.update({

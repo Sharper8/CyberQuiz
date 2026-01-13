@@ -12,11 +12,7 @@ import { z } from 'zod';
 const ReviewSchema = z.object({
   action: z.enum(['accept', 'reject']),
   questionId: z.number(),
-<<<<<<< HEAD
-  reason: z.string().optional(),
-=======
   reason: z.string().optional().default('No reason provided'),
->>>>>>> zip-work
 });
 
 /**
@@ -35,13 +31,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-<<<<<<< HEAD
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100);
-=======
     // Fetch ALL questions to prevent any from being hidden due to pagination
     // The admin interface will handle filtering and display
     const limit = Math.min(parseInt(searchParams.get('limit') || '1000'), 10000);
->>>>>>> zip-work
     const offset = parseInt(searchParams.get('offset') || '0');
     const category = searchParams.get('category');
     const stats = searchParams.get('stats') === 'true';
@@ -55,19 +47,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-<<<<<<< HEAD
-        questions: questions.map((q) => ({
-          id: q.id,
-          questionText: q.questionText,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation,
-          difficulty: q.difficulty.toString(),
-          category: q.category,
-          aiProvider: q.aiProvider,
-          createdAt: q.createdAt,
-        })),
-=======
         questions: questions.map((q) => {
           const duplicates = q.potentialDuplicates ? (typeof q.potentialDuplicates === 'string' ? JSON.parse(q.potentialDuplicates) : q.potentialDuplicates) : [];
           return {
@@ -85,7 +64,6 @@ export async function GET(request: NextRequest) {
             potentialDuplicates: duplicates,
           };
         }),
->>>>>>> zip-work
         total,
         limit,
         offset,
@@ -135,17 +113,7 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     } else if (action === 'reject') {
-<<<<<<< HEAD
-      if (!reason) {
-        return NextResponse.json(
-          { error: 'reason required for rejection' },
-          { status: 400 }
-        );
-      }
-      await rejectQuestion(questionId, adminId, reason);
-=======
       await rejectQuestion(questionId, adminId, reason || 'No reason provided');
->>>>>>> zip-work
       return NextResponse.json(
         { message: 'Question rejected and soft-deleted' },
         { status: 200 }

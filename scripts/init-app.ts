@@ -3,8 +3,26 @@
  * Runs all necessary setup tasks before the app starts
  */
 
+import { config } from 'dotenv';
 import { ensureAdminUser } from './ensure-admin.js';
 import { checkAndWarmCache } from '../src/lib/services/question-cache-warmer.js';
+
+// Load environment variables from .env.local
+config({ path: '.env.local' });
+
+// Ensure required environment variables are set
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://cyberquiz:changeme@localhost:5432/cyberquiz';
+}
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'my-super-secret-jwt-key-2024-with-more-entropy-for-security';
+}
+if (!process.env.ADMIN_EMAIL) {
+  process.env.ADMIN_EMAIL = 'admin@cyberquiz.fr';
+}
+if (!process.env.ADMIN_PASSWORD) {
+  process.env.ADMIN_PASSWORD = 'change-this-secure-password';
+}
 
 export async function initializeApp(): Promise<void> {
   console.log('🚀 [AppInit] Starting application initialization...\n');

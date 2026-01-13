@@ -31,15 +31,12 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
-<<<<<<< HEAD
-=======
   const [similarityModalOpen, setSimilarityModalOpen] = useState(false);
   const [similarityData, setSimilarityData] = useState<{
     question: Question;
     similarQuestions: Array<Question & {similarity: number}>;
   } | null>(null);
   const [similarityLoading, setSimilarityLoading] = useState(false);
->>>>>>> zip-work
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -61,12 +58,6 @@ export default function AdminPage() {
 
   const fetchQuestions = async () => {
     try {
-<<<<<<< HEAD
-      const data = await api.getQuestions();
-      setQuestions(data);
-    } catch (error: any) {
-      toast.error("Erreur lors du chargement des questions");
-=======
       setLoading(true);
       
       const response = await fetch('/api/admin/questions/review', {
@@ -93,7 +84,6 @@ export default function AdminPage() {
       console.error('Error fetching questions:', error);
       toast.error(`Erreur: ${error.message || "Impossible de charger les questions"}`);
       setQuestions([]);
->>>>>>> zip-work
     } finally {
       setLoading(false);
     }
@@ -101,13 +91,6 @@ export default function AdminPage() {
 
   const handleDelete = async (id: number) => {
     try {
-<<<<<<< HEAD
-      // Always soft delete by marking as rejected
-      await api.updateQuestion(id.toString(), { status: 'rejected' });
-      setQuestions(questions.map(q => 
-        q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
-      ));
-=======
       const response = await fetch('/api/admin/questions/review', {
         method: 'POST',
         headers: {
@@ -125,22 +108,12 @@ export default function AdminPage() {
       }
       
       setQuestions(questions.filter(q => q.id !== id));
->>>>>>> zip-work
       toast.success("Question rejetée");
     } catch (error: any) {
       toast.error("Erreur lors du rejet");
     }
   };
 
-<<<<<<< HEAD
-  const handleAccept = async (id: number) => {
-    try {
-      await api.updateQuestion(id.toString(), { status: 'accepted' });
-      setQuestions(questions.map(q => 
-        q.id === id ? { ...q, status: 'accepted' as const, isRejected: false } : q
-      ));
-      toast.success("Question acceptée et ajoutée au pool");
-=======
   const handleViewSimilar = async (id: number) => {
     try {
       setSimilarityLoading(true);
@@ -175,7 +148,6 @@ export default function AdminPage() {
       setQuestions(questions.filter(q => q.id !== id));
       toast.success("Question acceptée et ajoutée au pool");
       await fetchQuestions();
->>>>>>> zip-work
     } catch (error: any) {
       toast.error("Erreur lors de l'acceptation");
     }
@@ -224,12 +196,8 @@ export default function AdminPage() {
       });
 
       if (!response.ok) {
-<<<<<<< HEAD
-        throw new Error('Failed to start generation');
-=======
         const errorData = await response.json().catch(() => ({}));
         throw new Error(`Generation failed: ${response.status}`);
->>>>>>> zip-work
       }
 
       const reader = response.body?.getReader();
@@ -240,11 +208,8 @@ export default function AdminPage() {
       }
 
       let buffer = '';
-<<<<<<< HEAD
-=======
       let generationCompleted = false;
       
->>>>>>> zip-work
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -258,18 +223,6 @@ export default function AdminPage() {
             const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
             if (eventMatch) {
               const [, event, dataStr] = eventMatch;
-<<<<<<< HEAD
-              const data = JSON.parse(dataStr);
-
-              if (event === 'progress') {
-                setGenerationProgress(data);
-                toast.info(data.message, { duration: 2000 });
-              } else if (event === 'complete') {
-                toast.success('Questions générées avec succès!');
-                await fetchQuestions();
-              } else if (event === 'error') {
-                toast.error(data.message);
-=======
               try {
                 const data = JSON.parse(dataStr);
 
@@ -284,15 +237,11 @@ export default function AdminPage() {
                 }
               } catch (parseError) {
                 console.error('Failed to parse event data:', parseError);
->>>>>>> zip-work
               }
             }
           }
         }
       }
-<<<<<<< HEAD
-    } catch (error: any) {
-=======
 
       // Only fetch questions if generation was successful
       if (generationCompleted) {
@@ -300,7 +249,6 @@ export default function AdminPage() {
       }
     } catch (error: any) {
       console.error('Generation error:', error);
->>>>>>> zip-work
       toast.error(error.message || "Erreur lors de la génération");
     } finally {
       setGenerating(false);
@@ -560,14 +508,11 @@ export default function AdminPage() {
                             IA ({question.aiProvider})
                           </Badge>
                         )}
-<<<<<<< HEAD
-=======
                         {question.potentialDuplicates && question.potentialDuplicates.length > 0 && (
                           <Badge variant="outline" className="gap-1 border-yellow-500 text-yellow-600 cursor-pointer hover:bg-yellow-50" onClick={() => handleViewSimilar(question.id)}>
                             ⚠️ {question.potentialDuplicates.length} similaire(s)
                           </Badge>
                         )}
->>>>>>> zip-work
                         {question.status === 'accepted' ? (
                           <Badge className="bg-secondary text-secondary-foreground gap-1">
                             <CheckCircle2 className="h-3 w-3" />
@@ -636,8 +581,6 @@ export default function AdminPage() {
             })
           )}
         </div>
-<<<<<<< HEAD
-=======
 
         {/* Similarity Comparison Modal */}
         <Dialog open={similarityModalOpen} onOpenChange={setSimilarityModalOpen}>
@@ -704,7 +647,6 @@ export default function AdminPage() {
             ) : null}
           </DialogContent>
         </Dialog>
->>>>>>> zip-work
       </div>
     </div>
   );

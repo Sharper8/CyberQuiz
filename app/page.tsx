@@ -2,29 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-<<<<<<< HEAD
-import { Shield, Target, Clock, FolderTree, User, UserCog } from "lucide-react";
-=======
 import { Shield, Target, Clock, FolderTree, User, UserCog, AlertCircle } from "lucide-react";
->>>>>>> zip-work
 import CyberButton from "@/components/CyberButton";
 import ModeCard from "@/components/ModeCard";
 import Leaderboard from "@/components/Leaderboard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
-=======
 import { validateUsername } from "@/lib/validators/client-username";
 import { toast } from "sonner";
->>>>>>> zip-work
 
 export default function Home() {
   const [pseudo, setPseudo] = useState("");
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
-<<<<<<< HEAD
-=======
   const [validationError, setValidationError] = useState<string | null>(null);
->>>>>>> zip-work
   const router = useRouter();
 
   const modes = [
@@ -48,15 +38,6 @@ export default function Home() {
     },
   ];
 
-<<<<<<< HEAD
-  const handleStart = () => {
-    if (pseudo.trim()) {
-      const mode = selectedMode || "classic";
-      router.push(`/quiz?mode=${mode}&pseudo=${encodeURIComponent(pseudo)}`);
-    }
-  };
-
-=======
   const handlePseudoChange = (value: string) => {
     setPseudo(value);
     // Clear validation error as user is typing
@@ -77,8 +58,6 @@ export default function Home() {
     const mode = selectedMode || "classic";
     router.push(`/quiz?mode=${mode}&pseudo=${encodeURIComponent(pseudo)}`);
   };
-
->>>>>>> zip-work
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
@@ -125,12 +104,6 @@ export default function Home() {
               type="text"
               placeholder="Entrez votre pseudo..."
               value={pseudo}
-<<<<<<< HEAD
-              onChange={(e) => setPseudo(e.target.value)}
-              className="h-14 text-lg bg-muted border-border focus:border-primary transition-colors"
-              maxLength={20}
-            />
-=======
               onChange={(e) => handlePseudoChange(e.target.value)}
               className={`h-14 text-lg bg-muted border-border focus:border-primary transition-colors ${
                 validationError ? 'border-red-500 focus:border-red-500' : ''
@@ -143,7 +116,6 @@ export default function Home() {
                 {validationError}
               </div>
             )}
->>>>>>> zip-work
           </div>
 
           {/* Mode Selection - Optional, hidden by default */}
@@ -168,11 +140,7 @@ export default function Home() {
             <CyberButton
               size="xl"
               onClick={handleStart}
-<<<<<<< HEAD
-              disabled={!pseudo.trim()}
-=======
               disabled={!pseudo.trim() || validationError !== null}
->>>>>>> zip-work
               className="min-w-[300px]"
             >
               Commencer le quiz

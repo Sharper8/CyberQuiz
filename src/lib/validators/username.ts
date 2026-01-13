@@ -1,16 +1,6 @@
 import { z } from 'zod';
 import { prisma } from '../db/prisma';
 
-<<<<<<< HEAD
-// Profanity blocklist (minimal example; use dedicated library in production)
-const PROFANITY_LIST = [
-  'badword',
-  'insult',
-  'offensive',
-  // Add more as needed; consider using `better-profanity` package
-];
-
-=======
 // Comprehensive banned words list (English and French profanity)
 const BANNED_WORDS = [
   // English profanity
@@ -173,18 +163,13 @@ function isUsernameBanned(username: string): boolean {
   return false;
 }
 
->>>>>>> zip-work
 export const UsernameSchema = z
   .string()
   .min(3, 'Username must be at least 3 characters')
   .max(32, 'Username must be at most 32 characters')
   .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens')
   .refine(
-<<<<<<< HEAD
-    (username) => !PROFANITY_LIST.some((word) => username.toLowerCase().includes(word)),
-=======
     (username) => !isUsernameBanned(username),
->>>>>>> zip-work
     'Username contains inappropriate language'
   );
 

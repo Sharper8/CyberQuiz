@@ -58,10 +58,6 @@ function extractJSONFromStreamed(raw: string): any {
   try {
     return JSON.parse(slice);
   } catch (e) {
-<<<<<<< HEAD
-    console.error('Failed to parse JSON slice:', slice);
-    throw new Error(`Invalid JSON in model output: ${e}`);
-=======
     // Try to clean up JSON by removing comments
     const cleanedSlice = slice
       .replace(/\/\/.*$/gm, '') // Remove single-line comments
@@ -74,7 +70,6 @@ function extractJSONFromStreamed(raw: string): any {
       console.error('Failed to parse JSON slice:', slice);
       throw new Error(`Invalid JSON in model output: ${e}`);
     }
->>>>>>> zip-work
   }
 }
 

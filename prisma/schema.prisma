@@ -26,10 +26,7 @@ model Question {
   aiProvider      String            // ollama | openai | anthropic
   mitreTechniques Json?             // ["T1059", ...]
   tags            Json?             // ["privilege-escalation", ...]
-<<<<<<< HEAD
-=======
   potentialDuplicates Json?        // [{id: 123, similarity: 0.85}, ...] for admin review
->>>>>>> zip-work
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   metadata        QuestionMetadata?

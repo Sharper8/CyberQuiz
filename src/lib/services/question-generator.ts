@@ -1,9 +1,5 @@
 import { prisma } from '../db/prisma';
-<<<<<<< HEAD
-import { qdrant, upsertEmbedding, searchSimilar } from '../db/qdrant';
-=======
 import { qdrant, upsertEmbedding, searchSimilar, ensureCollection } from '../db/qdrant';
->>>>>>> zip-work
 import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
@@ -16,16 +12,11 @@ interface GenerationContext {
 }
 
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
-<<<<<<< HEAD
-=======
 const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
->>>>>>> zip-work
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
 
 /**
-<<<<<<< HEAD
-=======
  * Find similar questions for admin review (semantic similarity)
  * Returns questions with similarity > threshold
  */
@@ -39,7 +30,6 @@ async function findSimilarQuestions(embedding: number[]): Promise<Array<{id: num
 }
 
 /**
->>>>>>> zip-work
  * Generate a single question with duplicate detection and regeneration on duplicate
  * On duplicate, retry with increased temperature and more context
  */
@@ -130,12 +120,9 @@ export async function generateQuestionsForCache(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
-<<<<<<< HEAD
-=======
       // Find similar questions in the database
       const potentialDuplicates = await findSimilarQuestions(embedding);
 
->>>>>>> zip-work
       // Store in database with to_review status
       const stored = await prisma.question.create({
         data: {
@@ -151,10 +138,7 @@ export async function generateQuestionsForCache(
           aiProvider: provider.name,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
-<<<<<<< HEAD
-=======
           potentialDuplicates: potentialDuplicates.length > 0 ? JSON.stringify(potentialDuplicates) : null,
->>>>>>> zip-work
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`, // Placeholder; will be set by Qdrant
@@ -197,8 +181,6 @@ export async function generateQuestionsWithProgress(
   difficulty: 'easy' | 'medium' | 'hard' = 'medium',
   onProgress?: (data: { step: string; message: string; current?: number; total?: number }) => void
 ): Promise<number> {
-<<<<<<< HEAD
-=======
   // Ensure Qdrant collection exists
   try {
     await ensureCollection();
@@ -206,7 +188,6 @@ export async function generateQuestionsWithProgress(
     console.warn('[QuestionGenerator] Failed to ensure Qdrant collection:', error);
   }
 
->>>>>>> zip-work
   // Check current cache size for this topic
   onProgress?.({ 
     step: 'cache_check', 
@@ -265,12 +246,9 @@ export async function generateQuestionsWithProgress(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
-<<<<<<< HEAD
-=======
       // Find similar questions in the database
       const potentialDuplicates = await findSimilarQuestions(embedding);
 
->>>>>>> zip-work
       onProgress?.({ 
         step: 'storing', 
         message: `Enregistrement de la question ${i + 1}/${targetCount}...`,
@@ -283,35 +261,21 @@ export async function generateQuestionsWithProgress(
         data: {
           questionText: question.questionText,
           options: question.options,
-<<<<<<< HEAD
-          correctAnswer: question.correctAnswer,
-          explanation: question.explanation,
-          difficulty: new Decimal(question.estimatedDifficulty),
-          qualityScore: new Decimal(validation.qualityScore),
-=======
           correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty ?? 0.5),
           qualityScore: new Decimal(validation.qualityScore ?? 0.7),
->>>>>>> zip-work
           category: topic,
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
-<<<<<<< HEAD
-          metadata: {
-            create: {
-              embeddingId: `q_${Date.now()}_${i}`,
-              validationScore: new Decimal(validation.qualityScore),
-=======
           potentialDuplicates: potentialDuplicates.length > 0 ? JSON.stringify(potentialDuplicates) : null,
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`,
               validationScore: new Decimal(validation.qualityScore ?? 0.7),
->>>>>>> zip-work
               validatorModel: provider.name,
             },
           },
