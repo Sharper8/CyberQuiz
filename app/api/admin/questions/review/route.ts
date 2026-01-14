@@ -7,6 +7,8 @@ import {
   getReviewStats,
 } from '@/lib/services/admin-review';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
+import { getAIProvider } from '@/lib/ai/provider-factory';
+import { generateToMaintainPool } from '@/lib/services/question-generator';
 import { z } from 'zod';
 
 const ReviewSchema = z.object({
@@ -99,7 +101,24 @@ export async function POST(request: NextRequest) {
     const { action, questionId, reason } = validation.data;
 
     if (action === 'accept') {
-      await acceptQuestion(questionId, adminId, reason);
+      const question = await acceptQuestion(questionId, adminId, reason);
+      
+      // Map difficulty from decimal to category
+      const difficultyMap = (diff: number): 'easy' | 'medium' | 'hard' => {
+        if (diff < 0.33) return 'easy';
+        if (diff < 0.67) return 'medium';
+        return 'hard';
+      };
+
+      // Trigger background pool maintenance (don't await)
+      generateToMaintainPool(
+        await getAIProvider('ollama'),
+        question.category,
+        difficultyMap(question.difficulty)
+      ).catch((err) => {
+        console.error('[AutoGenerate] Failed to maintain pool:', err);
+      });
+
       return NextResponse.json(
         { message: 'Question accepted and added to quiz pool' },
         { status: 200 }
