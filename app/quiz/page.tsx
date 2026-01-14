@@ -110,7 +110,7 @@ function validateUsername(username: string): string | null {
   return null;
 }
 
-function QuizPage() {
+function QuizContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const mode = searchParams.get("mode") || "classic";
@@ -367,12 +367,10 @@ function QuizPage() {
   );
 }
 
-function QuizPageContent() {
+export default function QuizPage() {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-      <QuizPage />
+      <QuizContent />
     </Suspense>
   );
 }
-
-export default QuizPageContent;

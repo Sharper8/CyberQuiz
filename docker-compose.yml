@@ -72,9 +72,11 @@ services:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+      - ./scripts/init-ollama.sh:/init-ollama.sh
     restart: unless-stopped
     networks:
       - cyberquiz-network
+    entrypoint: ["/bin/sh", "/init-ollama.sh"]
     # GPU support (optional, comment out if no GPU available)
     # deploy:
     #   resources:
@@ -83,15 +85,6 @@ services:
     #         - driver: nvidia
     #           count: all
     #           capabilities: [gpu]
-    # Pull model on first startup
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        sleep 5
-        ollama pull llama3.1:8b
-        ollama pull nomic-embed-text
-        wait
 
   # Optional: PgAdmin for database management
   pgadmin:

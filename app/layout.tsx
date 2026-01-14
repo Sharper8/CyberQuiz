@@ -21,9 +21,13 @@ export const metadata: Metadata = {
     title: "CyberQuiz - Teste ta vigilance numérique",
     description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
     type: "website",
+    images: ["/og-image.png"],
   },
   twitter: {
     card: "summary_large_image",
+    title: "CyberQuiz - Teste ta vigilance numérique",
+    description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
+    images: ["/og-image.png"],
   },
 };
 
