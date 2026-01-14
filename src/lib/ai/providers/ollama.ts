@@ -83,16 +83,27 @@ export class OllamaProvider implements AIProvider {
   async isAvailable(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/api/tags`);
-      if (!res.ok) return false;
+      if (!res.ok) {
+        console.warn(`[Ollama] Tags endpoint returned ${res.status}`);
+        return false;
+      }
       
       // Check if required models are loaded
       const data = await res.json();
       const models = data.models || [];
+      
+      console.debug(`[Ollama] Available models: ${models.map((m: any) => m.name).join(', ')}`);
+      console.debug(`[Ollama] Looking for: ${this.generationModel}, ${this.embeddingModel}`);
+      
       const hasGenerationModel = models.some((m: any) => m.name.includes(this.generationModel.split(':')[0]));
       const hasEmbeddingModel = models.some((m: any) => m.name.includes(this.embeddingModel.split(':')[0]));
       
-      return hasGenerationModel && hasEmbeddingModel;
-    } catch {
+      const available = hasGenerationModel && hasEmbeddingModel;
+      console.log(`[Ollama] Provider availability: ${available} (generation: ${hasGenerationModel}, embedding: ${hasEmbeddingModel})`);
+      
+      return available;
+    } catch (error) {
+      console.error(`[Ollama] isAvailable check failed:`, error);
       return false;
     }
   }
