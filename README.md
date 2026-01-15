@@ -42,8 +42,8 @@ All URLs and credentials are configured in `.env.dev`:
 
 **All application settings come from `.env` files:**
 - `.env.dev` - Development environment (Docker Compose)  
-- `.env.local` - Production environment
-- `.env.local.example` - Template for production
+- `.env` - Production environment
+- `.env.example` - Template for production
 
 **Never hardcode values** - they're always injected from `.env`.
 
@@ -222,7 +222,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3333
 ```
 
 ### Production
-1. Copy `.env.local.example` → `.env.local`
+1. Copy `.env.example` → `.env`
 2. Update all secrets with secure values
 3. Set `NODE_ENV=production`
 4. Use strong database password
@@ -250,8 +250,8 @@ docker ps | grep postgres
 # View PostgreSQL logs
 docker-compose logs postgres
 
-# Ensure .env.local has correct DATABASE_URL
-cat .env.local | grep DATABASE_URL
+# Ensure .env has correct DATABASE_URL
+cat .env | grep DATABASE_URL
 ```
 
 ### "No AI Provider Available"
@@ -274,7 +274,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for:
 ## Security
 
 ⚠️ **Production Checklist:**
-- [ ] Change default admin password in `.env.local`
+- [ ] Change default admin password in `.env`
 - [ ] Use strong JWT_SECRET (32+ characters, random)
 - [ ] Use strong DATABASE_PASSWORD
 - [ ] Enable HTTPS via reverse proxy
@@ -294,6 +294,7 @@ MIT - See [LICENSE](LICENSE)
 ## Support & Documentation
 
 - **API Documentation**: `/api/*` endpoints use OpenAPI/Swagger
-- **Backend Details**: See [README_BACKEND.md](README_BACKEND.md)
-- **Admin Features**: Check `docs/` directory
-- **Deployment Guide**: See [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Backend Details**: See [docs/README_BACKEND.md](docs/README_BACKEND.md)
+- **Admin Features**: Check [docs/WORKFLOW_GUIDE.md](docs/WORKFLOW_GUIDE.md)
+- **Deployment Guide**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Changelog**: See [docs/archive/CHANGELOG.md](docs/archive/CHANGELOG.md)

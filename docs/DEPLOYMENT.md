@@ -25,10 +25,10 @@ This is a fully containerized, on-premise quiz application built with Next.js 15
 Copy the example environment file:
 
 ```bash
-cp .env.local.example .env.local
+cp .env.example .env
 ```
 
-Update `.env.local` with your configuration (the defaults work for local development).
+Update `.env` with your configuration (the defaults work for local development).
 
 ### 2. Start the Database
 
@@ -91,7 +91,7 @@ This will build and start all services:
 
 ### 2. Update Environment Variables
 
-For production, update `.env.local`:
+For production, update `.env`:
 
 ```env
 DB_HOST=postgres  # Use container name when running in Docker
