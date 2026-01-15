@@ -108,7 +108,7 @@ export default function Home() {
     },
   ];
 
-  const handleStart = () => {
+  const handleStart = async () => {
     const trimmed = pseudo.trim();
     const validationError = validateUsername(trimmed);
     
@@ -119,7 +119,30 @@ export default function Home() {
     
     setError(""); // Clear error on successful validation
     const mode = selectedMode || "classic";
-    router.push(`/quiz?mode=${mode}&pseudo=${encodeURIComponent(trimmed)}`);
+    
+    try {
+      // Create a quiz session first to get sessionId
+      const response = await fetch('/api/quiz/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: trimmed }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        setError(error.error || 'Failed to start quiz session');
+        return;
+      }
+      
+      const data = await response.json();
+      const { sessionId } = data;
+      
+      // Now redirect to quiz with sessionId
+      router.push(`/quiz?mode=${mode}&pseudo=${encodeURIComponent(trimmed)}&sessionId=${sessionId}`);
+    } catch (err) {
+      setError('Failed to start quiz session');
+      console.error('Error starting quiz:', err);
+    }
   };
 
   return (

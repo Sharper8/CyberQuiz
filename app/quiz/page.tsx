@@ -195,20 +195,31 @@ function QuizContent() {
   const saveScore = async (finalScore: number, totalQuestions: number) => {
     try {
       const sessionId = searchParams.get('sessionId');
+      console.log('[saveScore] Saving score:', { finalScore, totalQuestions, sessionId });
+      
       if (!sessionId) {
-        console.warn('No session ID found, skipping score save');
+        console.warn('[saveScore] No session ID found, skipping score save');
         return;
       }
 
-      await api.completeQuiz({
+      console.log('[saveScore] Calling api.completeQuiz with:', {
+        sessionId: parseInt(sessionId),
+        score: finalScore,
+        totalQuestions,
+        topic: searchParams.get('topic'),
+      });
+
+      const result = await api.completeQuiz({
         sessionId: parseInt(sessionId),
         score: finalScore,
         totalQuestions,
         topic: searchParams.get('topic') || undefined,
       });
+      
+      console.log('[saveScore] Success! Result:', result);
       toast.success('Score enregistré!');
     } catch (error) {
-      console.error('Failed to save score:', error);
+      console.error('[saveScore] Failed to save score:', error);
       toast.error('Erreur lors de l\'enregistrement du score');
     }
   };

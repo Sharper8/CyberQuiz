@@ -10,8 +10,11 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { sessionId, score, totalQuestions, timeTaken, topic } = body;
+    
+    console.log('[API/quiz/complete] Received request:', { sessionId, score, totalQuestions, timeTaken, topic });
 
     if (!sessionId || score === undefined || !totalQuestions) {
+      console.warn('[API/quiz/complete] Missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields: sessionId, score, totalQuestions' },
         { status: 400 }
@@ -22,8 +25,11 @@ export async function POST(request: NextRequest) {
     const session = await prisma.quizSession.findUnique({
       where: { id: parseInt(sessionId) },
     });
+    
+    console.log('[API/quiz/complete] Found session:', session?.id, session?.username);
 
     if (!session) {
+      console.warn('[API/quiz/complete] Session not found:', sessionId);
       return NextResponse.json(
         { error: 'Quiz session not found' },
         { status: 404 }
@@ -45,6 +51,8 @@ export async function POST(request: NextRequest) {
         topic: topic || null,
       },
     });
+    
+    console.log('[API/quiz/complete] Score created:', scoreRecord.id, scoreRecord.username);
 
     // Update quiz session to mark as completed
     await prisma.quizSession.update({
@@ -55,6 +63,8 @@ export async function POST(request: NextRequest) {
         score,
       },
     });
+    
+    console.log('[API/quiz/complete] Session updated to completed');
 
     return NextResponse.json(
       {
