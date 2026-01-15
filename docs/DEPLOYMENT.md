@@ -1,15 +1,17 @@
-# CyberQuiz - On-Premise Deployment Guide
+# CyberQuiz - Deployment Guide
 
 ## Overview
 
-This is a fully containerized, on-premise quiz application built with Next.js 15 and PostgreSQL. All Supabase dependencies have been removed in favor of a self-hosted solution.
+CyberQuiz is a fully containerized, self-hosted cybersecurity quiz application built with Next.js 16, PostgreSQL, Ollama AI, and Qdrant vector search.
 
 ## Architecture
 
-- **Frontend**: Next.js 15 with App Router
+- **Frontend**: Next.js 16 with App Router
 - **Backend**: Next.js API Routes
 - **Database**: PostgreSQL 15 (containerized)
-- **Authentication**: Custom JWT-based auth with bcrypt password hashing
+- **AI/Generation**: Ollama LLM (local)
+- **Vector Search**: Qdrant
+- **Authentication**: JWT-based with bcrypt
 - **Container Orchestration**: Docker Compose
 
 ## Prerequisites
@@ -22,215 +24,164 @@ This is a fully containerized, on-premise quiz application built with Next.js 15
 
 ### 1. Environment Setup
 
-Copy the example environment file:
+Copy the example configuration and configure for your environment:
 
 ```bash
 cp .env.example .env
 ```
 
-Update `.env` with your configuration (the defaults work for local development).
+Edit `.env` and set your values. All credentials and configuration come from this file:
+- Database connection details
+- Admin user credentials
+- JWT secret
+- AI provider settings
+- Service URLs
 
-### 2. Start the Database
+See `.env.example` for all available options and defaults.
 
-Start PostgreSQL container:
+### 2. Start Services
+
+For development:
 
 ```bash
-docker-compose up -d postgres
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-This will:
-- Create a PostgreSQL 15 container
-- Initialize the database with the schema from `database/init.sql`
-- Create sample quiz questions
-- Set up the admin user (email: `admin@cyberquiz.local`, password: `admin123`)
-
-### 3. Install Dependencies
+For production:
 
 ```bash
-bun install
-# or
-npm install
+docker-compose up -d --build
 ```
 
-### 4. Run the Development Server
+This will start all services with settings from your `.env` file:
+- PostgreSQL database
+- Ollama AI provider
+- Qdrant vector search
+- PgAdmin web interface (if enabled)
+
+### 3. Initialize Database
+
+Run migrations and seed sample data:
 
 ```bash
-bun run dev
-# or
+npx prisma migrate deploy
+npm run db:seed
+```
+
+### 4. Start Application
+
+For development (with hot reload):
+
+```bash
 npm run dev
 ```
 
-The app will be available at http://localhost:3000
-
-### 5. (Optional) Access PgAdmin
-
-PgAdmin is available at http://localhost:5050
-
-- Email: `admin@admin.com`
-- Password: `admin`
-
-To connect to the database:
-- Host: `postgres` (when using Docker network) or `localhost` (from host)
-- Port: `5432`
-- Database: `cyberquiz`
-- Username: `cyberquiz`
-- Password: `changeme`
-
-## Production Deployment
-
-### 1. Build the Next.js Container
+For production:
 
 ```bash
-docker-compose up -d
+npm run start
 ```
 
-This will build and start all services:
-- Next.js app (port 3000)
-- PostgreSQL (port 5432)
-- PgAdmin (port 5050)
+The app will be available at the URL configured in `.env` (typically `http://localhost:3000` or `http://localhost:3333`)
 
-### 2. Update Environment Variables
+## Configuration
 
-For production, update `.env`:
+All application settings are managed through the `.env` file. Key variables:
 
-```env
-DB_HOST=postgres  # Use container name when running in Docker
-DB_PORT=5432
-DB_NAME=cyberquiz
-DB_USER=cyberquiz
-DB_PASSWORD=<strong-password>
-JWT_SECRET=<generate-random-secret>
-NODE_ENV=production
-```
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `DATABASE_URL` | PostgreSQL connection | `postgresql://user:pass@localhost:5432/cyberquiz` |
+| `ADMIN_EMAIL` | Admin login email | Check your `.env` file |
+| `ADMIN_PASSWORD` | Admin login password | Check your `.env` file |
+| `JWT_SECRET` | Token signing key | Generate with `openssl rand -base64 32` |
+| `NODE_ENV` | Environment mode | `development` or `production` |
+| `OLLAMA_BASE_URL` | Ollama AI provider | `http://ollama:11434` (Docker) or `http://localhost:11434` (host) |
+| `QDRANT_URL` | Vector database | `http://qdrant:6333` (Docker) or `http://localhost:6333` (host) |
 
-### 3. Generate Secure JWT Secret
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
+Refer to `.env.example` for complete list of options and defaults.
 
 ## API Endpoints
 
-### Authentication
-- `POST /api/auth/login` - Admin login
-- `POST /api/auth/logout` - Logout
-- `GET /api/auth/me` - Get current user
+All API endpoints are available at `/api/*`:
 
-### Questions
-- `GET /api/questions` - List all questions (optional `?validated=true` filter)
-- `POST /api/questions` - Create new question (admin only)
-- `DELETE /api/questions/[id]` - Delete question (admin only)
-- `PATCH /api/questions/[id]` - Update question validation (admin only)
+- `POST /api/auth/login` - Admin authentication
+- `GET /api/questions` - Fetch quiz questions
+- `GET /api/scores` - Leaderboard data
+- `POST /api/chat` - AI explanations
+- `POST /api/questions/generate` - Generate new questions (admin)
 
-### Scores
-- `GET /api/scores` - Get leaderboard (optional `?limit=10`)
-- `POST /api/scores` - Save quiz score
+## Database
 
-### Chat
-- `POST /api/chat` - AI chat explanation (mock implementation)
+PostgreSQL is used for persistent data storage. The database is automatically initialized when containers start.
 
-## Database Schema
+**Connection Details**: Check `DATABASE_URL` in your `.env` file
 
-### Tables
+Tables:
+- `question` - Quiz questions with metadata
+- `score` - Quiz completion records
+- `adminUser` - Admin user accounts with bcrypt-hashed passwords
+- `quizSession` - User quiz sessions
 
-#### `questions`
-- `id` (SERIAL PRIMARY KEY)
-- `question_text` (TEXT)
-- `correct_answer` (BOOLEAN)
-- `difficulty` (TEXT)
-- `category` (TEXT)
-- `is_validated` (BOOLEAN)
-- `created_at` (TIMESTAMP)
+## Access Points
 
-#### `scores`
-- `id` (SERIAL PRIMARY KEY)
-- `player_name` (TEXT)
-- `score` (INTEGER)
-- `total_questions` (INTEGER)
-- `time_taken` (INTEGER)
-- `created_at` (TIMESTAMP)
+**Check your `.env` file for actual credentials and URLs**, as they vary by deployment:
 
-#### `user_roles`
-- `id` (SERIAL PRIMARY KEY)
-- `email` (TEXT UNIQUE)
-- `password_hash` (TEXT)
-- `role` (TEXT)
-- `created_at` (TIMESTAMP)
-
-## Admin Access
-
-Default admin credentials (change in production):
-- Email: `admin@cyberquiz.local`
-- Password: `admin123`
-
-Access the admin panel at: http://localhost:3000/admin-login
-
-## Removed Dependencies
-
-The following Supabase dependencies have been completely removed:
-
-- `@supabase/supabase-js`
-- All Supabase client code
-- Supabase environment variables
-- Cloud-hosted authentication
-- Cloud-hosted database
-
-## New Dependencies
-
-- `pg` - PostgreSQL client
-- `bcryptjs` - Password hashing
-- `jsonwebtoken` - JWT token generation
-- `cookie` - Cookie parsing
-
-## Development Notes
-
-### File Structure
-
-- `app/` - Next.js App Router pages and API routes
-- `src/components/` - React components
-- `src/lib/` - Utilities (database, API client)
-- `src/hooks/` - Custom React hooks
-- `database/` - SQL initialization scripts
-- `docker-compose.yml` - Container orchestration
-
-### Excluded Files
-
-Old Vite-based files have been moved to `src/vite-pages/` and excluded from TypeScript compilation.
+- **Quiz Application**: Configured via `NEXT_PUBLIC_API_URL` in `.env`
+- **Admin Panel**: Located at `/admin-login` using `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`
+- **Database UI (PgAdmin)**: Configured in `.env` if enabled
+- **API**: All endpoints require `JWT_SECRET` from `.env` for token signing
 
 ## Troubleshooting
 
-### Database Connection Issues
+### Service Won't Start
 
-Check if PostgreSQL is running:
+Check logs:
 ```bash
-docker ps | grep postgres
+# All services
+docker-compose logs
+
+# Specific service
+docker-compose logs postgres
+docker-compose logs ollama
 ```
 
-View PostgreSQL logs:
+### Database Connection Failed
+
+Verify `DATABASE_URL` in `.env`:
 ```bash
-docker logs cyberquiz-postgres
+cat .env | grep DATABASE_URL
 ```
 
-### Port Conflicts
-
-If port 3000, 5432, or 5050 is already in use, update the ports in `docker-compose.yml`.
-
-### Build Errors
-
-Clean install dependencies:
+Then test PostgreSQL:
 ```bash
-rm -rf node_modules bun.lockb
-bun install
+docker-compose ps | grep postgres
 ```
 
-## Security Considerations
+### Ollama Not Ready
 
-1. **Change default credentials** in production
-2. **Use strong JWT secret** (minimum 32 characters)
-3. **Use HTTPS** in production
-4. **Restrict database access** with firewall rules
-5. **Regular backups** of PostgreSQL data
-6. **Update dependencies** regularly
+First-time model download takes 5-10 minutes:
+```bash
+docker-compose logs -f ollama
+```
+
+### Port Already in Use
+
+Update port mappings in `docker-compose.yml` or `docker-compose.dev.yml`, or stop conflicting services
+
+## Security Checklist
+
+For production deployments:
+
+- [ ] Review and customize all `.env` values
+- [ ] Use strong admin password (20+ characters, mixed case, numbers, symbols)
+- [ ] Generate random JWT secret: `openssl rand -base64 32`
+- [ ] Use strong database password
+- [ ] Enable HTTPS via reverse proxy (nginx, Caddy, etc.)
+- [ ] Restrict admin panel access by IP/firewall
+- [ ] Enable database backups to external storage
+- [ ] Monitor application logs regularly
+- [ ] Keep Docker images updated: `docker-compose pull && docker-compose up -d`
+- [ ] Never commit `.env` to version control
 
 ## License
 
