@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Sparkles, Plus, Trash2, LogOut } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles, Plus, Trash2 } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
-import CyberBackground from "@/components/CyberBackground";
 import { Badge } from "@/components/ui/badge";
-import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -27,7 +25,6 @@ import {
 } from "@/components/ui/dialog";
 
 export default function AdminPage() {
-  const { loading: authLoading, logout } = useAdmin();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -46,10 +43,8 @@ export default function AdminPage() {
   } | null>(null);
 
   useEffect(() => {
-    if (!authLoading) {
-      fetchQuestions();
-    }
-  }, [authLoading]);
+    fetchQuestions();
+  }, []);
 
   const fetchQuestions = async () => {
     try {
@@ -177,12 +172,11 @@ export default function AdminPage() {
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
-        <CyberBackground />
-        <div className="text-center relative z-20">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+      <div className="flex items-center justify-center py-24">
+        <div className="text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-muted-foreground">Chargement...</p>
         </div>
       </div>
@@ -203,22 +197,12 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden p-6">
-      <CyberBackground />
-      <div className="max-w-6xl mx-auto space-y-6 relative z-20">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gradient mb-2">Interface Admin</h1>
-            <p className="text-muted-foreground">Gestion de la banque de questions</p>
-          </div>
-          <div className="flex gap-3">
-            <CyberButton variant="secondary" size="lg" onClick={logout}>
-              <LogOut className="h-5 w-5 mr-2" />
-              Déconnexion
-            </CyberButton>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-4xl font-bold text-gradient mb-2">Interface Admin</h1>
+        <p className="text-muted-foreground">Gestion de la banque de questions</p>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -499,7 +483,6 @@ export default function AdminPage() {
             })
           )}
         </div>
-      </div>
     </div>
   );
 }

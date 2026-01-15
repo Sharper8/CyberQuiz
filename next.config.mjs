@@ -8,10 +8,6 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'gwlgsdcutmrwtwkeqemd.supabase.co',
       },
-      {
-        protocol: 'https',
-        hostname: 'lovable.dev',
-      },
     ],
   },
   env: {
