@@ -1,16 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Trash2, Ban } from "lucide-react";
 
 import { api, Score } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 export default function AdminLeaderboardPage() {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedScore, setSelectedScore] = useState<Score | null>(null);
+  const [deleteAction, setDeleteAction] = useState<'delete' | 'ban'>('delete');
 
   const load = async () => {
     setLoading(true);
@@ -25,6 +39,42 @@ export default function AdminLeaderboardPage() {
   useEffect(() => {
     load();
   }, []);
+
+  const handleDeleteClick = (score: Score) => {
+    setSelectedScore(score);
+    setDeleteAction('delete');
+    setDeleteDialogOpen(true);
+  };
+
+  const handleBanClick = (score: Score) => {
+    setSelectedScore(score);
+    setDeleteAction('ban');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedScore) return;
+
+    try {
+      const shouldBan = deleteAction === 'ban';
+      await api.deleteScore(selectedScore.id, shouldBan);
+      
+      toast.success(
+        shouldBan 
+          ? `Score supprimé et pseudo "${selectedScore.username}" banni` 
+          : 'Score supprimé'
+      );
+      
+      // Remove from local state
+      setScores(scores.filter(s => s.id !== selectedScore.id));
+    } catch (error) {
+      console.error('Error deleting score:', error);
+      toast.error('Erreur lors de la suppression');
+    } finally {
+      setDeleteDialogOpen(false);
+      setSelectedScore(null);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -47,18 +97,19 @@ export default function AdminLeaderboardPage() {
               <TableHead className="text-right">Score</TableHead>
               <TableHead className="text-right">Précision</TableHead>
               <TableHead>Topic</TableHead>
+              <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : scores.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                   Aucun score.
                 </TableCell>
               </TableRow>
@@ -74,12 +125,70 @@ export default function AdminLeaderboardPage() {
                   </TableCell>
                   <TableCell className="text-right">{Math.round(s.accuracyPercentage)}%</TableCell>
                   <TableCell className="text-muted-foreground">{s.topic ?? "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteClick(s)}
+                        className="gap-1"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Supprimer
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleBanClick(s)}
+                        className="gap-1"
+                      >
+                        <Ban className="h-3 w-3" />
+                        Bannir
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteAction === 'ban' ? 'Bannir et supprimer' : 'Supprimer le score'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteAction === 'ban' ? (
+                <>
+                  Êtes-vous sûr de vouloir supprimer ce score et ajouter le pseudo{' '}
+                  <strong>"{selectedScore?.username}"</strong> à la liste des mots interdits ?
+                  <br /><br />
+                  Cette action empêchera ce pseudo d'être utilisé à l'avenir.
+                </>
+              ) : (
+                <>
+                  Êtes-vous sûr de vouloir supprimer le score de{' '}
+                  <strong>{selectedScore?.username}</strong> ?
+                  <br /><br />
+                  Cette action est irréversible.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className={deleteAction === 'ban' ? 'bg-destructive hover:bg-destructive/90' : ''}
+            >
+              {deleteAction === 'ban' ? 'Bannir et supprimer' : 'Supprimer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

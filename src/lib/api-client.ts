@@ -174,6 +174,17 @@ class ApiClient {
     if (!res.ok) throw new Error('Failed to complete quiz');
     return res.json();
   }
+
+  // Admin: Delete score (optionally ban username)
+  async deleteScore(scoreId: number, banUsername: boolean = false): Promise<{ success: boolean; message: string }> {
+    const url = `${this.baseUrl}/admin/scores/${scoreId}${banUsername ? '?banUsername=true' : ''}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to delete score');
+    return res.json();
+  }
 }
 
 export const api = new ApiClient();

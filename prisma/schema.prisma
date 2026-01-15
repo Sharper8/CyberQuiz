@@ -145,6 +145,16 @@ model GenerationSettings {
   generationLogs        GenerationLog[]
 }
 
+model BannedWord {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  reason    String?  // Optional reason for banning
+  createdAt DateTime @default(now())
+  createdBy String?  // Admin who banned it
+
+  @@index([word])
+}
+
 model DuplicateLog {
   id                 Int       @id @default(autoincrement())
   questionHash       String    // Hash that was duplicated
