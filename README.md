@@ -25,36 +25,57 @@ npm run dev
 ```
 
 ### Access Points
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| **App** | http://localhost:3333 | - |
-| **Admin** | http://localhost:3333/admin-login | admin@cyberquiz.fr / change-this-secure-password |
-| **PgAdmin** | http://localhost:5050 | admin@admin.com / admin |
-| **API** | http://localhost:3333/api/\* | JWT-based auth |
+All URLs and credentials are configured in `.env.dev`:
+
+| Service | Configured via | Notes |
+|---------|----------------|-------|
+| **Quiz App** | `NEXT_PUBLIC_API_URL` | Default: http://localhost:3333 |
+| **Admin Panel** | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Login at: `${NEXT_PUBLIC_API_URL}/admin-login` |
+| **PgAdmin** | `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` | Default: http://localhost:5050 |
+| **API** | `JWT_SECRET` | Token signing key |
+
+---
+
+## Configuration Management
+
+### ⚠️ Important: Environment Variables
+
+**All application settings come from `.env` files:**
+- `.env.dev` - Development environment (Docker Compose)  
+- `.env.local` - Production environment
+- `.env.local.example` - Template for production
+
+**Never hardcode values** - they're always injected from `.env`.
 
 ---
 
 ## What Gets Set Up
 
 ### 🐘 PostgreSQL (Port 5432)
+- **Connection**: `${DATABASE_URL}` from `.env.dev`
+- **Host**: `${DB_HOST}` (default: `postgres`)
+- **Database**: `${DB_NAME}` (default: `cyberquiz`)
+- **User**: `${DB_USER}` (default: `cyberquiz`)
 - Relational database with pre-seeded questions
 - 20+ cybersecurity questions across 9 categories
-- Admin user auto-created on first run
 
 ### 🤖 Ollama AI (Port 11434)
-- **llama3.1:8b** - Question generation & explanations
-- **nomic-embed-text** - Text embeddings for similarity detection
-- Models auto-downloaded on container startup
+- **API URL**: `${OLLAMA_API_URL}` from `.env.dev` (default: `http://ollama:11434`)
+- **Generation Model**: `${GENERATION_MODEL}` (default: `llama3.1:8b`)
+- **Embedding Model**: `${EMBEDDING_MODEL}` (default: `nomic-embed-text`)
+- Models auto-downloaded on startup
 - CPU-only (GPU optional for faster inference)
 
 ### 🔮 Qdrant Vector DB (Port 6333)
+- **API URL**: `${QDRANT_URL}` from `.env.dev` (default: `http://qdrant:6333`)
+- **API Key**: `${QDRANT_API_KEY}` from `.env.dev`
 - Semantic search for duplicate detection
 - 768-dimension embeddings
-- Similarity-based question filtering
 
 ### 🛠️ PgAdmin Web UI (Port 5050)
-- PostgreSQL database administration
-- Pre-configured with cyberquiz database
+- **Email**: `${PGADMIN_DEFAULT_EMAIL}` from `.env.dev`
+- **Password**: `${PGADMIN_DEFAULT_PASSWORD}` from `.env.dev`
+- PostgreSQL database administration interface
 
 ---
 
@@ -123,8 +144,10 @@ npm run lint                           # Check code quality
 
 ### Admin Panel
 ```bash
-# Login: http://localhost:3333/admin-login
-# Credentials: admin@cyberquiz.fr / change-this-secure-password
+# Login URL: http://localhost:3333/admin-login
+# Configured in .env.dev:
+# - Email: ADMIN_EMAIL
+# - Password: ADMIN_PASSWORD
 # Review questions, manage settings, monitor generation
 ```
 
@@ -163,11 +186,12 @@ npm run lint                           # Check code quality
 ## Tech Stack
 
 - **Frontend**: Next.js 16, React 18, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend**: Node.js, Prisma ORM, OpenAPI
-- **Database**: PostgreSQL 15, Qdrant (vector store)
-- **AI**: Ollama (self-hosted), optional OpenAI fallback
-- **Auth**: JWT tokens (8h expiry), bcrypt password hashing
-- **Logging**: Winston structured logging with audit trail
+- **Backend**: Node.js, Prisma ORM
+- **Database**: PostgreSQL 15 (connection via `DATABASE_URL` from `.env.dev`)
+- **Vector DB**: Qdrant (accessed via `QDRANT_URL` from `.env.dev`)
+- **AI**: Ollama (accessed via `OLLAMA_API_URL` from `.env.dev`)
+- **Auth**: JWT tokens (`JWT_SECRET` from `.env.dev`), bcrypt password hashing
+- **Logging**: Winston structured logging
 
 ---
 
