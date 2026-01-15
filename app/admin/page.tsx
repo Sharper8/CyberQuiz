@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Sparkles, Plus, Trash2, LogOut } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Badge } from "@/components/ui/badge";
-import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -26,11 +25,11 @@ import {
 } from "@/components/ui/dialog";
 
 export default function AdminPage() {
-  const { loading: authLoading, logout } = useAdmin();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
+  const [generationCount, setGenerationCount] = useState(5);
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -43,16 +42,22 @@ export default function AdminPage() {
     current?: number;
     total?: number;
   } | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!authLoading) {
-      fetchQuestions();
-    }
-  }, [authLoading]);
+    fetchQuestions();
+
+    // Cleanup on unmount: abort any ongoing generation
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const fetchQuestions = async () => {
     try {
-      const data = await api.getQuestions();
+      const data = await api.getQuestions({ includeRejected: true });
       setQuestions(data);
     } catch (error: any) {
       toast.error("Erreur lors du chargement des questions");
@@ -61,18 +66,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      // Always soft delete by marking as rejected
-      await api.updateQuestion(id.toString(), { status: 'rejected' });
-      setQuestions(questions.map(q => 
-        q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
-      ));
-      toast.success("Question rejetée");
-    } catch (error: any) {
-      toast.error("Erreur lors du rejet");
-    }
-  };
+
 
   const handleAccept = async (id: number) => {
     try {
@@ -88,8 +82,11 @@ export default function AdminPage() {
 
   const handleReject = async (id: number) => {
     try {
-      await api.deleteQuestion(id.toString());
-      setQuestions(questions.filter(q => q.id !== id));
+      // Mark as rejected (soft delete - moves to rejected pool)
+      await api.updateQuestion(id.toString(), { status: 'rejected' });
+      setQuestions(questions.map(q => 
+        q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
+      ));
       toast.success("Question rejetée");
     } catch (error: any) {
       toast.error("Erreur lors du rejet");
@@ -115,16 +112,21 @@ export default function AdminPage() {
     setGenerating(true);
     setGenerationProgress({ step: 'init', message: 'Démarrage...' });
     
+    // Create abort controller for this generation request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+    
     try {
       // Use streaming endpoint for real-time progress
       const response = await fetch('/api/questions/generate-stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        signal: abortController.signal,
         body: JSON.stringify({
           topic: 'Cybersécurité',
           difficulty: 'medium',
-          count: 5
+          count: generationCount
         }),
       });
 
@@ -153,34 +155,44 @@ export default function AdminPage() {
             const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
             if (eventMatch) {
               const [, event, dataStr] = eventMatch;
-              const data = JSON.parse(dataStr);
+              try {
+                const data = JSON.parse(dataStr);
 
-              if (event === 'progress') {
-                setGenerationProgress(data);
-                toast.info(data.message, { duration: 2000 });
-              } else if (event === 'complete') {
-                toast.success('Questions générées avec succès!');
-                await fetchQuestions();
-              } else if (event === 'error') {
-                toast.error(data.message);
+                if (event === 'progress') {
+                  setGenerationProgress(data);
+                  toast.info(data.message, { duration: 2000 });
+                } else if (event === 'complete') {
+                  toast.success('Questions générées avec succès!');
+                  await fetchQuestions();
+                  setGenerating(false);
+                  setGenerationProgress(null);
+                } else if (event === 'error') {
+                  toast.error(data.message);
+                  setGenerating(false);
+                  setGenerationProgress(null);
+                }
+              } catch (parseError) {
+                console.error('Failed to parse event data:', parseError);
               }
             }
           }
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la génération");
-    } finally {
+      // Don't show error toast if the error was due to abort (page refresh/unmount)
+      if (error.name !== 'AbortError') {
+        toast.error(error.message || "Erreur lors de la génération");
+      }
       setGenerating(false);
       setGenerationProgress(null);
     }
   };
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center py-24">
         <div className="text-center">
-          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
           <p className="text-muted-foreground">Chargement...</p>
         </div>
       </div>
@@ -201,21 +213,12 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-4xl font-bold text-gradient mb-2">Interface Admin</h1>
-            <p className="text-muted-foreground">Gestion de la banque de questions</p>
-          </div>
-          <div className="flex gap-3">
-            <CyberButton variant="secondary" size="lg" onClick={logout}>
-              <LogOut className="h-5 w-5 mr-2" />
-              Déconnexion
-            </CyberButton>
-          </div>
-        </div>
+    <div className="max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-4xl font-bold text-gradient mb-2">Interface Admin</h1>
+        <p className="text-muted-foreground">Gestion de la banque de questions</p>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -298,24 +301,39 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
 
-          <CyberButton
-            variant="secondary"
-            size="lg"
-            onClick={handleGenerateQuestions}
-            disabled={generating}
-          >
-            {generating ? (
-              <>
-                <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                {generationProgress?.message || "Génération..."}
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-5 w-5 mr-2" />
-                Générer avec IA
-              </>
-            )}
-          </CyberButton>
+          <div className="flex gap-4 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="generation-count">Nombre de questions à générer</Label>
+              <Input
+                id="generation-count"
+                type="number"
+                min="1"
+                max="50"
+                value={generationCount}
+                onChange={(e) => setGenerationCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                disabled={generating}
+                className="w-24"
+              />
+            </div>
+            <CyberButton
+              variant="secondary"
+              size="lg"
+              onClick={handleGenerateQuestions}
+              disabled={generating}
+            >
+              {generating ? (
+                <>
+                  <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
+                  {generationProgress?.message || "Génération..."}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Générer avec IA
+                </>
+              )}
+            </CyberButton>
+          </div>
         </div>
 
         {/* Generation Progress Display */}
@@ -455,12 +473,38 @@ export default function AdminPage() {
                         Réponse correcte : <span className="font-semibold text-foreground">
                           {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
-                        {question.difficulty && (
-                          <span className="ml-4">
-                            Difficulté: {(Number(question.difficulty) * 100).toFixed(0)}%
-                          </span>
-                        )}
                       </p>
+                      
+                      {/* Similarity section - displayed directly */}
+                      {question.potentialDuplicates && Array.isArray(question.potentialDuplicates) && question.potentialDuplicates.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <p className="text-sm font-semibold text-cyber-orange mb-2">
+                            ⚠️ Questions similaires détectées ({question.potentialDuplicates.length})
+                          </p>
+                          <div className="space-y-2 text-xs">
+                            {question.potentialDuplicates.slice(0, 3).map((dup, idx) => {
+                              const similarQuestion = questions.find(q => q.id === dup.id);
+                              return (
+                                <div key={idx} className="bg-muted/50 rounded p-2 space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-cyber-orange">→</span>
+                                    <span className="font-semibold">ID: {dup.id}</span>
+                                    <span className="text-primary font-semibold">({(dup.similarity * 100).toFixed(0)}% similaire)</span>
+                                  </div>
+                                  {similarQuestion && (
+                                    <p className="text-muted-foreground pl-4 italic">
+                                      "{similarQuestion.questionText.substring(0, 150)}{similarQuestion.questionText.length > 150 ? '...' : ''}"
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {question.potentialDuplicates.length > 3 && (
+                              <p className="pl-2 text-muted-foreground">+{question.potentialDuplicates.length - 3} autres</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       {question.status === 'to_review' && (
@@ -481,12 +525,22 @@ export default function AdminPage() {
                           </CyberButton>
                         </>
                       )}
-                      {question.status !== 'rejected' && (
+                      {question.status === 'accepted' && (
                         <CyberButton
-                          variant="outline"
-                          onClick={() => handleDelete(question.id)}
+                          variant="incorrect"
+                          onClick={() => handleReject(question.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Déplacer vers rejetées
+                        </CyberButton>
+                      )}
+                      {question.status === 'rejected' && (
+                        <CyberButton
+                          variant="correct"
+                          onClick={() => handleAccept(question.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Déplacer vers acceptées
                         </CyberButton>
                       )}
                     </div>
@@ -496,7 +550,6 @@ export default function AdminPage() {
             })
           )}
         </div>
-      </div>
     </div>
   );
 }

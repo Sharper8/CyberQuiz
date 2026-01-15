@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { UsernameSchema } from '@/lib/validators/username';
 import { initializeQuizSession } from '@/lib/services/quiz-engine';
 import { logAuthEvent } from '@/lib/logging/logger';
+import { containsBannedWord } from '@/lib/services/banned-words';
 
 /**
  * POST /api/quiz/start
@@ -14,11 +15,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { username } = body;
 
-    // Validate username
+    // Validate username format
     const validation = UsernameSchema.safeParse(username);
     if (!validation.success) {
       return NextResponse.json(
         { error: 'Invalid username format', details: validation.error.errors },
+        { status: 400 }
+      );
+    }
+
+    // Check for banned words (both hardcoded and database)
+    const isBanned = await containsBannedWord(validation.data);
+    if (isBanned) {
+      return NextResponse.json(
+        { error: 'Username contains inappropriate language or is banned' },
         { status: 400 }
       );
     }

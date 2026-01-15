@@ -3,6 +3,8 @@ import { qdrant, upsertEmbedding, searchSimilar } from '../db/qdrant';
 import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
+import { Decimal } from '@prisma/client/runtime/library';
+import crypto from 'crypto';
 
 interface GenerationContext {
   topic: string;
@@ -12,14 +14,70 @@ interface GenerationContext {
 }
 
 const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
+const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
+
+/**
+ * Generate a hash from normalized question text for exact duplicate detection
+ */
+function generateQuestionHash(questionText: string): string {
+  // Normalize: lowercase, remove extra spaces, punctuation
+  const normalized = questionText
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')    // Normalize spaces
+    .trim();
+  
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+/**
+ * Log duplicate detection for analytics
+ */
+async function logDuplicate(
+  questionHash: string,
+  attemptedText: string,
+  detectionMethod: 'hash' | 'embedding' | 'both',
+  topic: string,
+  originalQuestionId?: number,
+  similarityScore?: number
+): Promise<void> {
+  try {
+    await prisma.duplicateLog.create({
+      data: {
+        questionHash,
+        originalQuestionId,
+        attemptedText,
+        detectionMethod,
+        similarityScore: similarityScore ? new Decimal(similarityScore) : null,
+        topic,
+      },
+    });
+  } catch (error) {
+    console.error('[DuplicateLog] Failed to log duplicate:', error);
+    // Don't throw - logging failure shouldn't break generation
+  }
+}
+
+/**
+ * Find similar questions for admin review (semantic similarity)
+ * Returns questions with similarity > threshold
+ */
+async function findSimilarQuestions(embedding: number[]): Promise<Array<{id: number, similarity: number}>> {
+  const results = await searchSimilar(embedding, 10);
+  
+  // Filter out exact duplicates (above 0.95) and only show semantic similarities (0.75-0.95)
+  return results
+    .filter(r => r.score > SEMANTIC_SIMILARITY_THRESHOLD && r.score <= DUPLICATE_SIMILARITY_THRESHOLD)
+    .map(r => ({ id: r.id, similarity: Number(r.score.toFixed(2)) }));
+}
 
 /**
  * Generate a single question with duplicate detection and regeneration on duplicate
  * On duplicate, retry with increased temperature and more context
  */
-async function generateSingleQuestion(context: GenerationContext): Promise<any> {
+async function generateSingleQuestion(context: GenerationContext): Promise<{ question: any; embedding: number[]; questionHash: string }> {
   const { topic, difficulty, attemptCount, provider } = context;
 
   // Build prompt with more context on retries
@@ -45,15 +103,60 @@ async function generateSingleQuestion(context: GenerationContext): Promise<any> 
   // Extract first question if array
   const question = Array.isArray(generated) ? generated[0] : generated;
 
+  // Generate hash for exact duplicate detection
+  const questionHash = generateQuestionHash(question.questionText);
+
+  // Check for exact hash match (fastest check)
+  const existingByHash = await prisma.question.findFirst({
+    where: { 
+      questionHash,
+      isRejected: false, // Don't count rejected questions
+    },
+    select: { id: true },
+  });
+
+  if (existingByHash) {
+    // Log hash-based duplicate
+    await logDuplicate(
+      questionHash,
+      question.questionText,
+      'hash',
+      topic,
+      existingByHash.id
+    );
+
+    if (attemptCount < MAX_GENERATION_RETRIES) {
+      console.info(
+        `[QuestionGenerator] Exact duplicate detected via hash (ID: ${existingByHash.id}), retrying with more context (attempt ${attemptCount + 1})`
+      );
+      return generateSingleQuestion({
+        ...context,
+        attemptCount: attemptCount + 1,
+      });
+    } else {
+      throw new Error(`Failed to generate unique question after ${MAX_GENERATION_RETRIES} attempts (exact hash duplicates detected)`);
+    }
+  }
+
   // Generate embedding
   const embedding = await provider.generateEmbedding(question.questionText);
 
-  // Check for duplicates
+  // Check for semantic duplicates (slower, more nuanced)
   const similar = await searchSimilar(embedding, 1);
   if (similar.length > 0 && similar[0].score > DUPLICATE_SIMILARITY_THRESHOLD) {
+    // Log embedding-based duplicate
+    await logDuplicate(
+      questionHash,
+      question.questionText,
+      'embedding',
+      topic,
+      similar[0].id,
+      similar[0].score
+    );
+
     if (attemptCount < MAX_GENERATION_RETRIES) {
       console.info(
-        `[QuestionGenerator] Duplicate detected (similarity: ${similar[0].score}), retrying with more context (attempt ${attemptCount + 1})`
+        `[QuestionGenerator] Semantic duplicate detected (similarity: ${similar[0].score}), retrying with more context (attempt ${attemptCount + 1})`
       );
       // Recursive retry with incremented attempt count
       return generateSingleQuestion({
@@ -61,11 +164,11 @@ async function generateSingleQuestion(context: GenerationContext): Promise<any> 
         attemptCount: attemptCount + 1,
       });
     } else {
-      throw new Error(`Failed to generate unique question after ${MAX_GENERATION_RETRIES} attempts (duplicates detected)`);
+      throw new Error(`Failed to generate unique question after ${MAX_GENERATION_RETRIES} attempts (semantic duplicates detected)`);
     }
   }
 
-  return { question, embedding };
+  return { question, embedding, questionHash };
 }
 
 /**
@@ -106,30 +209,43 @@ export async function generateQuestionsForCache(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
+      // Ensure validation scores are numbers with safe defaults
+      const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+      const validationScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+
+      // Find similar questions in the database (calculate similarity for ALL states)
+      const potentialDuplicates = await findSimilarQuestions(embedding);
+      
       // Store in database with to_review status
       const stored = await prisma.question.create({
         data: {
           questionText: question.questionText,
           options: question.options,
-          correctAnswer: question.correctAnswer,
+          // Normalize to string for Prisma schema
+          correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
-          difficulty: new Decimal(question.estimatedDifficulty),
-          qualityScore: new Decimal(validation.qualityScore),
+          difficulty: new Decimal(question.estimatedDifficulty || 0.5),
+          qualityScore: new Decimal(qualityScore),
           category: topic,
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
+          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`, // Placeholder; will be set by Qdrant
-              validationScore: new Decimal(validation.qualityScore),
+              validationScore: new Decimal(validationScore),
               validatorModel: provider.name,
             },
           },
         },
       });
+
+      if (potentialDuplicates.length > 0) {
+        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
+      }
 
       // Upsert embedding
       await upsertEmbedding(stored.id, embedding, {
@@ -151,6 +267,7 @@ export async function generateQuestionsForCache(
 
   console.info(`[QuestionGenerator] Generated ${generated.length} questions for "${topic}" cache`);
   return cacheCount + generated.length;
+
 }
 
 /**
@@ -204,7 +321,7 @@ export async function generateQuestionsWithProgress(
         total: targetCount
       });
 
-      const { question, embedding } = await generateSingleQuestion({
+      const { question, embedding, questionHash } = await generateSingleQuestion({
         topic,
         difficulty,
         attemptCount: 0,
@@ -221,6 +338,13 @@ export async function generateQuestionsWithProgress(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
+      // Ensure validation scores are numbers with safe defaults
+      const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+      const validationScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+
+      // Find similar questions in the database (calculate similarity for ALL states)
+      const potentialDuplicates = await findSimilarQuestions(embedding);
+
       onProgress?.({ 
         step: 'storing', 
         message: `Enregistrement de la question ${i + 1}/${targetCount}...`,
@@ -232,26 +356,33 @@ export async function generateQuestionsWithProgress(
       const stored = await prisma.question.create({
         data: {
           questionText: question.questionText,
+          questionHash, // Store hash for future duplicate detection
           options: question.options,
-          correctAnswer: question.correctAnswer,
+          // Normalize to string for Prisma schema
+          correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty),
-          qualityScore: new Decimal(validation.qualityScore),
+          qualityScore: new Decimal(qualityScore),
           category: topic,
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
+          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`,
-              validationScore: new Decimal(validation.qualityScore),
+              validationScore: new Decimal(validationScore),
               validatorModel: provider.name,
             },
           },
         },
       });
+
+      if (potentialDuplicates.length > 0) {
+        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
+      }
 
       // Upsert embedding
       await upsertEmbedding(stored.id, embedding, {
@@ -293,5 +424,154 @@ export async function generateQuestionsWithProgress(
   return cacheCount + generated.length;
 }
 
-// Import Decimal from prisma for type safety
-import { Decimal } from '@prisma/client/runtime/library';
+/**
+ * Generate questions to maintain target pool size based on settings
+ * Logs generation activity to GenerationLog table
+ */
+export async function generateToMaintainPool(
+  provider: AIProvider,
+  topic?: string,
+  difficulty?: 'easy' | 'medium' | 'hard'
+): Promise<{ poolSize: number; generatedCount: number; failedCount: number; durationMs: number }> {
+  const startTime = Date.now();
+
+  try {
+    // Get generation settings
+    let settings = await prisma.generationSettings.findFirst();
+    if (!settings) {
+      settings = await prisma.generationSettings.create({
+        data: {
+          targetPoolSize: 50,
+          autoGenerateEnabled: true,
+          generationTopic: 'Cybersecurity',
+          generationDifficulty: 'medium',
+          maxConcurrentGeneration: 5,
+        },
+      });
+    }
+
+    if (!settings.autoGenerateEnabled) {
+      return { poolSize: 0, generatedCount: 0, failedCount: 0, durationMs: Date.now() - startTime };
+    }
+
+    const generationTopic = topic || settings.generationTopic;
+    const generationDifficulty = difficulty || (settings.generationDifficulty as 'easy' | 'medium' | 'hard');
+    const targetSize = settings.targetPoolSize;
+    const maxBatchSize = settings.maxConcurrentGeneration;
+
+    // Get current pool size
+    const poolSize = await prisma.question.count({
+      where: {
+        category: generationTopic,
+        status: 'to_review',
+        isRejected: false,
+      },
+    });
+
+    const poolSizeBeforeGen = poolSize;
+
+    if (poolSize >= targetSize) {
+      console.info(`[PoolMaintenance] Pool size (${poolSize}) already meets target (${targetSize})`);
+      return { poolSize, generatedCount: 0, failedCount: 0, durationMs: Date.now() - startTime };
+    }
+
+    const neededCount = Math.min(targetSize - poolSize, maxBatchSize);
+    console.info(`[PoolMaintenance] Generating ${neededCount} questions to reach target of ${targetSize}`);
+
+    let generatedCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < neededCount; i++) {
+      try {
+        const { question, embedding } = await generateSingleQuestion({
+          topic: generationTopic,
+          difficulty: generationDifficulty,
+          attemptCount: 0,
+          provider,
+        });
+
+        const validation = await provider.validateQuestion(question);
+        const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+
+        // Find similar questions
+        const potentialDuplicates = await findSimilarQuestions(embedding);
+
+        const stored = await prisma.question.create({
+          data: {
+            questionText: question.questionText,
+            options: question.options,
+            correctAnswer: String(question.correctAnswer),
+            explanation: question.explanation,
+            difficulty: new Decimal(question.estimatedDifficulty || 0.5),
+            qualityScore: new Decimal(qualityScore),
+            category: generationTopic,
+            questionType: 'true-false',
+            status: 'to_review',
+            aiProvider: provider.name,
+            mitreTechniques: question.mitreTechniques || [],
+            tags: question.tags || [],
+            potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
+            metadata: {
+              create: {
+                embeddingId: `q_${Date.now()}_${i}`,
+                validationScore: new Decimal(qualityScore),
+                validatorModel: provider.name,
+              },
+            },
+          },
+        });
+
+        if (potentialDuplicates.length > 0) {
+          console.info(`[PoolMaintenance] Found ${potentialDuplicates.length} similar questions for review`);
+        }
+
+        await upsertEmbedding(stored.id, embedding, {
+          question_id: stored.id,
+          question_text: question.questionText,
+          category: generationTopic,
+          difficulty: question.estimatedDifficulty,
+          tags: question.tags || [],
+          created_at: new Date().toISOString(),
+        });
+
+        generatedCount++;
+      } catch (error) {
+        console.error(`[PoolMaintenance] Failed to generate question ${i + 1}:`, error);
+        failedCount++;
+      }
+    }
+
+    const durationMs = Date.now() - startTime;
+    const poolSizeAfterGen = await prisma.question.count({
+      where: {
+        category: generationTopic,
+        status: 'to_review',
+        isRejected: false,
+      },
+    });
+
+    // Log the generation activity
+    await prisma.generationLog.create({
+      data: {
+        settingsId: settings.id,
+        topic: generationTopic,
+        difficulty: generationDifficulty,
+        batchSize: neededCount,
+        generatedCount,
+        savedCount: generatedCount,
+        failedCount,
+        poolSizeBeforeGen,
+        poolSizeAfterGen,
+        durationMs,
+        completedAt: new Date(),
+      },
+    });
+
+    console.info(`[PoolMaintenance] Generated ${generatedCount} questions in ${durationMs}ms`);
+    return { poolSize: poolSizeAfterGen, generatedCount, failedCount, durationMs };
+  } catch (error) {
+    console.error('[PoolMaintenance] Error:', error);
+    throw error;
+  }
+}
+

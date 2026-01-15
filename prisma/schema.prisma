@@ -14,6 +14,7 @@ datasource db {
 model Question {
   id              Int               @id @default(autoincrement())
   questionText    String            @db.Text
+  questionHash    String?           // SHA-256 hash of normalized question text for exact duplicate detection
   options         Json              // For T/F: ["True", "False"]; user gets right/wrong feedback
   correctAnswer   String
   explanation     String            @db.Text
@@ -26,6 +27,7 @@ model Question {
   aiProvider      String            // ollama | openai | anthropic
   mitreTechniques Json?             // ["T1059", ...]
   tags            Json?             // ["privilege-escalation", ...]
+  potentialDuplicates Json?        // [{id: 123, similarity: 0.85}, ...] for admin review
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   metadata        QuestionMetadata?
@@ -37,6 +39,7 @@ model Question {
   @@index([status])
   @@index([isRejected])
   @@index([createdAt])
+  @@index([questionHash])
 }
 
 model QuestionMetadata {
@@ -129,4 +132,58 @@ model AdminUser {
   role         String    @default("admin")
   createdAt    DateTime  @default(now())
   lastLoginAt  DateTime?
+}
+model GenerationSettings {
+  id                    Int       @id @default(autoincrement())
+  targetPoolSize        Int       @default(50) // Target number of to_review questions to maintain
+  autoGenerateEnabled   Boolean   @default(true) // Enable auto-generation when pool falls below target
+  generationTopic       String    @default("Cybersecurity") // Default topic for auto-generation
+  generationDifficulty  String    @default("medium") // default|easy|medium|hard
+  maxConcurrentGeneration Int    @default(5) // Max questions to generate in one batch
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  generationLogs        GenerationLog[]
+}
+
+model BannedWord {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  reason    String?  // Optional reason for banning
+  createdAt DateTime @default(now())
+  createdBy String?  // Admin who banned it
+
+  @@index([word])
+}
+
+model DuplicateLog {
+  id                 Int       @id @default(autoincrement())
+  questionHash       String    // Hash that was duplicated
+  originalQuestionId Int?      // Original question ID if found
+  attemptedText      String    @db.Text // The text that was attempted to generate
+  detectionMethod    String    // "hash" | "embedding" | "both"
+  similarityScore    Decimal?  @db.Decimal(5,2) // If detected via embedding
+  topic              String
+  createdAt          DateTime  @default(now())
+
+  @@index([questionHash])
+  @@index([createdAt])
+  @@index([topic])
+}
+
+model GenerationLog {
+  id                 Int       @id @default(autoincrement())
+  settingsId         Int
+  settings           GenerationSettings @relation(fields: [settingsId], references: [id])
+  topic              String
+  difficulty         String
+  batchSize          Int
+  generatedCount     Int
+  savedCount         Int
+  failedCount        Int
+  poolSizeBeforeGen  Int
+  poolSizeAfterGen   Int
+  durationMs         Int
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
+  error              String?
 }

@@ -56,7 +56,9 @@ function extractJSONFromStreamed(raw: string): any {
   const slice = fullResponse.slice(start, end + 1);
   
   try {
-    return JSON.parse(slice);
+    // Clean out line comments the model sometimes adds (e.g. "// Command and Control")
+    const cleaned = slice.replace(/\/\/.*$/gm, '');
+    return JSON.parse(cleaned);
   } catch (e) {
     console.error('Failed to parse JSON slice:', slice);
     throw new Error(`Invalid JSON in model output: ${e}`);
@@ -81,8 +83,27 @@ export class OllamaProvider implements AIProvider {
   async isAvailable(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/api/tags`);
-      return res.ok;
-    } catch {
+      if (!res.ok) {
+        console.warn(`[Ollama] Tags endpoint returned ${res.status}`);
+        return false;
+      }
+      
+      // Check if required models are loaded
+      const data = await res.json();
+      const models = data.models || [];
+      
+      console.debug(`[Ollama] Available models: ${models.map((m: any) => m.name).join(', ')}`);
+      console.debug(`[Ollama] Looking for: ${this.generationModel}, ${this.embeddingModel}`);
+      
+      const hasGenerationModel = models.some((m: any) => m.name.includes(this.generationModel.split(':')[0]));
+      const hasEmbeddingModel = models.some((m: any) => m.name.includes(this.embeddingModel.split(':')[0]));
+      
+      const available = hasGenerationModel && hasEmbeddingModel;
+      console.log(`[Ollama] Provider availability: ${available} (generation: ${hasGenerationModel}, embedding: ${hasEmbeddingModel})`);
+      
+      return available;
+    } catch (error) {
+      console.error(`[Ollama] isAvailable check failed:`, error);
       return false;
     }
   }
@@ -105,7 +126,13 @@ export class OllamaProvider implements AIProvider {
         options: { temperature: 0.7 }
       })
     });
-    if (!res.ok) throw new Error(`Generation failed ${res.status}`);
+    
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error(`Model ${this.generationModel} not loaded yet. Please wait for Ollama to finish downloading models.`);
+      }
+      throw new Error(`Generation failed ${res.status}`);
+    }
 
     // Stream accumulate
     const reader = res.body!.getReader();
@@ -147,12 +174,14 @@ export class OllamaProvider implements AIProvider {
 
     // Validation model may respond with raw text containing JSON
     const data = typeof res === 'string' ? extractJSONFromStreamed(res) : res;
+    
+    // Ensure all scoring fields have safe numeric defaults (0-1 range)
     return {
-      qualityScore: data.qualityScore,
-      factualAccuracy: data.factualAccuracy,
-      clarityScore: data.clarityScore,
-      issues: data.issues || [],
-      recommendation: data.recommendation
+      qualityScore: typeof data?.qualityScore === 'number' ? data.qualityScore : 0.7,
+      factualAccuracy: typeof data?.factualAccuracy === 'number' ? data.factualAccuracy : 0.7,
+      clarityScore: typeof data?.clarityScore === 'number' ? data.clarityScore : 0.7,
+      issues: Array.isArray(data?.issues) ? data.issues : [],
+      recommendation: data?.recommendation || 'approve'
     };
   }
 

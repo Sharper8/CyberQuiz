@@ -9,7 +9,6 @@ WORKDIR /app
 # Copy package files
 COPY package.json package-lock.json* ./
 RUN npm ci
-
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
@@ -19,15 +18,22 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
+# Provide dummy env vars for build (runtime values come from .env.dev)
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/cyberquiz"
+ENV JWT_SECRET="build-time-dummy-secret-minimum-32-chars-long-xxxx"
+ENV NODE_ENV=production
+
 # Build Next.js
 RUN npm run build
 
 # Production image, copy all the files and run next
+# Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default)
+# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default) and Prisma CLI globally for migrations at runtime
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN npm install -g prisma@5.22.0
 
 ENV NODE_ENV=production
 
@@ -39,6 +45,10 @@ COPY --from=builder /app/public ./public
 # Set the correct permission for prerender cache
 RUN mkdir .next
 RUN chown nextjs:nodejs .next
+
+# Create logs directory for runtime
+RUN mkdir logs
+RUN chown nextjs:nodejs logs
 
 # Automatically leverage output traces to reduce image size
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./

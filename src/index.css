@@ -55,6 +55,73 @@ All colors MUST be HSL.
     --cyber-purple: 270 70% 60%;
     --cyber-red: 0 84% 60%;
   }
+
+  /* 1. PROTANOPIE (Déficit Rouge) - Éviter le rouge/vert, utiliser le Bleu/Jaune */
+  .cb-protanopia {
+    --secondary: 215 100% 50% !important;   /* Bleu Royal pour Succès */
+    --cyber-green: 215 100% 50% !important;
+    --destructive: 50 100% 45% !important;   /* Jaune Ambre pour Erreur */
+    --cyber-red: 50 100% 45% !important;
+    --primary: 200 40% 60% !important;      /* Bleu Ciel Neutre */
+    --secondary-foreground: 0 0% 100% !important;
+    --destructive-foreground: 0 0% 0% !important;
+  }
+
+  /* 2. DEUTÉRANOPIE (Déficit Vert) - Éviter le rouge/vert, utiliser le Bleu Profond/Orange */
+  .cb-deuteranopia {
+    --secondary: 230 100% 45% !important;   /* Bleu Outremer pour Succès */
+    --cyber-green: 230 100% 45% !important;
+    --destructive: 35 100% 50% !important;   /* Orange Vif pour Erreur */
+    --cyber-red: 35 100% 50% !important;
+    --primary: 220 20% 50% !important;      /* Gris Bleuté Neutre */
+    --secondary-foreground: 0 0% 100% !important;
+    --destructive-foreground: 0 0% 0% !important;
+  }
+
+  /* 3. TRITANOPIE (Déficit Bleu/Jaune) - Éviter bleu/jaune, utiliser Cyan/Rose-Rouge */
+  .cb-tritanopia {
+    --secondary: 180 100% 40% !important;   /* Cyan Sombre pour Succès */
+    --cyber-green: 180 100% 40% !important;
+    --destructive: 330 100% 50% !important;  /* Rose Magenta pour Erreur (remplace le rouge confondu) */
+    --cyber-red: 330 100% 50% !important;
+    --primary: 0 0% 90% !important;         /* Gris Très Clair Neutre */
+    --secondary-foreground: 0 0% 100% !important;
+    --destructive-foreground: 0 0% 100% !important;
+  }
+
+  /* 4. ACHROMATOPSIE (Achromatique) - Noir, Gris et Blanc avec forts contrastes */
+  .cb-achromatopsia {
+    --secondary: 0 0% 100% !important;      /* Blanc Pur pour Succès */
+    --cyber-green: 0 0% 100% !important;
+    --destructive: 0 0% 40% !important;      /* Gris Moyen pour Erreur */
+    --cyber-red: 0 0% 40% !important;
+    --primary: 0 0% 70% !important;         /* Gris Clair pour Neutre */
+    --background: 0 0% 0% !important;       /* Fond Noir pour réduire la sensibilité lumineuse */
+    --foreground: 0 0% 100% !important;
+    --secondary-foreground: 0 0% 0% !important;
+    --destructive-foreground: 0 0% 100% !important;
+  }
+
+  .high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --border: 0 0% 100%;
+    --primary: 217 100% 70%;
+    --secondary: 142 100% 70%;
+    --card: 0 0% 5%;
+    --muted-foreground: 0 0% 90%;
+  }
+
+  .low-power * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .low-power {
+    --glow-blue: none;
+    --glow-green: none;
+  }
 }
 
 @layer base {
@@ -95,6 +162,19 @@ All colors MUST be HSL.
     100% {
       transform: translateY(100%);
     }
+  }
+
+  @keyframes spin-slow {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 20s linear infinite;
   }
 
   .animate-pulse-glow {

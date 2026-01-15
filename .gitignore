@@ -8,7 +8,7 @@ build/
 
 # Environment files
 .env
-.env.local
+.env
 .env.*.local
 
 # OS and editor junk
@@ -23,3 +23,4 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 bun-debug.log*
+.env.dev

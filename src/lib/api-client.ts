@@ -19,6 +19,7 @@ export interface Question {
   createdAt: string;
   updatedAt: string;
   metadata?: any;
+  potentialDuplicates?: Array<{id: number; similarity: number}> | null;
   
   // Legacy fields for backward compatibility
   question?: string;
@@ -49,11 +50,20 @@ class ApiClient {
   private baseUrl = '/api';
 
   // Questions
-  async getQuestions(validated?: boolean): Promise<Question[]> {
-    const url = validated !== undefined 
-      ? `${this.baseUrl}/questions?validated=${validated}`
+  async getQuestions(params?: {
+    validated?: boolean;
+    status?: 'to_review' | 'accepted' | 'rejected';
+    includeRejected?: boolean;
+  }): Promise<Question[]> {
+    const search = new URLSearchParams();
+    if (params?.validated !== undefined) search.set('validated', String(params.validated));
+    if (params?.status) search.set('status', params.status);
+    if (params?.includeRejected) search.set('includeRejected', 'true');
+
+    const url = search.toString()
+      ? `${this.baseUrl}/questions?${search.toString()}`
       : `${this.baseUrl}/questions`;
-      
+    
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch questions');
     return res.json();
@@ -146,6 +156,33 @@ class ApiClient {
   async getCurrentUser(): Promise<{ authenticated: boolean; user?: User }> {
     const res = await fetch(`${this.baseUrl}/auth/me`);
     if (!res.ok) return { authenticated: false };
+    return res.json();
+  }
+
+  async completeQuiz(data: {
+    sessionId: number;
+    score: number;
+    totalQuestions: number;
+    timeTaken?: number;
+    topic?: string;
+  }): Promise<{ success: boolean; scoreId: number }> {
+    const res = await fetch(`${this.baseUrl}/quiz/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to complete quiz');
+    return res.json();
+  }
+
+  // Admin: Delete score (optionally ban username)
+  async deleteScore(scoreId: number, banUsername: boolean = false): Promise<{ success: boolean; message: string }> {
+    const url = `${this.baseUrl}/admin/scores/${scoreId}${banUsername ? '?banUsername=true' : ''}`;
+    const res = await fetch(url, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to delete score');
     return res.json();
   }
 }

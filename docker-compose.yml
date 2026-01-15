@@ -1,25 +1,16 @@
 services:
-  # Next.js App
+  # Next.js App (Production)
   nextjs-app:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: cyberquiz-nextjs-prod
+    env_file:
+      - .env
     ports:
       - "3100:3000"
     environment:
       - NODE_ENV=production
-      # Database
-      - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
-      # AI Providers
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - ALLOW_EXTERNAL_AI=false
-      # Qdrant Vector DB
-      - QDRANT_URL=http://qdrant:6333
-      # Auth
-      - JWT_SECRET=${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production-min-32-chars}
-      # Admin User
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@cyberquiz.fr}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,22 +21,23 @@ services:
     restart: unless-stopped
     networks:
       - cyberquiz-network
-      - reverse-proxy
 
-  # PostgreSQL Database (on-prem replacement for Supabase)
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
+    container_name: cyberquiz-postgres-prod
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: cyberquiz
-      POSTGRES_USER: cyberquiz
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cyberquiz -d cyberquiz"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -53,12 +45,15 @@ services:
     networks:
       - cyberquiz-network
 
-  # Qdrant Vector Database for semantic search
+  # Qdrant Vector Database
   qdrant:
     image: qdrant/qdrant:latest
+    container_name: cyberquiz-qdrant-prod
+    env_file:
+      - .env
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
     volumes:
       - qdrant-data:/qdrant/storage
     restart: unless-stopped
@@ -68,13 +63,18 @@ services:
   # Ollama AI Provider (local LLM)
   ollama:
     image: ollama/ollama:latest
+    container_name: cyberquiz-ollama-prod
+    env_file:
+      - .env
     ports:
       - "11434:11434"
     volumes:
       - ollama-data:/root/.ollama
+      - ./scripts/init-ollama.sh:/init-ollama.sh
     restart: unless-stopped
     networks:
       - cyberquiz-network
+    entrypoint: ["/bin/sh", "/init-ollama.sh"]
     # GPU support (optional, comment out if no GPU available)
     # deploy:
     #   resources:
@@ -83,21 +83,13 @@ services:
     #         - driver: nvidia
     #           count: all
     #           capabilities: [gpu]
-    # Pull model on first startup
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        ollama serve &
-        sleep 5
-        ollama pull llama3.1:8b
-        ollama pull nomic-embed-text
-        wait
 
   # Optional: PgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4:latest
+    container_name: cyberquiz-pgadmin-prod
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@cyberquiz.local
+      PGADMIN_DEFAULT_EMAIL: admin@cyberquiz.dev
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
@@ -126,8 +118,6 @@ services:
 networks:
   cyberquiz-network:
     driver: bridge
-  reverse-proxy:
-    external: true
 
 volumes:
   postgres-data:

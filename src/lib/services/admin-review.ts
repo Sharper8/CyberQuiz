@@ -56,7 +56,7 @@ export async function acceptQuestion(
   questionId: number,
   adminId: number,
   reason?: string
-): Promise<void> {
+): Promise<{ category: string; difficulty: number }> {
   const question = await prisma.question.findUnique({
     where: { id: questionId },
   });
@@ -82,6 +82,11 @@ export async function acceptQuestion(
     adminId,
     reason,
   });
+
+  return {
+    category: question.category,
+    difficulty: Number(question.difficulty),
+  };
 }
 
 /**
