@@ -192,9 +192,25 @@ function QuizContent() {
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
-  const saveScore = async (_finalScore: number, _totalQuestions: number) => {
-    // Persistence disabled: API endpoint removed. Implement server-side score storage later.
-    return;
+  const saveScore = async (finalScore: number, totalQuestions: number) => {
+    try {
+      const sessionId = searchParams.get('sessionId');
+      if (!sessionId) {
+        console.warn('No session ID found, skipping score save');
+        return;
+      }
+
+      await api.completeQuiz({
+        sessionId: parseInt(sessionId),
+        score: finalScore,
+        totalQuestions,
+        topic: searchParams.get('topic') || undefined,
+      });
+      toast.success('Score enregistré!');
+    } catch (error) {
+      console.error('Failed to save score:', error);
+      toast.error('Erreur lors de l\'enregistrement du score');
+    }
   };
 
   const handleAnswer = (answer: boolean | null) => {

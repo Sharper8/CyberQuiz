@@ -158,6 +158,22 @@ class ApiClient {
     if (!res.ok) return { authenticated: false };
     return res.json();
   }
+
+  async completeQuiz(data: {
+    sessionId: number;
+    score: number;
+    totalQuestions: number;
+    timeTaken?: number;
+    topic?: string;
+  }): Promise<{ success: boolean; scoreId: number }> {
+    const res = await fetch(`${this.baseUrl}/quiz/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to complete quiz');
+    return res.json();
+  }
 }
 
 export const api = new ApiClient();
