@@ -18,7 +18,7 @@ services:
       qdrant:
         condition: service_started
       ollama:
-        condition: service_started
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - cyberquiz-network
@@ -71,6 +71,12 @@ services:
     restart: unless-stopped
     networks:
       - cyberquiz-network
+    healthcheck:
+      test: ["CMD", "/bin/ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 5m
     entrypoint: ["/bin/sh", "/init-ollama.sh"]
 
 

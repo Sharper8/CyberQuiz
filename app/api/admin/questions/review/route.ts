@@ -53,9 +53,10 @@ export async function GET(request: NextRequest) {
           options: q.options,
           correctAnswer: q.correctAnswer,
           explanation: q.explanation,
-          difficulty: q.difficulty.toString(),
+          qualityScore: q.qualityScore ? Number(q.qualityScore) : null,
           category: q.category,
           aiProvider: q.aiProvider,
+          potentialDuplicates: q.potentialDuplicates,
           createdAt: q.createdAt,
         })),
         total,
@@ -110,17 +111,18 @@ export async function POST(request: NextRequest) {
         return 'hard';
       };
 
-      // Trigger background pool maintenance (don't await)
+      // Auto-generate ONE question in background to maintain pool (non-blocking)
+      // This ensures the pool always has questions ready for review
       generateToMaintainPool(
         await getAIProvider('ollama'),
         question.category,
-        difficultyMap(question.difficulty)
+        difficultyMap(Number(question.difficulty))
       ).catch((err) => {
         console.error('[AutoGenerate] Failed to maintain pool:', err);
       });
 
       return NextResponse.json(
-        { message: 'Question accepted and added to quiz pool' },
+        { message: 'Question accepted and added to quiz pool. New question generation triggered.' },
         { status: 200 }
       );
     } else if (action === 'reject') {

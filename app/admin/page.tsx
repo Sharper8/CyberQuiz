@@ -32,6 +32,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
+  const [generationCount, setGenerationCount] = useState(5);
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -138,7 +139,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           topic: 'Cybersécurité',
           difficulty: 'medium',
-          count: 5
+          count: generationCount
         }),
       });
 
@@ -324,24 +325,39 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
 
-          <CyberButton
-            variant="secondary"
-            size="lg"
-            onClick={handleGenerateQuestions}
-            disabled={generating}
-          >
-            {generating ? (
-              <>
-                <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                {generationProgress?.message || "Génération..."}
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-5 w-5 mr-2" />
-                Générer avec IA
-              </>
-            )}
-          </CyberButton>
+          <div className="flex gap-4 items-end">
+            <div className="space-y-2">
+              <Label htmlFor="generation-count">Nombre de questions à générer</Label>
+              <Input
+                id="generation-count"
+                type="number"
+                min="1"
+                max="50"
+                value={generationCount}
+                onChange={(e) => setGenerationCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                disabled={generating}
+                className="w-24"
+              />
+            </div>
+            <CyberButton
+              variant="secondary"
+              size="lg"
+              onClick={handleGenerateQuestions}
+              disabled={generating}
+            >
+              {generating ? (
+                <>
+                  <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
+                  {generationProgress?.message || "Génération..."}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Générer avec IA
+                </>
+              )}
+            </CyberButton>
+          </div>
         </div>
 
         {/* Generation Progress Display */}
@@ -481,12 +497,34 @@ export default function AdminPage() {
                         Réponse correcte : <span className="font-semibold text-foreground">
                           {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
-                        {question.difficulty && (
-                          <span className="ml-4">
-                            Difficulté: {(Number(question.difficulty) * 100).toFixed(0)}%
-                          </span>
-                        )}
                       </p>
+                      {question.qualityScore !== null && question.qualityScore !== undefined && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          <span className="font-semibold">Qualité des questions:</span> Variété • Véracité • Non-interprétable
+                          <span className="ml-2 text-primary font-semibold">({(Number(question.qualityScore) * 100).toFixed(0)}%)</span>
+                        </p>
+                      )}
+                      
+                      {/* Similarity section - displayed directly */}
+                      {question.potentialDuplicates && Array.isArray(question.potentialDuplicates) && question.potentialDuplicates.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <p className="text-sm font-semibold text-cyber-orange mb-2">
+                            ⚠️ Questions similaires détectées ({question.potentialDuplicates.length})
+                          </p>
+                          <div className="space-y-1 text-xs text-muted-foreground">
+                            {question.potentialDuplicates.slice(0, 3).map((dup, idx) => (
+                              <div key={idx} className="flex items-center gap-2 pl-2">
+                                <span className="text-cyber-orange">→</span>
+                                <span>ID: {dup.id}</span>
+                                <span className="text-primary font-semibold">({(dup.similarity * 100).toFixed(0)}% similaire)</span>
+                              </div>
+                            ))}
+                            {question.potentialDuplicates.length > 3 && (
+                              <p className="pl-2 text-muted-foreground">+{question.potentialDuplicates.length - 3} autres</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       {question.status === 'to_review' && (

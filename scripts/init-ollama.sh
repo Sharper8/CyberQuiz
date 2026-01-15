@@ -9,14 +9,22 @@ OLLAMA_PID=$!
 # Give server a moment to start
 sleep 5
 
-# Pull models in the background (don't block container startup)
-# Models will be available soon but we don't wait for completion
-echo "📥 Starting model pulls in background..."
-(/bin/ollama pull llama3.1:8b > /tmp/llama-pull.log 2>&1 && echo "✅ llama3.1:8b pulled" || echo "⚠️  llama3.1:8b pull failed") &
-sleep 2
-(/bin/ollama pull nomic-embed-text > /tmp/embed-pull.log 2>&1 && echo "✅ nomic-embed-text pulled" || echo "⚠️  nomic-embed-text pull failed") &
+# Pull models in FOREGROUND to ensure they're ready before container is marked healthy
+echo "📥 Pulling llama3.1:8b model (this may take a few minutes)..."
+if /bin/ollama pull llama3.1:8b; then
+  echo "✅ llama3.1:8b pulled successfully"
+else
+  echo "⚠️  llama3.1:8b pull failed"
+fi
 
-echo "✅ Ollama server started (models pulling in background)"
+echo "📥 Pulling nomic-embed-text model..."
+if /bin/ollama pull nomic-embed-text; then
+  echo "✅ nomic-embed-text pulled successfully"
+else
+  echo "⚠️  nomic-embed-text pull failed"
+fi
+
+echo "✅ Ollama server started and models pulled"
 
 # Keep container running
 wait $OLLAMA_PID

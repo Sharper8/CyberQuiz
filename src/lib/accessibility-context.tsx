@@ -16,17 +16,20 @@ type AccessibilityContextType = {
   updateSettings: (newSettings: Partial<AccessibilitySettings>) => void;
 };
 
+const defaultSettings: AccessibilitySettings = {
+  colorBlindMode: "none",
+  highContrast: false,
+  fontSize: "normal",
+  lowPowerMode: false,
+};
+
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
 export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<AccessibilitySettings>({
-    colorBlindMode: "none",
-    highContrast: false,
-    fontSize: "normal",
-    lowPowerMode: false,
-  });
+  const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount (client-side only to avoid hydration mismatch)
   useEffect(() => {
     const saved = localStorage.getItem("cyberquiz-a11y");
     if (saved) {
@@ -36,10 +39,13 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error("Failed to load a11y settings", e);
       }
     }
+    setIsLoaded(true);
   }, []);
 
-  // Apply settings to document element
+  // Apply settings to document element (only after client hydration)
   useEffect(() => {
+    if (!isLoaded) return; // Wait for localStorage load to avoid hydration mismatch
+    
     const root = window.document.documentElement;
     
     // Classes
@@ -61,7 +67,7 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
       "100%";
 
     localStorage.setItem("cyberquiz-a11y", JSON.stringify(settings));
-  }, [settings]);
+  }, [settings, isLoaded]);
 
   const updateSettings = (newSettings: Partial<AccessibilitySettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));

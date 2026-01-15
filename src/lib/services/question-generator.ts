@@ -125,12 +125,9 @@ export async function generateQuestionsForCache(
       const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
       const validationScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
 
-      // Find similar questions in the database (for reference, not stored yet)
+      // Find similar questions in the database (calculate similarity for ALL states)
       const potentialDuplicates = await findSimilarQuestions(embedding);
-      if (potentialDuplicates.length > 0) {
-        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
-      }
-
+      
       // Store in database with to_review status
       const stored = await prisma.question.create({
         data: {
@@ -147,6 +144,7 @@ export async function generateQuestionsForCache(
           aiProvider: provider.name,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
+          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`, // Placeholder; will be set by Qdrant
@@ -156,6 +154,10 @@ export async function generateQuestionsForCache(
           },
         },
       });
+
+      if (potentialDuplicates.length > 0) {
+        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
+      }
 
       // Upsert embedding
       await upsertEmbedding(stored.id, embedding, {
@@ -177,6 +179,7 @@ export async function generateQuestionsForCache(
 
   console.info(`[QuestionGenerator] Generated ${generated.length} questions for "${topic}" cache`);
   return cacheCount + generated.length;
+
 }
 
 /**
@@ -247,11 +250,8 @@ export async function generateQuestionsWithProgress(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
-      // Find similar questions in the database (for reference, not stored yet)
+      // Find similar questions in the database (calculate similarity for ALL states)
       const potentialDuplicates = await findSimilarQuestions(embedding);
-      if (potentialDuplicates.length > 0) {
-        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
-      }
 
       onProgress?.({ 
         step: 'storing', 
@@ -276,6 +276,7 @@ export async function generateQuestionsWithProgress(
           aiProvider: provider.name,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
+          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`,
@@ -285,6 +286,10 @@ export async function generateQuestionsWithProgress(
           },
         },
       });
+
+      if (potentialDuplicates.length > 0) {
+        console.info(`[QuestionGenerator] Found ${potentialDuplicates.length} similar questions for admin review`);
+      }
 
       // Upsert embedding
       await upsertEmbedding(stored.id, embedding, {
@@ -395,6 +400,9 @@ export async function generateToMaintainPool(
         const validation = await provider.validateQuestion(question);
         const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
 
+        // Find similar questions
+        const potentialDuplicates = await findSimilarQuestions(embedding);
+
         const stored = await prisma.question.create({
           data: {
             questionText: question.questionText,
@@ -409,6 +417,7 @@ export async function generateToMaintainPool(
             aiProvider: provider.name,
             mitreTechniques: question.mitreTechniques || [],
             tags: question.tags || [],
+            potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
             metadata: {
               create: {
                 embeddingId: `q_${Date.now()}_${i}`,
@@ -418,6 +427,10 @@ export async function generateToMaintainPool(
             },
           },
         });
+
+        if (potentialDuplicates.length > 0) {
+          console.info(`[PoolMaintenance] Found ${potentialDuplicates.length} similar questions for review`);
+        }
 
         await upsertEmbedding(stored.id, embedding, {
           question_id: stored.id,

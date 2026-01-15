@@ -9,12 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import CyberBackground from "@/components/CyberBackground";
-import dynamic from "next/dynamic";
-
-const Leaderboard = dynamic(() => import("@/components/Leaderboard"), {
-  ssr: false,
-  loading: () => <div className="h-64 animate-pulse bg-muted rounded-lg" />
-});
+import Leaderboard from "@/components/Leaderboard";
 
 export default function Home() {
   const [pseudo, setPseudo] = useState("");

@@ -19,6 +19,7 @@ export interface Question {
   createdAt: string;
   updatedAt: string;
   metadata?: any;
+  potentialDuplicates?: Array<{id: number; similarity: number}> | null;
   
   // Legacy fields for backward compatibility
   question?: string;
