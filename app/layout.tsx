@@ -11,23 +11,19 @@ import { AccessibilitySettings } from "@/components/AccessibilitySettings";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: "CyberQuiz - Teste ta vigilance numérique",
   description: "Quiz interactif sur la cybersécurité alimenté par l'IA. Testez vos connaissances en matière de sécurité numérique à travers différents modes de jeu.",
   authors: [{ name: "CyberQuiz" }],
-  icons: {
-    icon: "/favicon.ico",
-  },
   openGraph: {
     title: "CyberQuiz - Teste ta vigilance numérique",
     description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
     type: "website",
-    images: ["/og-image.svg"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CyberQuiz - Teste ta vigilance numérique",
-    description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
-    images: ["/og-image.svg"],
+    site: "@Lovable",
+    images: ["https://lovable.dev/opengraph-image-p98pqg.png"],
   },
 };
 
@@ -41,6 +37,7 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body className={inter.className}>
         <Providers>
