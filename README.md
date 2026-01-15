@@ -81,17 +81,27 @@ docker-compose up -d --build
 # Start services
 docker-compose -f docker-compose.dev.yml up -d
 
+# Build/rebuild containers
+docker-compose -f docker-compose.dev.yml build            # Build images
+docker-compose -f docker-compose.dev.yml build --no-cache # Rebuild from scratch
+
 # View logs
 docker-compose logs -f ollama          # Watch Ollama model downloads
 docker-compose logs -f app             # Watch app startup
 
 # Stop services
-docker-compose down                    # Stop containers
-docker-compose down -v                 # Stop + delete volumes (CAREFUL!)
+docker-compose down                    # Stop containers (keeps volumes)
+docker-compose down -v                 # Stop + DELETE VOLUMES (⚠️ removes all data!)
 
 # Rebuild containers
 docker-compose -f docker-compose.dev.yml up -d --build
 ```
+
+**Note on `down -v`:** Using `-v` deletes all volumes including:
+- PostgreSQL database and all questions
+- Ollama models cache (will need to re-download)
+- Qdrant vector store
+- Use this only when you want a complete reset!
 
 ### Database
 ```bash
