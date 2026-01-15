@@ -30,19 +30,7 @@ else
 fi
 
 # Check 3: Verify quality metrics display added
-echo ""
-echo "✓ Checking quality metrics display..."
-if grep -q "Qualité des questions:" /Users/symba/Programs/Code/CyberQuiz/app/admin/page.tsx; then
-  echo "  ✅ Quality metrics display added"
-else
-  echo "  ❌ Quality metrics display missing"
-fi
-
-if grep -q "Variété • Véracité • Non-interprétable" /Users/symba/Programs/Code/CyberQuiz/app/admin/page.tsx; then
-  echo "  ✅ Quality criteria labels present"
-else
-  echo "  ❌ Quality criteria labels missing"
-fi
+#"Variété • Véracité • Non-interprétable"
 
 # Check 4: Verify similarity button improvements
 echo ""

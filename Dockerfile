@@ -73,9 +73,3 @@ ENV HOSTNAME="0.0.0.0"
 
 # Run startup script (migrations + admin creation) then start server
 CMD ["./docker-startup.sh"]
-
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Run startup script (migrations + admin creation) then start server
-CMD ["./docker-startup.sh"]

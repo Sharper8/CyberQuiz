@@ -50,11 +50,20 @@ class ApiClient {
   private baseUrl = '/api';
 
   // Questions
-  async getQuestions(validated?: boolean): Promise<Question[]> {
-    const url = validated !== undefined 
-      ? `${this.baseUrl}/questions?validated=${validated}`
+  async getQuestions(params?: {
+    validated?: boolean;
+    status?: 'to_review' | 'accepted' | 'rejected';
+    includeRejected?: boolean;
+  }): Promise<Question[]> {
+    const search = new URLSearchParams();
+    if (params?.validated !== undefined) search.set('validated', String(params.validated));
+    if (params?.status) search.set('status', params.status);
+    if (params?.includeRejected) search.set('includeRejected', 'true');
+
+    const url = search.toString()
+      ? `${this.baseUrl}/questions?${search.toString()}`
       : `${this.baseUrl}/questions`;
-      
+    
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch questions');
     return res.json();

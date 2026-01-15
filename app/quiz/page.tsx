@@ -60,39 +60,12 @@ const BANNED_WORDS = [
 
 const BANNED_WORDS_SET = new Set(BANNED_WORDS.map(word => word.toLowerCase()));
 
-// Mock questions as fallback only
-const mockQuestions = [
-  {
-    id: 1,
-    question: "Un email d'une banque demandant de vérifier vos informations personnelles est toujours légitime",
-    answer: false,
-    category: "Phishing"
-  },
-  {
-    id: 2,
-    question: "Il est sûr d'utiliser le même mot de passe pour plusieurs comptes en ligne",
-    answer: false,
-    category: "Mots de passe"
-  },
-  {
-    id: 3,
-    question: "Le protocole HTTPS garantit que le site web est sécurisé et fiable",
-    answer: true,
-    category: "Réseaux"
-  },
-  {
-    id: 4,
-    question: "Les mises à jour de sécurité doivent être installées dès qu'elles sont disponibles",
-    answer: true,
-    category: "Sécurité"
-  },
-  {
-    id: 5,
-    question: "Partager des informations personnelles sur les réseaux sociaux n'a aucun risque",
-    answer: false,
-    category: "RGPD"
-  },
-];
+type QuizQuestion = {
+  id: number;
+  question: string;
+  answer: boolean;
+  category: string;
+};
 
 function validateUsername(username: string): string | null {
   if (!username) return 'Pseudo requis';
@@ -116,7 +89,7 @@ function QuizContent() {
   const mode = searchParams.get("mode") || "classic";
   const pseudo = searchParams.get("pseudo");
 
-  const [questions, setQuestions] = useState(mockQuestions);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(false);
@@ -147,39 +120,49 @@ function QuizContent() {
       try {
         const response = await api.getQuestions();
         const acceptedQuestions = response.filter(q => q.status === 'accepted');
-        
-        if (acceptedQuestions.length > 0) {
-          // Convert API questions to quiz format
-          const convertedQuestions = acceptedQuestions.map(apiQuestion => {
-            const correctAnswer = 
-              apiQuestion.correctAnswer.toLowerCase() === 'true' || 
-              apiQuestion.correctAnswer === '1' || 
-              apiQuestion.correctAnswer === 'true';
-            
-            return {
-              id: apiQuestion.id,
-              question: apiQuestion.questionText,
-              answer: correctAnswer,
-              category: apiQuestion.category || 'Général'
-            };
-          });
-          setQuestions(convertedQuestions);
-        } else {
-          // Fallback to mock questions if no accepted questions in DB
-          console.log('No accepted questions in database, using fallback mock questions');
-          setQuestions(mockQuestions);
+
+        if (acceptedQuestions.length === 0) {
+          toast.error("Aucune question n'est disponible pour le moment. Réessayez plus tard.");
+          setIsLoading(false);
+          router.push("/");
+          return;
         }
+
+        const convertedQuestions = acceptedQuestions.map(apiQuestion => {
+          const correctAnswer =
+            apiQuestion.correctAnswer.toLowerCase() === 'true' ||
+            apiQuestion.correctAnswer === '1' ||
+            apiQuestion.correctAnswer === 'true';
+
+          return {
+            id: apiQuestion.id,
+            question: apiQuestion.questionText,
+            answer: correctAnswer,
+            category: apiQuestion.category || 'Général',
+          };
+        });
+
+        setQuestions(convertedQuestions);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching questions:', error);
-        // Use mock questions as fallback on error
-        setQuestions(mockQuestions);
+        toast.error('Impossible de charger les questions.');
         setIsLoading(false);
+        router.push('/');
       }
     };
 
     validateAndFetch();
   }, [pseudo, router]);
+
+  useEffect(() => {
+    if (isLoading || questions.length === 0) return;
+    if (mode !== "chrono") return;
+    if (answered || timeLeft <= 0) return;
+
+    const timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, answered, mode, isLoading, questions.length]);
 
   // Handle loading state
   if (isLoading) {
@@ -194,17 +177,20 @@ function QuizContent() {
     );
   }
 
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
+        <CyberBackground />
+        <div className="text-center relative z-20 space-y-3">
+          <p className="text-lg text-muted-foreground">Aucune question disponible pour l'instant.</p>
+          <Button variant="secondary" onClick={() => router.push("/")}>Retour à l'accueil</Button>
+        </div>
+      </div>
+    );
+  }
+
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-
-  useEffect(() => {
-    if (mode === "chrono" && !answered && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !answered) {
-      handleAnswer(null);
-    }
-  }, [timeLeft, answered, mode]);
 
   const saveScore = async (_finalScore: number, _totalQuestions: number) => {
     // Persistence disabled: API endpoint removed. Implement server-side score storage later.
@@ -214,6 +200,8 @@ function QuizContent() {
   const handleAnswer = (answer: boolean | null) => {
     setAnswered(true);
     setSelectedAnswer(answer);
+    if (!currentQuestion) return;
+
     const newQuestionsAnswered = questionsAnswered + 1;
     setQuestionsAnswered(newQuestionsAnswered);
     
@@ -269,7 +257,7 @@ function QuizContent() {
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Question {currentQuestionIndex + 1}/{mockQuestions.length}</span>
+            <span>Question {currentQuestionIndex + 1}/{questions.length}</span>
             <span className="text-secondary font-medium">{currentQuestion.category}</span>
           </div>
           <Progress value={progress} className="h-2 bg-secondary/20" />

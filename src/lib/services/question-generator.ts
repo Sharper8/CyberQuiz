@@ -4,6 +4,7 @@ import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { Decimal } from '@prisma/client/runtime/library';
+import crypto from 'crypto';
 
 interface GenerationContext {
   topic: string;
@@ -16,6 +17,48 @@ const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
 const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
+
+/**
+ * Generate a hash from normalized question text for exact duplicate detection
+ */
+function generateQuestionHash(questionText: string): string {
+  // Normalize: lowercase, remove extra spaces, punctuation
+  const normalized = questionText
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '') // Remove punctuation
+    .replace(/\s+/g, ' ')    // Normalize spaces
+    .trim();
+  
+  return crypto.createHash('sha256').update(normalized).digest('hex');
+}
+
+/**
+ * Log duplicate detection for analytics
+ */
+async function logDuplicate(
+  questionHash: string,
+  attemptedText: string,
+  detectionMethod: 'hash' | 'embedding' | 'both',
+  topic: string,
+  originalQuestionId?: number,
+  similarityScore?: number
+): Promise<void> {
+  try {
+    await prisma.duplicateLog.create({
+      data: {
+        questionHash,
+        originalQuestionId,
+        attemptedText,
+        detectionMethod,
+        similarityScore: similarityScore ? new Decimal(similarityScore) : null,
+        topic,
+      },
+    });
+  } catch (error) {
+    console.error('[DuplicateLog] Failed to log duplicate:', error);
+    // Don't throw - logging failure shouldn't break generation
+  }
+}
 
 /**
  * Find similar questions for admin review (semantic similarity)
@@ -34,7 +77,7 @@ async function findSimilarQuestions(embedding: number[]): Promise<Array<{id: num
  * Generate a single question with duplicate detection and regeneration on duplicate
  * On duplicate, retry with increased temperature and more context
  */
-async function generateSingleQuestion(context: GenerationContext): Promise<any> {
+async function generateSingleQuestion(context: GenerationContext): Promise<{ question: any; embedding: number[]; questionHash: string }> {
   const { topic, difficulty, attemptCount, provider } = context;
 
   // Build prompt with more context on retries
@@ -60,15 +103,60 @@ async function generateSingleQuestion(context: GenerationContext): Promise<any> 
   // Extract first question if array
   const question = Array.isArray(generated) ? generated[0] : generated;
 
+  // Generate hash for exact duplicate detection
+  const questionHash = generateQuestionHash(question.questionText);
+
+  // Check for exact hash match (fastest check)
+  const existingByHash = await prisma.question.findFirst({
+    where: { 
+      questionHash,
+      isRejected: false, // Don't count rejected questions
+    },
+    select: { id: true },
+  });
+
+  if (existingByHash) {
+    // Log hash-based duplicate
+    await logDuplicate(
+      questionHash,
+      question.questionText,
+      'hash',
+      topic,
+      existingByHash.id
+    );
+
+    if (attemptCount < MAX_GENERATION_RETRIES) {
+      console.info(
+        `[QuestionGenerator] Exact duplicate detected via hash (ID: ${existingByHash.id}), retrying with more context (attempt ${attemptCount + 1})`
+      );
+      return generateSingleQuestion({
+        ...context,
+        attemptCount: attemptCount + 1,
+      });
+    } else {
+      throw new Error(`Failed to generate unique question after ${MAX_GENERATION_RETRIES} attempts (exact hash duplicates detected)`);
+    }
+  }
+
   // Generate embedding
   const embedding = await provider.generateEmbedding(question.questionText);
 
-  // Check for duplicates
+  // Check for semantic duplicates (slower, more nuanced)
   const similar = await searchSimilar(embedding, 1);
   if (similar.length > 0 && similar[0].score > DUPLICATE_SIMILARITY_THRESHOLD) {
+    // Log embedding-based duplicate
+    await logDuplicate(
+      questionHash,
+      question.questionText,
+      'embedding',
+      topic,
+      similar[0].id,
+      similar[0].score
+    );
+
     if (attemptCount < MAX_GENERATION_RETRIES) {
       console.info(
-        `[QuestionGenerator] Duplicate detected (similarity: ${similar[0].score}), retrying with more context (attempt ${attemptCount + 1})`
+        `[QuestionGenerator] Semantic duplicate detected (similarity: ${similar[0].score}), retrying with more context (attempt ${attemptCount + 1})`
       );
       // Recursive retry with incremented attempt count
       return generateSingleQuestion({
@@ -76,11 +164,11 @@ async function generateSingleQuestion(context: GenerationContext): Promise<any> 
         attemptCount: attemptCount + 1,
       });
     } else {
-      throw new Error(`Failed to generate unique question after ${MAX_GENERATION_RETRIES} attempts (duplicates detected)`);
+      throw new Error(`Failed to generate unique question after ${MAX_GENERATION_RETRIES} attempts (semantic duplicates detected)`);
     }
   }
 
-  return { question, embedding };
+  return { question, embedding, questionHash };
 }
 
 /**
@@ -233,7 +321,7 @@ export async function generateQuestionsWithProgress(
         total: targetCount
       });
 
-      const { question, embedding } = await generateSingleQuestion({
+      const { question, embedding, questionHash } = await generateSingleQuestion({
         topic,
         difficulty,
         attemptCount: 0,
@@ -250,6 +338,10 @@ export async function generateQuestionsWithProgress(
       // Validate question quality
       const validation = await provider.validateQuestion(question);
 
+      // Ensure validation scores are numbers with safe defaults
+      const qualityScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+      const validationScore = typeof validation.qualityScore === 'number' ? validation.qualityScore : 0.7;
+
       // Find similar questions in the database (calculate similarity for ALL states)
       const potentialDuplicates = await findSimilarQuestions(embedding);
 
@@ -264,12 +356,13 @@ export async function generateQuestionsWithProgress(
       const stored = await prisma.question.create({
         data: {
           questionText: question.questionText,
+          questionHash, // Store hash for future duplicate detection
           options: question.options,
           // Normalize to string for Prisma schema
           correctAnswer: String(question.correctAnswer),
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty),
-          qualityScore: new Decimal(validation.qualityScore),
+          qualityScore: new Decimal(qualityScore),
           category: topic,
           questionType: 'true-false',
           status: 'to_review',
@@ -280,7 +373,7 @@ export async function generateQuestionsWithProgress(
           metadata: {
             create: {
               embeddingId: `q_${Date.now()}_${i}`,
-              validationScore: new Decimal(validation.qualityScore),
+              validationScore: new Decimal(validationScore),
               validatorModel: provider.name,
             },
           },

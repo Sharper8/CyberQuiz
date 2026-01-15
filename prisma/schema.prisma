@@ -14,6 +14,7 @@ datasource db {
 model Question {
   id              Int               @id @default(autoincrement())
   questionText    String            @db.Text
+  questionHash    String?           // SHA-256 hash of normalized question text for exact duplicate detection
   options         Json              // For T/F: ["True", "False"]; user gets right/wrong feedback
   correctAnswer   String
   explanation     String            @db.Text
@@ -38,6 +39,7 @@ model Question {
   @@index([status])
   @@index([isRejected])
   @@index([createdAt])
+  @@index([questionHash])
 }
 
 model QuestionMetadata {
@@ -141,6 +143,21 @@ model GenerationSettings {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   generationLogs        GenerationLog[]
+}
+
+model DuplicateLog {
+  id                 Int       @id @default(autoincrement())
+  questionHash       String    // Hash that was duplicated
+  originalQuestionId Int?      // Original question ID if found
+  attemptedText      String    @db.Text // The text that was attempted to generate
+  detectionMethod    String    // "hash" | "embedding" | "both"
+  similarityScore    Decimal?  @db.Decimal(5,2) // If detected via embedding
+  topic              String
+  createdAt          DateTime  @default(now())
+
+  @@index([questionHash])
+  @@index([createdAt])
+  @@index([topic])
 }
 
 model GenerationLog {

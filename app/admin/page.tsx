@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Sparkles, Plus, Trash2, LogOut } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +62,7 @@ export default function AdminPage() {
 
   const fetchQuestions = async () => {
     try {
-      const data = await api.getQuestions();
+      const data = await api.getQuestions({ includeRejected: true });
       setQuestions(data);
     } catch (error: any) {
       toast.error("Erreur lors du chargement des questions");
@@ -71,18 +71,7 @@ export default function AdminPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      // Always soft delete by marking as rejected
-      await api.updateQuestion(id.toString(), { status: 'rejected' });
-      setQuestions(questions.map(q => 
-        q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
-      ));
-      toast.success("Question rejetée");
-    } catch (error: any) {
-      toast.error("Erreur lors du rejet");
-    }
-  };
+
 
   const handleAccept = async (id: number) => {
     try {
@@ -98,8 +87,11 @@ export default function AdminPage() {
 
   const handleReject = async (id: number) => {
     try {
-      await api.deleteQuestion(id.toString());
-      setQuestions(questions.filter(q => q.id !== id));
+      // Mark as rejected (soft delete - moves to rejected pool)
+      await api.updateQuestion(id.toString(), { status: 'rejected' });
+      setQuestions(questions.map(q => 
+        q.id === id ? { ...q, status: 'rejected' as const, isRejected: true } : q
+      ));
       toast.success("Question rejetée");
     } catch (error: any) {
       toast.error("Erreur lors du rejet");
@@ -498,12 +490,6 @@ export default function AdminPage() {
                           {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
                       </p>
-                      {question.qualityScore !== null && question.qualityScore !== undefined && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          <span className="font-semibold">Qualité des questions:</span> Variété • Véracité • Non-interprétable
-                          <span className="ml-2 text-primary font-semibold">({(Number(question.qualityScore) * 100).toFixed(0)}%)</span>
-                        </p>
-                      )}
                       
                       {/* Similarity section - displayed directly */}
                       {question.potentialDuplicates && Array.isArray(question.potentialDuplicates) && question.potentialDuplicates.length > 0 && (
@@ -511,14 +497,24 @@ export default function AdminPage() {
                           <p className="text-sm font-semibold text-cyber-orange mb-2">
                             ⚠️ Questions similaires détectées ({question.potentialDuplicates.length})
                           </p>
-                          <div className="space-y-1 text-xs text-muted-foreground">
-                            {question.potentialDuplicates.slice(0, 3).map((dup, idx) => (
-                              <div key={idx} className="flex items-center gap-2 pl-2">
-                                <span className="text-cyber-orange">→</span>
-                                <span>ID: {dup.id}</span>
-                                <span className="text-primary font-semibold">({(dup.similarity * 100).toFixed(0)}% similaire)</span>
-                              </div>
-                            ))}
+                          <div className="space-y-2 text-xs">
+                            {question.potentialDuplicates.slice(0, 3).map((dup, idx) => {
+                              const similarQuestion = questions.find(q => q.id === dup.id);
+                              return (
+                                <div key={idx} className="bg-muted/50 rounded p-2 space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-cyber-orange">→</span>
+                                    <span className="font-semibold">ID: {dup.id}</span>
+                                    <span className="text-primary font-semibold">({(dup.similarity * 100).toFixed(0)}% similaire)</span>
+                                  </div>
+                                  {similarQuestion && (
+                                    <p className="text-muted-foreground pl-4 italic">
+                                      "{similarQuestion.questionText.substring(0, 150)}{similarQuestion.questionText.length > 150 ? '...' : ''}"
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
                             {question.potentialDuplicates.length > 3 && (
                               <p className="pl-2 text-muted-foreground">+{question.potentialDuplicates.length - 3} autres</p>
                             )}
@@ -545,12 +541,22 @@ export default function AdminPage() {
                           </CyberButton>
                         </>
                       )}
-                      {question.status !== 'rejected' && (
+                      {question.status === 'accepted' && (
                         <CyberButton
-                          variant="outline"
-                          onClick={() => handleDelete(question.id)}
+                          variant="incorrect"
+                          onClick={() => handleReject(question.id)}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Déplacer vers rejetées
+                        </CyberButton>
+                      )}
+                      {question.status === 'rejected' && (
+                        <CyberButton
+                          variant="correct"
+                          onClick={() => handleAccept(question.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Déplacer vers acceptées
                         </CyberButton>
                       )}
                     </div>

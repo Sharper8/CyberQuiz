@@ -7,10 +7,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const validated = searchParams.get('validated'); // Legacy support
+    const includeRejected = searchParams.get('includeRejected') === 'true' || status === 'rejected';
     
-    let where: any = {
-      isRejected: false, // Exclude rejected questions by default
-    };
+    let where: any = {};
+    if (!includeRejected) {
+      where.isRejected = false; // Exclude rejected questions by default
+    }
     
     // New status-based filtering
     if (status) {
