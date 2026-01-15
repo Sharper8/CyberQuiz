@@ -1,0 +1,6 @@
+Question,Option 1,Option 2,Correct Answer,Explanation,Category,Difficulty,Quality Score,Status,MITRE Techniques,Tags
+Le phishing est une technique de manipulation sociale,True,False,True,Le phishing utilise la manipulation pour inciter les utilisateurs à révéler des informations sensibles,Sécurité,0.4,0.85,to_review,T1566,phishing;social-engineering
+Un VPN chiffre votre trafic internet,True,False,True,Un VPN crée un tunnel sécurisé et chiffre tout votre trafic,Sécurité Réseau,0.5,0.9,to_review,T1133,vpn;chiffrement
+L'authentification à deux facteurs est obsolète,True,False,False,L'authentification à deux facteurs est un standard moderne de sécurité,Sécurité des Identifiants,0.3,0.95,to_review,T1078,mfa;authentification
+Les mises à jour de sécurité peuvent attendre une semaine,True,False,False,Les mises à jour de sécurité critiques doivent être appliquées immédiatement,Sécurité Système,0.6,0.88,to_review,T1199,patchs;maintenance
+Le HTTPS est suffisant pour sécuriser une application,True,False,False,HTTPS n'est qu'une couche. Une application doit aussi valider les entrées et implémenter d'autres mesures,Sécurité Web,0.7,0.82,to_review,T1190,https;validation
