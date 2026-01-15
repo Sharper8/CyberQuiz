@@ -32,19 +32,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build filter
-    const where: any = { isRejected: false };
-    if (status !== 'all' && ['accepted', 'to_review', 'rejected'].includes(status)) {
+    // Build filter based on status parameter
+    const where: any = {};
+
+    // Handle status filter
+    if (status === 'all') {
+      // Export all questions regardless of status or rejection
+      // (no filter applied, returns all)
+    } else if (status === 'rejected') {
+      // Show only rejected questions
+      where.status = 'rejected';
+    } else if (['accepted', 'to_review'].includes(status)) {
+      // Show accepted or to_review, but exclude isRejected ones
       where.status = status;
+      where.isRejected = false;
     }
 
-    // Fetch questions
+    // Fetch questions from database
     const questions = await prisma.question.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      include: {
-        metadata: true,
-      },
     });
 
     if (format === 'csv') {
@@ -136,9 +143,10 @@ async function exportAsExcel(questions: any[]) {
   XLSX.utils.book_append_sheet(wb, ws, 'Questions');
 
   // Write to buffer
-  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+  const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const uint8Array = new Uint8Array(buffer as ArrayLike<number>);
 
-  return new NextResponse(buffer, {
+  return new NextResponse(uint8Array, {
     headers: {
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition': `attachment; filename="questions-${Date.now()}.xlsx"`,

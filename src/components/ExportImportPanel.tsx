@@ -46,8 +46,20 @@ export function ExportImportPanel({ onImportSuccess }: ExportImportPanelProps) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Export failed');
+        // Try to parse error as JSON, fallback to text
+        let errorMessage = 'Export failed';
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          try {
+            const error = await response.json();
+            errorMessage = error.message || 'Export failed';
+          } catch (e) {
+            errorMessage = await response.text();
+          }
+        } else {
+          errorMessage = await response.text();
+        }
+        throw new Error(errorMessage);
       }
 
       // Get filename from headers
