@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 interface CyberButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "correct" | "incorrect" | "outline";
-  size?: "default" | "lg" | "xl";
+  size?: "default" | "lg" | "xl" | "sm";
 }
 
 const CyberButton = forwardRef<HTMLButtonElement, CyberButtonProps>(
@@ -21,25 +21,26 @@ const CyberButton = forwardRef<HTMLButtonElement, CyberButtonProps>(
             "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.3)] hover:shadow-[0_0_30px_hsl(var(--primary)/0.5)]":
               variant === "primary",
             "before:from-primary before:via-cyber-blue before:to-primary": variant === "primary",
-            
+
             // Secondary - Neon green
             "bg-secondary text-secondary-foreground shadow-[0_0_20px_hsl(var(--secondary)/0.3)] hover:shadow-[0_0_30px_hsl(var(--secondary)/0.5)]":
               variant === "secondary",
             "before:from-secondary before:via-cyber-green before:to-secondary": variant === "secondary",
-            
+
             // Correct answer
             "bg-secondary text-background shadow-[0_0_20px_hsl(var(--secondary)/0.4)]":
               variant === "correct",
-            
+
             // Incorrect answer
             "bg-destructive text-destructive-foreground shadow-[0_0_20px_hsl(var(--destructive)/0.4)]":
               variant === "incorrect",
-            
+
             // Outline
             "bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground":
               variant === "outline",
-            
+
             // Sizes
+            "px-4 py-2 text-sm": size === "sm",
             "px-6 py-3 text-base": size === "default",
             "px-8 py-4 text-lg": size === "lg",
             "px-10 py-5 text-xl": size === "xl",

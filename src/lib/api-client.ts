@@ -19,8 +19,8 @@ export interface Question {
   createdAt: string;
   updatedAt: string;
   metadata?: any;
-  potentialDuplicates?: Array<{id: number; similarity: number}> | null;
-  
+  potentialDuplicates?: Array<{ id: number; similarity: number }> | null;
+
   // Legacy fields for backward compatibility
   question?: string;
   answer?: boolean;
@@ -63,7 +63,7 @@ class ApiClient {
     const url = search.toString()
       ? `${this.baseUrl}/questions?${search.toString()}`
       : `${this.baseUrl}/questions`;
-    
+
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch questions');
     return res.json();
@@ -93,7 +93,7 @@ class ApiClient {
   }
 
   async updateQuestion(
-    id: string, 
+    id: string,
     data: { validated?: boolean; status?: 'to_review' | 'accepted' | 'rejected' }
   ): Promise<Question> {
     const res = await fetch(`${this.baseUrl}/questions/${id}`, {
@@ -105,8 +105,8 @@ class ApiClient {
     return res.json();
   }
 
-  async generateQuestions(data: { 
-    topic: string; 
+  async generateQuestions(data: {
+    topic: string;
     difficulty?: 'easy' | 'medium' | 'hard';
     count?: number;
   }): Promise<{ topic: string; difficulty: string; cacheSize: number; message: string }> {
@@ -133,7 +133,7 @@ class ApiClient {
   }
 
   // Auth
-  async login(email: string, password: string): Promise<{ user: User }> {
+  async login(email: string, password: string): Promise<{ user: User; token?: string }> {
     const res = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

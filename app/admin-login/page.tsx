@@ -21,7 +21,10 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      await api.login(email, password);
+      const response = await api.login(email, password);
+      if (response.token) {
+        localStorage.setItem('adminToken', response.token);
+      }
       toast.success("Connexion réussie");
       router.push("/admin");
     } catch (error: any) {
@@ -39,7 +42,7 @@ export default function AdminLoginPage() {
           <div className="flex items-center justify-center mb-6">
             <Shield className="h-12 w-12 text-primary" />
           </div>
-          
+
           <h1 className="text-3xl font-bold text-center text-gradient mb-2">
             Espace Administrateur
           </h1>
@@ -62,7 +65,16 @@ export default function AdminLoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Mot de passe</Label>
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin-login/recover")}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
               <Input
                 id="password"
                 type="password"
