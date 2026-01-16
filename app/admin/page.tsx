@@ -31,7 +31,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
-  const [generationCount, setGenerationCount] = useState(5);
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -128,7 +127,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           topic: 'Cybersécurité',
           difficulty: 'medium',
-          count: generationCount
+          count: 5
         }),
       });
 
@@ -304,19 +303,6 @@ export default function AdminPage() {
           </Dialog>
 
           <div className="flex gap-4 items-end">
-            <div className="space-y-2">
-              <Label htmlFor="generation-count">Nombre de questions à générer</Label>
-              <Input
-                id="generation-count"
-                type="number"
-                min="1"
-                max="50"
-                value={generationCount}
-                onChange={(e) => setGenerationCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                disabled={generating}
-                className="w-24"
-              />
-            </div>
             <CyberButton
               variant="secondary"
               size="lg"

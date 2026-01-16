@@ -97,6 +97,8 @@ function QuizContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [answerTimeLeft, setAnswerTimeLeft] = useState(5); // Timer for answer reveal
   const [stoppingQuiz, setStoppingQuiz] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [elapsedTime, setElapsedTime] = useState(0); // Timer for how long on current question
 
   // Validate username and fetch questions on mount
   useEffect(() => {
@@ -169,6 +171,17 @@ function QuizContent() {
     return () => clearTimeout(timer);
   }, [timeLeft, answered, mode, isLoading, questions.length]);
 
+  // Track elapsed time on current question
+  useEffect(() => {
+    if (isLoading || questions.length === 0 || answered) return;
+
+    const timer = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - questionStartTime) / 1000));
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [questionStartTime, answered, isLoading, questions.length]);
+
   // Auto-advance to next question after 5 seconds of answer reveal
   useEffect(() => {
     if (!answered || answerTimeLeft === null) return;
@@ -183,8 +196,6 @@ function QuizContent() {
   }, [answered, answerTimeLeft]);
 
   const handleStopQuiz = async () => {
-    if (!confirm("Êtes-vous sûr de vouloir arrêter le quiz ?")) return;
-    
     setStoppingQuiz(true);
     try {
       const finalScore = answered ? score + (selectedAnswer === currentQuestion.answer ? 1 : 0) : score;
@@ -299,6 +310,8 @@ function QuizContent() {
       setSelectedAnswer(null);
       setAnswerTimeLeft(5);
       setTimeLeft(30);
+      setQuestionStartTime(Date.now());
+      setElapsedTime(0);
     } else {
       const finalScore = score + (selectedAnswer === currentQuestion.answer ? 1 : 0);
       console.log('[handleNextQuestion] Quiz complete:', {
@@ -324,12 +337,12 @@ function QuizContent() {
             <span className="text-2xl font-bold">{score}</span>
           </div>
           
-          {mode === "chrono" && (
-            <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2 animate-pulse">
-              <Clock className="h-5 w-5" />
-              <span className="text-xl font-bold tabular-nums">{timeLeft}s</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2">
+            <Clock className="h-5 w-5" />
+            <span className="text-xl font-bold tabular-nums">
+              {mode === "chrono" ? `${timeLeft}s` : `${elapsedTime}s`}
+            </span>
+          </div>
           
           <div />
         </div>
