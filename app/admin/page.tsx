@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Badge } from "@/components/ui/badge";
+import { ExportImportPanel } from "@/components/ExportImportPanel";
+import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -241,7 +243,7 @@ export default function AdminPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
               <CyberButton variant="primary" size="lg">
@@ -333,6 +335,9 @@ export default function AdminPage() {
                 </>
               )}
             </CyberButton>
+
+            {/* Export/Import Panel */}
+            <ExportImportPanel onImportSuccess={fetchQuestions} />
           </div>
         </div>
 
