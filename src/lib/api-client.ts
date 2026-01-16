@@ -49,6 +49,23 @@ export interface User {
 class ApiClient {
   private baseUrl = '/api';
 
+  // Quiz endpoints (secure, no answers exposed)
+  async getQuizQuestions(): Promise<Omit<Question, 'correctAnswer'>[]> {
+    const res = await fetch(`${this.baseUrl}/quiz/questions`);
+    if (!res.ok) throw new Error('Failed to fetch quiz questions');
+    return res.json();
+  }
+
+  async verifyAnswer(questionId: number, userAnswer: boolean): Promise<{ correct: boolean }> {
+    const res = await fetch(`${this.baseUrl}/quiz/verify-answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questionId, userAnswer }),
+    });
+    if (!res.ok) throw new Error('Failed to verify answer');
+    return res.json();
+  }
+
   // Questions
   async getQuestions(params?: {
     validated?: boolean;

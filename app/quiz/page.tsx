@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, XCircle, Clock, Trophy } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Trophy, Square } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
 import { Progress } from "@/components/ui/progress";
@@ -95,6 +95,8 @@ function QuizContent() {
   const [timeLeft, setTimeLeft] = useState(30);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [answerTimeLeft, setAnswerTimeLeft] = useState(5); // Timer for answer reveal
+  const [stoppingQuiz, setStoppingQuiz] = useState(false);
 
   // Validate username and fetch questions on mount
   useEffect(() => {
@@ -167,6 +169,32 @@ function QuizContent() {
     return () => clearTimeout(timer);
   }, [timeLeft, answered, mode, isLoading, questions.length]);
 
+  // Auto-advance to next question after 5 seconds of answer reveal
+  useEffect(() => {
+    if (!answered || answerTimeLeft === null) return;
+
+    if (answerTimeLeft === 0) {
+      handleNextQuestion();
+      return;
+    }
+
+    const timer = setTimeout(() => setAnswerTimeLeft((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [answered, answerTimeLeft]);
+
+  const handleStopQuiz = async () => {
+    if (!confirm("Êtes-vous sûr de vouloir arrêter le quiz ?")) return;
+    
+    setStoppingQuiz(true);
+    try {
+      await saveScore(score, questionsAnswered);
+    } catch (error) {
+      console.error('Error saving score:', error);
+    } finally {
+      router.push("/");
+    }
+  };
+
   // Handle loading state
   if (isLoading) {
     return (
@@ -230,6 +258,7 @@ function QuizContent() {
   const handleAnswer = (answer: boolean | null) => {
     setAnswered(true);
     setSelectedAnswer(answer);
+    setAnswerTimeLeft(5); // Start 5-second countdown to next question
     if (!currentQuestion) return;
 
     const newQuestionsAnswered = questionsAnswered + 1;
@@ -250,18 +279,21 @@ function QuizContent() {
       return;
     }
 
-    setTimeout(async () => {
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-        setAnswered(false);
-        setSelectedAnswer(null);
-        setTimeLeft(30);
-      } else {
-        const finalScore = score + (isCorrect ? 1 : 0);
-        await saveScore(finalScore, questions.length);
-        router.push(`/score?score=${finalScore}&total=${questions.length}&mode=${mode}&pseudo=${pseudo}`);
-      }
-    }, 1500);
+    // Will auto-advance via useEffect after 5 seconds
+  };
+
+  const handleNextQuestion = async () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setAnswered(false);
+      setSelectedAnswer(null);
+      setAnswerTimeLeft(5);
+      setTimeLeft(30);
+    } else {
+      const finalScore = score + (selectedAnswer === currentQuestion.answer ? 1 : 0);
+      await saveScore(finalScore, questions.length);
+      router.push(`/score?score=${finalScore}&total=${questions.length}&mode=${mode}&pseudo=${pseudo}`);
+    }
   };
 
   return (
@@ -269,84 +301,119 @@ function QuizContent() {
       <CyberBackground />
       <div className="w-full max-w-3xl space-y-6 animate-slide-up relative z-20">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-secondary">
             <Trophy className="h-6 w-6" />
             <span className="text-2xl font-bold">{score}</span>
           </div>
           
-          {mode === "chrono" && (
-            <div className="flex items-center gap-2 text-primary">
-              <Clock className="h-6 w-6" />
-              <span className="text-2xl font-bold">{timeLeft}s</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {mode === "chrono" && (
+              <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2">
+                <Clock className="h-5 w-5" />
+                <span className="text-xl font-bold tabular-nums">{timeLeft}s</span>
+              </div>
+            )}
+            <CyberButton
+              variant="outline"
+              size="sm"
+              onClick={handleStopQuiz}
+              disabled={stoppingQuiz}
+              className="gap-2 text-destructive border-destructive/50"
+              title="Arrêter et retourner à l'accueil"
+            >
+              <Square className="h-4 w-4" />
+              {stoppingQuiz ? "Arrêt..." : "Arrêter"}
+            </CyberButton>
+          </div>
         </div>
 
-        {/* Progress */}
+        {/* Progress - no question count shown */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Question {currentQuestionIndex + 1}/{questions.length}</span>
             <span className="text-secondary font-medium">{currentQuestion.category}</span>
           </div>
           <Progress value={progress} className="h-2 bg-secondary/20" />
         </div>
 
-        {/* Question Card */}
-        <div className="bg-card border-2 border-border rounded-lg p-8 shadow-2xl">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 leading-relaxed">
-            {currentQuestion.question}
-          </h2>
-
-          {!answered ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <CyberButton
-                  size="xl"
-                  variant="secondary"
-                  onClick={() => handleAnswer(true)}
-                  className="h-24 text-2xl font-bold"
-                >
-                  OUI
-                </CyberButton>
-                <CyberButton
-                  size="xl"
-                  variant="primary"
-                  onClick={() => handleAnswer(false)}
-                  className="h-24 text-2xl font-bold"
-                >
-                  NON
-                </CyberButton>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className={`text-center p-6 rounded-lg ${
-                selectedAnswer === currentQuestion.answer 
-                  ? "bg-secondary/10 border-2 border-secondary" 
-                  : "bg-destructive/10 border-2 border-destructive"
-              }`}>
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  {selectedAnswer === currentQuestion.answer ? (
-                    <>
-                      <CheckCircle2 className="h-8 w-8 text-secondary" />
-                      <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-8 w-8 text-destructive" />
-                      <span className="text-2xl font-bold text-destructive">Mauvaise réponse 😅</span>
-                    </>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
-                    {currentQuestion.answer ? "OUI" : "NON"}
-                  </span>
-                </p>
-              </div>
-            </div>
+        {/* Question Card with Timer Animation */}
+        <div className="relative">
+          {/* Animated timer border around card */}
+          {mode === "chrono" && !answered && (
+            <div 
+              className="absolute inset-0 rounded-lg pointer-events-none animate-timer-ring"
+              style={{
+                background: `linear-gradient(${(timeLeft / 30) * 360}deg, hsl(var(--primary) / 0.6) 0%, transparent 50%)`,
+                borderRadius: '0.5rem'
+              }}
+            />
           )}
+          
+          <div className={`bg-card border-2 rounded-lg p-8 shadow-2xl relative z-10 ${
+            mode === "chrono" && !answered ? 'border-primary/60' : 'border-border'
+          } ${mode === "chrono" && !answered ? 'ring-2 ring-primary/40' : ''}`}>
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 leading-relaxed">
+              {currentQuestion.question}
+            </h2>
+
+            {!answered ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <CyberButton
+                    size="xl"
+                    variant="secondary"
+                    onClick={() => handleAnswer(true)}
+                    className="h-24 text-2xl font-bold"
+                  >
+                    OUI
+                  </CyberButton>
+                  <CyberButton
+                    size="xl"
+                    variant="primary"
+                    onClick={() => handleAnswer(false)}
+                    className="h-24 text-2xl font-bold"
+                  >
+                    NON
+                  </CyberButton>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className={`text-center p-6 rounded-lg ${
+                  selectedAnswer === currentQuestion.answer 
+                    ? "bg-secondary/10 border-2 border-secondary" 
+                    : "bg-destructive/10 border-2 border-destructive"
+                }`}>
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    {selectedAnswer === currentQuestion.answer ? (
+                      <>
+                        <CheckCircle2 className="h-8 w-8 text-secondary" />
+                        <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-8 w-8 text-destructive" />
+                        <span className="text-2xl font-bold text-destructive">Mauvaise réponse 😅</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
+                      {currentQuestion.answer ? "OUI" : "NON"}
+                    </span>
+                  </p>
+                  
+                  {/* Auto-advance countdown */}
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground">
+                      Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
+                    </p>
+                    <Progress value={(answerTimeLeft / 5) * 100} className="h-1 mt-2" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Timer progress for chrono mode */}

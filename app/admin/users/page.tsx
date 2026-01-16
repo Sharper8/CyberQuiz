@@ -69,6 +69,7 @@ export default function AdminUsersPage() {
 
   // Current user
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const ROOT_ADMIN_EMAIL = 'admin@cyberquiz.fr'; // Cannot be deleted
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
@@ -173,7 +174,12 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleDeleteAdmin = async (adminId: number) => {
+  const handleDeleteAdmin = async (adminId: number, email: string) => {
+    if (email === ROOT_ADMIN_EMAIL) {
+      toast.error("L'administrateur racine ne peut pas être supprimé");
+      return;
+    }
+
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet administrateur ?")) return;
 
     try {
@@ -340,7 +346,13 @@ export default function AdminUsersPage() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {admin.lastLoginAt ? new Date(admin.lastLoginAt).toLocaleDateString() : 'Jamais'}
+                            {admin.lastLoginAt ? new Date(admin.lastLoginAt).toLocaleString('fr-FR', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric', 
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            }) : 'Jamais connecté'}
                           </span>
                         </div>
                       </div>
@@ -410,16 +422,21 @@ export default function AdminUsersPage() {
                         </DialogContent>
                       </Dialog>
 
-                      {!isMe && (
+                      {!isMe && admin.email !== ROOT_ADMIN_EMAIL && (
                         <CyberButton
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteAdmin(admin.id)}
+                          onClick={() => handleDeleteAdmin(admin.id, admin.email)}
                           className="h-8 w-8 p-0 flex items-center justify-center text-destructive border-destructive/50 hover:bg-destructive/10"
                           title="Supprimer l'administrateur"
                         >
                           <Trash2 className="h-4 w-4" />
                         </CyberButton>
+                      )}
+                      {admin.email === ROOT_ADMIN_EMAIL && (
+                        <div className="h-8 w-8 flex items-center justify-center text-muted-foreground" title="Administrateur protégé">
+                          <Lock className="h-4 w-4" />
+                        </div>
                       )}
                     </div>
                   </div>
