@@ -174,6 +174,17 @@ function parseCSVLine(line: string): string[] {
   return result;
 }
 
+/**
+ * Normalize answer values: convert True/False (English) to Vrai/Faux (French)
+ */
+function normalizeAnswer(value: string): string {
+  if (!value) return value;
+  const normalized = value.trim();
+  if (normalized === 'True') return 'Vrai';
+  if (normalized === 'False') return 'Faux';
+  return normalized;
+}
+
 function parseRow(headers: string[], values: string[]): any {
   const row: any = {};
 
@@ -182,10 +193,15 @@ function parseRow(headers: string[], values: string[]): any {
     row[header] = value;
   });
 
+  // Get options and normalize them
+  const option1 = normalizeAnswer(row['Option 1'] || 'Vrai');
+  const option2 = normalizeAnswer(row['Option 2'] || 'Faux');
+  const correctAnswer = normalizeAnswer(row['Correct Answer'] || '');
+
   return {
     questionText: row['Question'] || '',
-    options: [row['Option 1'] || 'True', row['Option 2'] || 'False'],
-    correctAnswer: row['Correct Answer'] || '',
+    options: [option1, option2],
+    correctAnswer: correctAnswer,
     explanation: row['Explanation'] || '',
     category: row['Category'] || 'Sécurité',
     difficulty: parseFloat(row['Difficulty'] || '0.5'),
