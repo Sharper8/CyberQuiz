@@ -10,11 +10,11 @@ OLLAMA_PID=$!
 sleep 5
 
 # Pull models in FOREGROUND to ensure they're ready before container is marked healthy
-echo "📥 Pulling mistral:7b model (this may take a few minutes)..."
-if /bin/ollama pull mistral:7b; then
-  echo "✅ mistral:7b pulled successfully"
+echo "📥 Pulling llama3.1:8b model (this may take a few minutes)..."
+if /bin/ollama pull llama3.1:8b; then
+  echo "✅ llama3.1:8b pulled successfully"
 else
-  echo "⚠️  mistral:7b pull failed"
+  echo "⚠️  llama3.1:8b pull failed"
 fi
 
 echo "📥 Pulling nomic-embed-text model..."
