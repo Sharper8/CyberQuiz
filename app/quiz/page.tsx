@@ -187,7 +187,15 @@ function QuizContent() {
     
     setStoppingQuiz(true);
     try {
-      await saveScore(score, questionsAnswered);
+      const finalScore = answered ? score + (selectedAnswer === currentQuestion.answer ? 1 : 0) : score;
+      const totalQuestions = questionsAnswered + (answered ? 1 : 0);
+      console.log('[handleStopQuiz] Stopping quiz:', {
+        finalScore,
+        totalQuestions,
+        questionsAnswered,
+        answered,
+      });
+      await saveScore(finalScore, totalQuestions);
     } catch (error) {
       console.error('Error saving score:', error);
     } finally {
@@ -283,7 +291,9 @@ function QuizContent() {
   };
 
   const handleNextQuestion = async () => {
-    if (currentQuestionIndex < questions.length - 1) {
+    const totalQuestions = questions.length;
+    
+    if (currentQuestionIndex < totalQuestions - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setAnswered(false);
       setSelectedAnswer(null);
@@ -291,8 +301,15 @@ function QuizContent() {
       setTimeLeft(30);
     } else {
       const finalScore = score + (selectedAnswer === currentQuestion.answer ? 1 : 0);
-      await saveScore(finalScore, questions.length);
-      router.push(`/score?score=${finalScore}&total=${questions.length}&mode=${mode}&pseudo=${pseudo}`);
+      console.log('[handleNextQuestion] Quiz complete:', {
+        finalScore,
+        totalQuestions,
+        currentScore: score,
+        selectedAnswer,
+        correctAnswer: currentQuestion.answer,
+      });
+      await saveScore(finalScore, totalQuestions);
+      router.push(`/score?score=${finalScore}&total=${totalQuestions}&mode=${mode}&pseudo=${pseudo}`);
     }
   };
 
@@ -307,25 +324,14 @@ function QuizContent() {
             <span className="text-2xl font-bold">{score}</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            {mode === "chrono" && (
-              <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2">
-                <Clock className="h-5 w-5" />
-                <span className="text-xl font-bold tabular-nums">{timeLeft}s</span>
-              </div>
-            )}
-            <CyberButton
-              variant="outline"
-              size="sm"
-              onClick={handleStopQuiz}
-              disabled={stoppingQuiz}
-              className="gap-2 text-destructive border-destructive/50"
-              title="Arrêter et retourner à l'accueil"
-            >
-              <Square className="h-4 w-4" />
-              {stoppingQuiz ? "Arrêt..." : "Arrêter"}
-            </CyberButton>
-          </div>
+          {mode === "chrono" && (
+            <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2 animate-pulse">
+              <Clock className="h-5 w-5" />
+              <span className="text-xl font-bold tabular-nums">{timeLeft}s</span>
+            </div>
+          )}
+          
+          <div />
         </div>
 
         {/* Progress - no question count shown */}
@@ -404,11 +410,20 @@ function QuizContent() {
                   </p>
                   
                   {/* Auto-advance countdown */}
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <p className="text-xs text-muted-foreground">
-                      Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
-                    </p>
-                    <Progress value={(answerTimeLeft / 5) * 100} className="h-1 mt-2" />
+                  <div className="mt-4 pt-4 border-t border-border space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
+                      </p>
+                      <Progress value={(answerTimeLeft / 5) * 100} className="h-1" />
+                    </div>
+                    <CyberButton 
+                      onClick={() => handleNextQuestion()}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Question suivante
+                    </CyberButton>
                   </div>
                 </div>
               </div>
@@ -423,6 +438,20 @@ function QuizContent() {
             className="h-1"
           />
         )}
+
+        {/* Footer with stop button */}
+        <div className="flex justify-center pt-4">
+          <CyberButton
+            variant="outline"
+            onClick={handleStopQuiz}
+            disabled={stoppingQuiz}
+            className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"
+            title="Arrêter et retourner à l'accueil"
+          >
+            <Square className="h-4 w-4" />
+            {stoppingQuiz ? "Arrêt en cours..." : "Arrêter le quiz"}
+          </CyberButton>
+        </div>
       </div>
     </div>
   );
