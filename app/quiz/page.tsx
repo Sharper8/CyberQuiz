@@ -2,12 +2,10 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, XCircle, Clock, Trophy, MessageCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Trophy } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import AIChatPanel from "@/components/AIChatPanel";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -95,7 +93,6 @@ function QuizContent() {
   const [answered, setAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [showAIChat, setShowAIChat] = useState(false);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -183,7 +180,7 @@ function QuizContent() {
         <CyberBackground />
         <div className="text-center relative z-20 space-y-3">
           <p className="text-lg text-muted-foreground">Aucune question disponible pour l'instant.</p>
-          <Button variant="secondary" onClick={() => router.push("/")}>Retour à l'accueil</Button>
+          <CyberButton variant="secondary" onClick={() => router.push("/")}>Retour à l'accueil</CyberButton>
         </div>
       </div>
     );
@@ -253,7 +250,6 @@ function QuizContent() {
         setAnswered(false);
         setSelectedAnswer(null);
         setTimeLeft(30);
-        setShowAIChat(false);
       } else {
         const finalScore = score + (isCorrect ? 1 : 0);
         await saveScore(finalScore, questions.length);
@@ -343,32 +339,9 @@ function QuizContent() {
                   </span>
                 </p>
               </div>
-              
-              {/* AI Explanation Button */}
-              <div className="flex justify-center pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAIChat(true)}
-                  className="gap-2"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Demander une explication à l'IA
-                </Button>
-              </div>
             </div>
           )}
         </div>
-
-        {/* AI Chat Panel */}
-        {showAIChat && answered && (
-          <AIChatPanel
-            question={currentQuestion.question}
-            userAnswer={selectedAnswer}
-            correctAnswer={currentQuestion.answer}
-            onClose={() => setShowAIChat(false)}
-          />
-        )}
 
         {/* Timer progress for chrono mode */}
         {mode === "chrono" && !answered && (

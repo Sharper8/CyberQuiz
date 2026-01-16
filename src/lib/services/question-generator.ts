@@ -215,14 +215,28 @@ export async function generateQuestionsForCache(
 
       // Find similar questions in the database (calculate similarity for ALL states)
       const potentialDuplicates = await findSimilarQuestions(embedding);
-      
+      // Normalize answer values: convert True/False to Vrai/Faux
+      const normalizeAnswer = (value: string | boolean): string => {
+        const str = String(value).trim();
+        if (str.toLowerCase() === 'true') return 'Vrai';
+        if (str.toLowerCase() === 'false') return 'Faux';
+        return str;
+      };
+
+      const normalizeOptions = (options: any[]): string[] => {
+        if (!Array.isArray(options)) return ['Vrai', 'Faux'];
+        return options.map(opt => normalizeAnswer(opt)).slice(0, 2);
+      };
+
       // Store in database with to_review status
+      const normalizedOptions = normalizeOptions(question.options);
+      const normalizedAnswer = normalizeAnswer(question.correctAnswer);
+
       const stored = await prisma.question.create({
         data: {
           questionText: question.questionText,
-          options: question.options,
-          // Normalize to string for Prisma schema
-          correctAnswer: String(question.correctAnswer),
+          options: normalizedOptions,
+          correctAnswer: normalizedAnswer,
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty || 0.5),
           qualityScore: new Decimal(qualityScore),
@@ -352,14 +366,29 @@ export async function generateQuestionsWithProgress(
         total: targetCount
       });
 
+      // Normalize answer values: convert True/False to Vrai/Faux
+      const normalizeAnswer = (value: string | boolean): string => {
+        const str = String(value).trim();
+        if (str.toLowerCase() === 'true') return 'Vrai';
+        if (str.toLowerCase() === 'false') return 'Faux';
+        return str;
+      };
+
+      const normalizeOptions = (options: any[]): string[] => {
+        if (!Array.isArray(options)) return ['Vrai', 'Faux'];
+        return options.map(opt => normalizeAnswer(opt)).slice(0, 2);
+      };
+
+      const normalizedOptions = normalizeOptions(question.options);
+      const normalizedAnswer = normalizeAnswer(question.correctAnswer);
+
       // Store in database with to_review status
       const stored = await prisma.question.create({
         data: {
           questionText: question.questionText,
           questionHash, // Store hash for future duplicate detection
-          options: question.options,
-          // Normalize to string for Prisma schema
-          correctAnswer: String(question.correctAnswer),
+          options: normalizedOptions,
+          correctAnswer: normalizedAnswer,
           explanation: question.explanation,
           difficulty: new Decimal(question.estimatedDifficulty),
           qualityScore: new Decimal(qualityScore),
@@ -496,11 +525,27 @@ export async function generateToMaintainPool(
         // Find similar questions
         const potentialDuplicates = await findSimilarQuestions(embedding);
 
+        // Normalize answer values: convert True/False to Vrai/Faux
+        const normalizeAnswer = (value: string | boolean): string => {
+          const str = String(value).trim();
+          if (str.toLowerCase() === 'true') return 'Vrai';
+          if (str.toLowerCase() === 'false') return 'Faux';
+          return str;
+        };
+
+        const normalizeOptions = (options: any[]): string[] => {
+          if (!Array.isArray(options)) return ['Vrai', 'Faux'];
+          return options.map(opt => normalizeAnswer(opt)).slice(0, 2);
+        };
+
+        const normalizedOptions = normalizeOptions(question.options);
+        const normalizedAnswer = normalizeAnswer(question.correctAnswer);
+
         const stored = await prisma.question.create({
           data: {
             questionText: question.questionText,
-            options: question.options,
-            correctAnswer: String(question.correctAnswer),
+            options: normalizedOptions,
+            correctAnswer: normalizedAnswer,
             explanation: question.explanation,
             difficulty: new Decimal(question.estimatedDifficulty || 0.5),
             qualityScore: new Decimal(qualityScore),

@@ -4,6 +4,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 /**
  * Pre-seed database with themed cybersecurity questions
  * Runs on first deployment or manual invocation
+ * All questions use "Vrai"/"Faux" (French) for standardized options and answers
  *
  * Usage: npx ts-node scripts/seed.ts
  */
@@ -11,60 +12,60 @@ import { Decimal } from '@prisma/client/runtime/library';
 const SEED_QUESTIONS = [
   // Easy - Authentication
   {
-    questionText: 'A strong password should be at least 12 characters long.',
-    correctAnswer: 'true',
+    questionText: 'Un mot de passe fort doit contenir au moins 12 caractères.',
+    correctAnswer: 'Vrai',
     difficulty: new Decimal(0.2),
-    category: 'Authentication',
-    explanation: 'Industry best practices recommend passwords of 12+ characters to resist brute force attacks.',
+    category: 'Authentification',
+    explanation: 'Les meilleures pratiques recommandent des mots de passe de 12+ caractères pour résister aux attaques par force brute.',
     mitreTechniques: ['T1110'],
     tags: ['password', 'authentication', 'security-basics'],
   },
   {
-    questionText: 'Public WiFi networks provide the same security as private networks.',
-    correctAnswer: 'false',
+    questionText: 'Les réseaux WiFi publics offrent la même sécurité que les réseaux privés.',
+    correctAnswer: 'Faux',
     difficulty: new Decimal(0.15),
-    category: 'Network Security',
-    explanation: 'Public WiFi is vulnerable to man-in-the-middle attacks. Always use a VPN on public networks.',
+    category: 'Sécurité Réseau',
+    explanation: 'Le WiFi public est vulnérable aux attaques man-in-the-middle. Utilisez toujours un VPN sur les réseaux publics.',
     mitreTechniques: ['T1557'],
     tags: ['wifi', 'network', 'security-basics'],
   },
 
   // Medium - Malware & Attacks
   {
-    questionText: 'Ransomware always encrypts files immediately upon infection.',
-    correctAnswer: 'false',
+    questionText: 'Les rançongiciels chiffrent toujours les fichiers immédiatement après l\'infection.',
+    correctAnswer: 'Faux',
     difficulty: new Decimal(0.5),
-    category: 'Malware',
-    explanation: 'Some ransomware families remain dormant to avoid detection before encryption.',
+    category: 'Maliciels',
+    explanation: 'Certaines familles de rançongiciels restent dormantes pour éviter la détection avant le chiffrement.',
     mitreTechniques: ['T1486'],
     tags: ['ransomware', 'malware', 'tactics'],
   },
   {
-    questionText: 'SQL injection attacks can only target SQL databases.',
-    correctAnswer: 'false',
+    questionText: 'Les attaques par injection SQL ne peuvent cibler que les bases de données SQL.',
+    correctAnswer: 'Faux',
     difficulty: new Decimal(0.55),
-    category: 'Web Security',
-    explanation: 'While SQL injection targets databases, similar injection attacks work on various systems.',
+    category: 'Sécurité Web',
+    explanation: 'Bien que l\'injection SQL cible les bases de données, des attaques d\'injection similaires fonctionnent sur divers systèmes.',
     mitreTechniques: ['T1190'],
     tags: ['injection', 'web-security', 'vulnerabilities'],
   },
 
   // Hard - Advanced Topics
   {
-    questionText: 'In a zero-trust architecture, all network traffic is considered untrusted by default.',
-    correctAnswer: 'true',
+    questionText: 'Dans une architecture sans confiance (zero-trust), tout le trafic réseau est considéré comme non fiable par défaut.',
+    correctAnswer: 'Vrai',
     difficulty: new Decimal(0.8),
-    category: 'Network Architecture',
-    explanation: 'Zero-trust assumes breach and verifies every access request, regardless of network location.',
+    category: 'Architecture Réseau',
+    explanation: 'Zero-trust suppose une violation et vérifie chaque demande d\'accès, quel que soit l\'emplacement du réseau.',
     mitreTechniques: ['T1134'],
     tags: ['zero-trust', 'architecture', 'advanced'],
   },
   {
-    questionText: 'A side-channel attack exploits weaknesses in the implementation of a cryptographic algorithm rather than weaknesses in the algorithm itself.',
-    correctAnswer: 'true',
+    questionText: 'Une attaque par canal auxiliaire exploite les faiblesses dans la mise en œuvre d\'un algorithme cryptographique plutôt que des faiblesses dans l\'algorithme lui-même.',
+    correctAnswer: 'Vrai',
     difficulty: new Decimal(0.85),
-    category: 'Cryptography',
-    explanation: 'Side-channel attacks use timing, power consumption, or other physical properties to break encryption.',
+    category: 'Cryptographie',
+    explanation: 'Les attaques par canal auxiliaire utilisent le timing, la consommation d\'énergie ou d\'autres propriétés physiques pour casser le chiffrement.',
     mitreTechniques: ['T1040'],
     tags: ['cryptography', 'attacks', 'advanced'],
   },
@@ -86,7 +87,7 @@ async function seed() {
       const question = await prisma.question.create({
         data: {
           questionText: q.questionText,
-          options: ['true', 'false'], // True/false options
+          options: ['Vrai', 'Faux'], // Standardized French options
           correctAnswer: q.correctAnswer,
           difficulty: q.difficulty,
           qualityScore: new Decimal(0.95), // Pre-validated

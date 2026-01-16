@@ -59,14 +59,24 @@ export async function POST(request: NextRequest) {
     if (!text || answerValue === undefined || !category) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Normalize answer to Vrai/Faux
+    const normalizeAnswer = (value: any): string => {
+      const str = String(value).trim();
+      if (str.toLowerCase() === 'true') return 'Vrai';
+      if (str.toLowerCase() === 'false') return 'Faux';
+      if (str === '1' || str.toLowerCase() === 'yes') return 'Vrai';
+      if (str === '0' || str.toLowerCase() === 'no') return 'Faux';
+      return str;
+    };
     
     const questionRecord = await prisma.question.create({
       data: {
         questionText: text,
-        options: JSON.stringify(['True', 'False']),
+        options: ['Vrai', 'Faux'],
         correctAnswer: typeof answerValue === 'boolean' 
-          ? (answerValue ? 'True' : 'False')
-          : answerValue,
+          ? (answerValue ? 'Vrai' : 'Faux')
+          : normalizeAnswer(answerValue),
         explanation: explanation || '',
         difficulty,
         category,
