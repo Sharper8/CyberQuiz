@@ -126,10 +126,16 @@ function QuizContent() {
         }
 
         const convertedQuestions = acceptedQuestions.map(apiQuestion => {
-          const correctAnswer =
-            apiQuestion.correctAnswer.toLowerCase() === 'true' ||
-            apiQuestion.correctAnswer === '1' ||
-            apiQuestion.correctAnswer === 'true';
+          // Parse correctAnswer to boolean
+          // Accepts: "Vrai", "OUI", "true", "1", "yes" → true
+          // Accepts: "Faux", "NON", "false", "0", "no" → false
+          const answerLower = String(apiQuestion.correctAnswer).toLowerCase().trim();
+          const correctAnswer = 
+            answerLower === 'true' ||
+            answerLower === '1' ||
+            answerLower === 'vrai' ||
+            answerLower === 'oui' ||
+            answerLower === 'yes';
 
           return {
             id: apiQuestion.id,
