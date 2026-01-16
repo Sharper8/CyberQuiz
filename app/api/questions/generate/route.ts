@@ -8,7 +8,7 @@ import { z } from 'zod';
 const GenerateRequestSchema = z.object({
   topic: z.string().min(1),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
-  count: z.number().int().min(1).max(10).optional(),
+  count: z.number().int().min(1).max(50).optional(),
 });
 
 /**

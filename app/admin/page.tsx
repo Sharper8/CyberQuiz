@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Badge } from "@/components/ui/badge";
 import { ExportImportPanel } from "@/components/ExportImportPanel";
+import { PoolMaintenancePanel } from "@/components/PoolMaintenancePanel";
 import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -31,30 +32,14 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
-  const [generationCount, setGenerationCount] = useState(5);
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
     category: "Sécurité",
   });
-  const [generating, setGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState<{
-    step: string;
-    message: string;
-    current?: number;
-    total?: number;
-  } | null>(null);
-  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetchQuestions();
-
-    // Cleanup on unmount: abort any ongoing generation
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
   }, []);
 
   const fetchQuestions = async () => {
@@ -107,86 +92,6 @@ export default function AdminPage() {
       toast.success("Question ajoutée");
     } catch (error: any) {
       toast.error("Erreur lors de l'ajout");
-    }
-  };
-
-  const handleGenerateQuestions = async () => {
-    setGenerating(true);
-    setGenerationProgress({ step: 'init', message: 'Démarrage...' });
-    
-    // Create abort controller for this generation request
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    
-    try {
-      // Use streaming endpoint for real-time progress
-      const response = await fetch('/api/questions/generate-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        signal: abortController.signal,
-        body: JSON.stringify({
-          topic: 'Cybersécurité',
-          difficulty: 'medium',
-          count: generationCount
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start generation');
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
-            if (eventMatch) {
-              const [, event, dataStr] = eventMatch;
-              try {
-                const data = JSON.parse(dataStr);
-
-                if (event === 'progress') {
-                  setGenerationProgress(data);
-                  toast.info(data.message, { duration: 2000 });
-                } else if (event === 'complete') {
-                  toast.success('Questions générées avec succès!');
-                  await fetchQuestions();
-                  setGenerating(false);
-                  setGenerationProgress(null);
-                } else if (event === 'error') {
-                  toast.error(data.message);
-                  setGenerating(false);
-                  setGenerationProgress(null);
-                }
-              } catch (parseError) {
-                console.error('Failed to parse event data:', parseError);
-              }
-            }
-          }
-        }
-      }
-    } catch (error: any) {
-      // Don't show error toast if the error was due to abort (page refresh/unmount)
-      if (error.name !== 'AbortError') {
-        toast.error(error.message || "Erreur lors de la génération");
-      }
-      setGenerating(false);
-      setGenerationProgress(null);
     }
   };
 
@@ -303,85 +208,14 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
 
-          <div className="flex gap-4 items-end">
-            <div className="space-y-2">
-              <Label htmlFor="generation-count">Nombre de questions à générer</Label>
-              <Input
-                id="generation-count"
-                type="number"
-                min="1"
-                max="50"
-                value={generationCount}
-                onChange={(e) => setGenerationCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                disabled={generating}
-                className="w-24"
-              />
-            </div>
-            <CyberButton
-              variant="secondary"
-              size="lg"
-              onClick={handleGenerateQuestions}
-              disabled={generating}
-            >
-              {generating ? (
-                <>
-                  <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                  {generationProgress?.message || "Génération..."}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Générer avec IA
-                </>
-              )}
-            </CyberButton>
+          <div className="flex gap-4 items-center">
+            {/* Pool Maintenance Panel - replaces old generate button */}
+            <PoolMaintenancePanel onGenerationComplete={fetchQuestions} />
 
             {/* Export/Import Panel */}
             <ExportImportPanel onImportSuccess={fetchQuestions} />
           </div>
         </div>
-
-        {/* Generation Progress Display */}
-        {generating && generationProgress && (
-          <div className="bg-card border border-primary rounded-lg p-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-primary">
-                  Génération en cours...
-                </h3>
-                {generationProgress.current !== undefined && generationProgress.total && (
-                  <span className="text-sm text-muted-foreground">
-                    {generationProgress.current}/{generationProgress.total}
-                  </span>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {generationProgress.message}
-                </p>
-                
-                {generationProgress.total && (
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-primary h-full transition-all duration-300 ease-out"
-                      style={{ 
-                        width: `${((generationProgress.current || 0) / generationProgress.total) * 100}%` 
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="animate-pulse">●</div>
-                <span>
-                  Étape: <span className="font-mono text-primary">{generationProgress.step}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Questions List */}
         <div className="space-y-4">

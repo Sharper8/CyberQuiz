@@ -31,8 +31,8 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default) and Prisma CLI globally for migrations at runtime
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL for Prisma, curl for healthchecks/init, and Prisma CLI globally for migrations at runtime
+RUN apt-get update && apt-get install -y openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g prisma@5.22.0
 
 ENV NODE_ENV=production
