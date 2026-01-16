@@ -25,11 +25,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for banned words (both hardcoded and database)
-    const isBanned = await containsBannedWord(validation.data);
-    if (isBanned) {
+    const isBannedWord = await containsBannedWord(validation.data);
+    if (isBannedWord) {
       return NextResponse.json(
         { error: 'Username contains inappropriate language or is banned' },
         { status: 400 }
+      );
+    }
+
+    // Check if user is explicitly banned
+    const bannedUser = await prisma.bannedUser.findUnique({
+      where: { username: validation.data },
+    });
+
+    if (bannedUser) {
+      return NextResponse.json(
+        { error: `You have been banned from playing. Reason: ${bannedUser.reason || 'Violation of rules'}` },
+        { status: 403 }
       );
     }
 

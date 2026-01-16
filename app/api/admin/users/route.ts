@@ -126,3 +126,37 @@ export async function PUT(request: NextRequest) {
         await prisma.$disconnect();
     }
 }
+
+// DELETE /api/admin/users - Delete an admin
+export async function DELETE(request: NextRequest) {
+    try {
+        // Verify authentication
+        const adminId = await verifyAdminToken(request);
+        if (!adminId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const targetId = parseInt(searchParams.get('id') || '0');
+
+        if (!targetId) {
+            return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+        }
+
+        // Prevent self-deletion
+        if (targetId === adminId) {
+            return NextResponse.json({ error: 'Cannot delete yourself' }, { status: 403 });
+        }
+
+        await prisma.adminUser.delete({
+            where: { id: targetId },
+        });
+
+        return NextResponse.json({ message: 'Admin deleted successfully' });
+    } catch (error) {
+        console.error('[API/admin/users] Error:', error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    } finally {
+        await prisma.$disconnect();
+    }
+}
