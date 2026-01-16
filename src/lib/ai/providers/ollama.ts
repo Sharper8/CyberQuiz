@@ -75,7 +75,7 @@ export class OllamaProvider implements AIProvider {
   constructor() {
     const env = getEnv();
     this.baseUrl = env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    this.generationModel = process.env.OLLAMA_GENERATION_MODEL || 'llama3.1:8b';
+    this.generationModel = process.env.OLLAMA_GENERATION_MODEL || 'mistral:7b';
     this.embeddingModel = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
     this.validationModel = process.env.OLLAMA_VALIDATION_MODEL || this.generationModel;
   }
