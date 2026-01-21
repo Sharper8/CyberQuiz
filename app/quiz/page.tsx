@@ -2,12 +2,10 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, XCircle, Clock, Trophy, MessageCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Trophy, Square } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import AIChatPanel from "@/components/AIChatPanel";
 import { api } from "@/lib/api-client";
 import { toast } from "sonner";
 
@@ -95,9 +93,12 @@ function QuizContent() {
   const [answered, setAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [timeLeft, setTimeLeft] = useState(30);
-  const [showAIChat, setShowAIChat] = useState(false);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [answerTimeLeft, setAnswerTimeLeft] = useState(5); // Timer for answer reveal
+  const [stoppingQuiz, setStoppingQuiz] = useState(false);
+  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [elapsedTime, setElapsedTime] = useState(0); // Timer for how long on current question
 
   // Validate username and fetch questions on mount
   useEffect(() => {
@@ -129,10 +130,16 @@ function QuizContent() {
         }
 
         const convertedQuestions = acceptedQuestions.map(apiQuestion => {
-          const correctAnswer =
-            apiQuestion.correctAnswer.toLowerCase() === 'true' ||
-            apiQuestion.correctAnswer === '1' ||
-            apiQuestion.correctAnswer === 'true';
+          // Parse correctAnswer to boolean
+          // Accepts: "Vrai", "OUI", "true", "1", "yes" → true
+          // Accepts: "Faux", "NON", "false", "0", "no" → false
+          const answerLower = String(apiQuestion.correctAnswer).toLowerCase().trim();
+          const correctAnswer = 
+            answerLower === 'true' ||
+            answerLower === '1' ||
+            answerLower === 'vrai' ||
+            answerLower === 'oui' ||
+            answerLower === 'yes';
 
           return {
             id: apiQuestion.id,
@@ -164,6 +171,49 @@ function QuizContent() {
     return () => clearTimeout(timer);
   }, [timeLeft, answered, mode, isLoading, questions.length]);
 
+  // Track elapsed time on current question
+  useEffect(() => {
+    if (isLoading || questions.length === 0 || answered) return;
+
+    const timer = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - questionStartTime) / 1000));
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [questionStartTime, answered, isLoading, questions.length]);
+
+  // Auto-advance to next question after 5 seconds of answer reveal
+  useEffect(() => {
+    if (!answered || answerTimeLeft === null) return;
+
+    if (answerTimeLeft === 0) {
+      handleNextQuestion();
+      return;
+    }
+
+    const timer = setTimeout(() => setAnswerTimeLeft((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [answered, answerTimeLeft]);
+
+  const handleStopQuiz = async () => {
+    setStoppingQuiz(true);
+    try {
+      const finalScore = answered ? score + (selectedAnswer === currentQuestion.answer ? 1 : 0) : score;
+      const totalQuestions = questionsAnswered + (answered ? 1 : 0);
+      console.log('[handleStopQuiz] Stopping quiz:', {
+        finalScore,
+        totalQuestions,
+        questionsAnswered,
+        answered,
+      });
+      await saveScore(finalScore, totalQuestions);
+    } catch (error) {
+      console.error('Error saving score:', error);
+    } finally {
+      router.push("/");
+    }
+  };
+
   // Handle loading state
   if (isLoading) {
     return (
@@ -183,7 +233,7 @@ function QuizContent() {
         <CyberBackground />
         <div className="text-center relative z-20 space-y-3">
           <p className="text-lg text-muted-foreground">Aucune question disponible pour l'instant.</p>
-          <Button variant="secondary" onClick={() => router.push("/")}>Retour à l'accueil</Button>
+          <CyberButton variant="secondary" onClick={() => router.push("/")}>Retour à l'accueil</CyberButton>
         </div>
       </div>
     );
@@ -227,6 +277,7 @@ function QuizContent() {
   const handleAnswer = (answer: boolean | null) => {
     setAnswered(true);
     setSelectedAnswer(answer);
+    setAnswerTimeLeft(5); // Start 5-second countdown to next question
     if (!currentQuestion) return;
 
     const newQuestionsAnswered = questionsAnswered + 1;
@@ -247,19 +298,32 @@ function QuizContent() {
       return;
     }
 
-    setTimeout(async () => {
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-        setAnswered(false);
-        setSelectedAnswer(null);
-        setTimeLeft(30);
-        setShowAIChat(false);
-      } else {
-        const finalScore = score + (isCorrect ? 1 : 0);
-        await saveScore(finalScore, questions.length);
-        router.push(`/score?score=${finalScore}&total=${questions.length}&mode=${mode}&pseudo=${pseudo}`);
-      }
-    }, 1500);
+    // Will auto-advance via useEffect after 5 seconds
+  };
+
+  const handleNextQuestion = async () => {
+    const totalQuestions = questions.length;
+    
+    if (currentQuestionIndex < totalQuestions - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setAnswered(false);
+      setSelectedAnswer(null);
+      setAnswerTimeLeft(5);
+      setTimeLeft(30);
+      setQuestionStartTime(Date.now());
+      setElapsedTime(0);
+    } else {
+      const finalScore = score + (selectedAnswer === currentQuestion.answer ? 1 : 0);
+      console.log('[handleNextQuestion] Quiz complete:', {
+        finalScore,
+        totalQuestions,
+        currentScore: score,
+        selectedAnswer,
+        correctAnswer: currentQuestion.answer,
+      });
+      await saveScore(finalScore, totalQuestions);
+      router.push(`/score?score=${finalScore}&total=${totalQuestions}&mode=${mode}&pseudo=${pseudo}`);
+    }
   };
 
   return (
@@ -267,108 +331,118 @@ function QuizContent() {
       <CyberBackground />
       <div className="w-full max-w-3xl space-y-6 animate-slide-up relative z-20">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-secondary">
             <Trophy className="h-6 w-6" />
             <span className="text-2xl font-bold">{score}</span>
           </div>
           
-          {mode === "chrono" && (
-            <div className="flex items-center gap-2 text-primary">
-              <Clock className="h-6 w-6" />
-              <span className="text-2xl font-bold">{timeLeft}s</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2">
+            <Clock className="h-5 w-5" />
+            <span className="text-xl font-bold tabular-nums">
+              {mode === "chrono" ? `${timeLeft}s` : `${elapsedTime}s`}
+            </span>
+          </div>
+          
+          <div />
         </div>
 
-        {/* Progress */}
+        {/* Progress - no question count shown */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Question {currentQuestionIndex + 1}/{questions.length}</span>
             <span className="text-secondary font-medium">{currentQuestion.category}</span>
           </div>
           <Progress value={progress} className="h-2 bg-secondary/20" />
         </div>
 
-        {/* Question Card */}
-        <div className="bg-card border-2 border-border rounded-lg p-8 shadow-2xl">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 leading-relaxed">
-            {currentQuestion.question}
-          </h2>
-
-          {!answered ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <CyberButton
-                  size="xl"
-                  variant="secondary"
-                  onClick={() => handleAnswer(true)}
-                  className="h-24 text-2xl font-bold"
-                >
-                  OUI
-                </CyberButton>
-                <CyberButton
-                  size="xl"
-                  variant="primary"
-                  onClick={() => handleAnswer(false)}
-                  className="h-24 text-2xl font-bold"
-                >
-                  NON
-                </CyberButton>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className={`text-center p-6 rounded-lg ${
-                selectedAnswer === currentQuestion.answer 
-                  ? "bg-secondary/10 border-2 border-secondary" 
-                  : "bg-destructive/10 border-2 border-destructive"
-              }`}>
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  {selectedAnswer === currentQuestion.answer ? (
-                    <>
-                      <CheckCircle2 className="h-8 w-8 text-secondary" />
-                      <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="h-8 w-8 text-destructive" />
-                      <span className="text-2xl font-bold text-destructive">Mauvaise réponse 😅</span>
-                    </>
-                  )}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
-                    {currentQuestion.answer ? "OUI" : "NON"}
-                  </span>
-                </p>
-              </div>
-              
-              {/* AI Explanation Button */}
-              <div className="flex justify-center pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAIChat(true)}
-                  className="gap-2"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Demander une explication à l'IA
-                </Button>
-              </div>
-            </div>
+        {/* Question Card with Timer Animation */}
+        <div className="relative">
+          {/* Animated timer border around card */}
+          {mode === "chrono" && !answered && (
+            <div 
+              className="absolute inset-0 rounded-lg pointer-events-none animate-timer-ring"
+              style={{
+                background: `linear-gradient(${(timeLeft / 30) * 360}deg, hsl(var(--primary) / 0.6) 0%, transparent 50%)`,
+                borderRadius: '0.5rem'
+              }}
+            />
           )}
-        </div>
+          
+          <div className={`bg-card border-2 rounded-lg p-8 shadow-2xl relative z-10 ${
+            mode === "chrono" && !answered ? 'border-primary/60' : 'border-border'
+          } ${mode === "chrono" && !answered ? 'ring-2 ring-primary/40' : ''}`}>
+            <h2 className="text-2xl md:text-3xl font-bold text-center mb-8 leading-relaxed">
+              {currentQuestion.question}
+            </h2>
 
-        {/* AI Chat Panel */}
-        {showAIChat && answered && (
-          <AIChatPanel
-            question={currentQuestion.question}
-            userAnswer={selectedAnswer}
-            correctAnswer={currentQuestion.answer}
-            onClose={() => setShowAIChat(false)}
-          />
-        )}
+            {!answered ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <CyberButton
+                    size="xl"
+                    variant="secondary"
+                    onClick={() => handleAnswer(true)}
+                    className="h-24 text-2xl font-bold"
+                  >
+                    OUI
+                  </CyberButton>
+                  <CyberButton
+                    size="xl"
+                    variant="primary"
+                    onClick={() => handleAnswer(false)}
+                    className="h-24 text-2xl font-bold"
+                  >
+                    NON
+                  </CyberButton>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className={`text-center p-6 rounded-lg ${
+                  selectedAnswer === currentQuestion.answer 
+                    ? "bg-secondary/10 border-2 border-secondary" 
+                    : "bg-destructive/10 border-2 border-destructive"
+                }`}>
+                  <div className="flex items-center justify-center gap-3 mb-2">
+                    {selectedAnswer === currentQuestion.answer ? (
+                      <>
+                        <CheckCircle2 className="h-8 w-8 text-secondary" />
+                        <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-8 w-8 text-destructive" />
+                        <span className="text-2xl font-bold text-destructive">Mauvaise réponse 😅</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
+                      {currentQuestion.answer ? "OUI" : "NON"}
+                    </span>
+                  </p>
+                  
+                  {/* Auto-advance countdown */}
+                  <div className="mt-4 pt-4 border-t border-border space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
+                      </p>
+                      <Progress value={(answerTimeLeft / 5) * 100} className="h-1" />
+                    </div>
+                    <CyberButton 
+                      onClick={() => handleNextQuestion()}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Question suivante
+                    </CyberButton>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Timer progress for chrono mode */}
         {mode === "chrono" && !answered && (
@@ -377,6 +451,20 @@ function QuizContent() {
             className="h-1"
           />
         )}
+
+        {/* Footer with stop button */}
+        <div className="flex justify-center pt-4">
+          <CyberButton
+            variant="outline"
+            onClick={handleStopQuiz}
+            disabled={stoppingQuiz}
+            className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"
+            title="Arrêter et retourner à l'accueil"
+          >
+            <Square className="h-4 w-4" />
+            {stoppingQuiz ? "Arrêt en cours..." : "Arrêter le quiz"}
+          </CyberButton>
+        </div>
       </div>
     </div>
   );

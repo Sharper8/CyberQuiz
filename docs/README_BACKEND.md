@@ -104,12 +104,41 @@ curl http://localhost:3000/api/health
 # Start full stack (app + PostgreSQL + Qdrant + Ollama)
 docker-compose up -d
 
-# Pull AI models (auto on first use)
-docker-compose exec ollama ollama pull llama3.1:8b
-docker-compose exec ollama ollama pull nomic-embed-text
+# Ollama models are auto-pulled on first startup
+# Current setup uses mistral:7b (see below for details)
 
 # View logs
 docker-compose logs -f app
+```
+
+### 🤖 Ollama Model Configuration
+
+**Current Model: mistral:7b** (~3.8 GB RAM required)
+
+#### Memory Requirements by Model:
+| Model | RAM Required | Status | Notes |
+|-------|-------------|--------|-------|
+| mistral:7b | ~3.8 GB | ✅ RECOMMENDED | Best for typical 8GB VMs |
+| neural-chat:7b | ~3.8 GB | ✅ ALTERNATIVE | Chat-optimized variant |
+| llama3.1:8b | 4.8 GB | ⚠️ INCOMPATIBLE | Causes OOM on 7.6GB VMs |
+| llama2:13b | 7+ GB | ❌ NOT SUITABLE | Exceeds most VM memory |
+
+#### Production VM Specs:
+- Total RAM: 7.6 GB
+- Available for processes: ~6.0 GB (after OS + caches)
+- **Mistral:7b fits safely with margin**
+
+#### To Change Model:
+1. **Update scripts/init-ollama.sh** - Change the `ollama pull mistral:7b` line
+2. **Update src/lib/ai/providers/ollama.ts** - Change the default in constructor
+3. **Test in dev environment first** - Ensure adequate memory
+4. **Verify in production** - Monitor memory usage with `docker stats`
+
+#### Environment Variable Override:
+```bash
+# In .env or docker-compose, set:
+OLLAMA_GENERATION_MODEL=your-model:tag
+OLLAMA_EMBED_MODEL=your-embed-model:tag
 ```
 
 ---

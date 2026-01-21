@@ -1,0 +1,93 @@
+#!/bin/bash
+
+# Script de test pour l'API export/import
+
+set -e
+
+echo "🧪 Test de l'API Export/Import"
+echo "=============================="
+
+BASE_URL="http://localhost:3000"
+TOKEN="" # À obtenir après login admin
+
+# Fonction pour faire login
+login() {
+  echo "🔐 Tentative de login admin..."
+  
+  RESPONSE=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "email": "admin@cyberquiz.fr",
+      "password": "change-this-secure-password"
+    }')
+  
+  TOKEN=$(echo $RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+  
+  if [ -z "$TOKEN" ]; then
+    echo "❌ Erreur lors du login"
+    echo "Réponse: $RESPONSE"
+    exit 1
+  fi
+  
+  echo "✅ Login réussi"
+}
+
+# Test d'export
+test_export() {
+  local format=$1
+  local status=${2:-"all"}
+  
+  echo ""
+  echo "📤 Test export: format=$format, status=$status"
+  
+  RESPONSE=$(curl -s -b "auth-token=$TOKEN" \
+    -o "export_test_${format}.${format}" \
+    -w "%{http_code}" \
+    "$BASE_URL/api/admin/questions/export?format=$format&status=$status")
+  
+  if [ "$RESPONSE" = "200" ]; then
+    SIZE=$(ls -lh "export_test_${format}.${format}" | awk '{print $5}')
+    echo "✅ Export réussi ($SIZE)"
+  else
+    echo "❌ Export échoué (HTTP $RESPONSE)"
+  fi
+}
+
+# Test d'import
+test_import() {
+  echo ""
+  echo "📥 Test import depuis sample-questions.csv"
+  
+  # Vérifier que le fichier existe
+  if [ ! -f "sample-questions.csv" ]; then
+    echo "❌ Fichier sample-questions.csv non trouvé"
+    return
+  fi
+  
+  RESPONSE=$(curl -s -b "auth-token=$TOKEN" \
+    -F "file=@sample-questions.csv" \
+    "$BASE_URL/api/admin/questions/import")
+  
+  IMPORTED=$(echo $RESPONSE | grep -o '"imported":[0-9]*' | cut -d':' -f2)
+  ERRORS=$(echo $RESPONSE | grep -o '"errors":\[' | wc -l)
+  
+  echo "📊 Résultats:"
+  echo "   Questions importées: $IMPORTED"
+  echo "   Erreurs détectées: $ERRORS"
+  echo "   Réponse complète: $RESPONSE"
+}
+
+# Exécution
+echo ""
+login
+
+test_export "csv" "all"
+test_export "xlsx" "accepted"
+
+test_import
+
+echo ""
+echo "✅ Tests terminés!"
+echo ""
+echo "📁 Fichiers générés:"
+ls -lh export_test_* 2>/dev/null || echo "   (aucun fichier)"

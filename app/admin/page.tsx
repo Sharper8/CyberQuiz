@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Badge } from "@/components/ui/badge";
+import { ExportImportPanel } from "@/components/ExportImportPanel";
+import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -29,7 +31,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
-  const [generationCount, setGenerationCount] = useState(5);
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -126,7 +127,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           topic: 'Cybersécurité',
           difficulty: 'medium',
-          count: generationCount
+          count: 5
         }),
       });
 
@@ -241,7 +242,7 @@ export default function AdminPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
               <CyberButton variant="primary" size="lg">
@@ -302,19 +303,6 @@ export default function AdminPage() {
           </Dialog>
 
           <div className="flex gap-4 items-end">
-            <div className="space-y-2">
-              <Label htmlFor="generation-count">Nombre de questions à générer</Label>
-              <Input
-                id="generation-count"
-                type="number"
-                min="1"
-                max="50"
-                value={generationCount}
-                onChange={(e) => setGenerationCount(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
-                disabled={generating}
-                className="w-24"
-              />
-            </div>
             <CyberButton
               variant="secondary"
               size="lg"
@@ -333,6 +321,9 @@ export default function AdminPage() {
                 </>
               )}
             </CyberButton>
+
+            {/* Export/Import Panel */}
+            <ExportImportPanel onImportSuccess={fetchQuestions} />
           </div>
         </div>
 
@@ -426,7 +417,17 @@ export default function AdminPage() {
             filteredQuestions.map((question) => {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
-              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const rawAnswer = question.correctAnswer || (question.answer ? 'true' : 'false');
+              
+              // Parse answer to determine if true or false
+              const answerLower = String(rawAnswer).toLowerCase().trim();
+              const isCorrectTrue =
+                answerLower === 'true' ||
+                answerLower === '1' ||
+                answerLower === 'vrai' ||
+                answerLower === 'oui' ||
+                answerLower === 'yes';
+              
               const isAiGenerated = question.aiProvider !== 'manual' && question.aiProvider !== 'seed';
               
               return (
@@ -471,7 +472,7 @@ export default function AdminPage() {
                       )}
                       <p className="text-sm text-muted-foreground">
                         Réponse correcte : <span className="font-semibold text-foreground">
-                          {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
+                          {isCorrectTrue ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
                       </p>
                       

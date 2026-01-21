@@ -215,8 +215,8 @@ async function main() {
       const question = await prisma.question.create({
         data: {
           questionText: q.question,
-          options: JSON.stringify(['True', 'False']),
-          correctAnswer: q.answer ? 'True' : 'False',
+          options: ['Vrai', 'Faux'],
+          correctAnswer: q.answer ? 'Vrai' : 'Faux',
           explanation: q.explanation,
           difficulty: q.difficulty,
           category: q.category,
@@ -224,8 +224,8 @@ async function main() {
           status: 'accepted', // Pre-validated questions
           isRejected: false,
           aiProvider: 'seed',
-          mitreTechniques: q.category === 'MITRE ATT&CK' ? JSON.stringify(['T1059']) : JSON.stringify([]),
-          tags: JSON.stringify([q.category.toLowerCase()]),
+          mitreTechniques: q.category === 'MITRE ATT&CK' ? ['T1059'] : [],
+          tags: [q.category.toLowerCase()],
           qualityScore: 1.0, // Perfect quality for seed questions
         },
       });

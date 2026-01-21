@@ -187,3 +187,11 @@ model GenerationLog {
   completedAt        DateTime?
   error              String?
 }
+
+model BannedUser {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  reason    String?
+  bannedAt  DateTime @default(now())
+  bannedBy  String?
+}

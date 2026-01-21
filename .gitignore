@@ -11,6 +11,9 @@ build/
 .env
 .env.*.local
 
+# SSH keys
+.ssh/
+
 # OS and editor junk
 .DS_Store
 .idea/

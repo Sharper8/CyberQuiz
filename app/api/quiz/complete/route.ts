@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     
     console.log('[API/quiz/complete] Received request:', { sessionId, score, totalQuestions, timeTaken, topic });
 
-    if (!sessionId || score === undefined || !totalQuestions) {
+    if (!sessionId || score === undefined || totalQuestions === undefined || totalQuestions < 0) {
       console.warn('[API/quiz/complete] Missing required fields');
       return NextResponse.json(
         { error: 'Missing required fields: sessionId, score, totalQuestions' },
@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate accuracy percentage
-    const accuracyPercentage = (score / totalQuestions) * 100;
+    // Calculate accuracy percentage (avoid division by zero)
+    const accuracyPercentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
 
     // Create score record
     const scoreRecord = await prisma.score.create({

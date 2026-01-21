@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
+    "@prisma/client": "^5.20.0",
+    "@qdrant/js-client-rest": "^1.9.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -58,22 +60,21 @@
     "lucide-react": "^0.462.0",
     "next": "^16.0.3",
     "next-themes": "^0.3.0",
+    "openai": "^4.67.1",
     "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.61.1",
-  "react-resizable-panels": "^2.1.9",
-  "recharts": "^2.15.4",
+    "react-resizable-panels": "^2.1.9",
+    "recharts": "^2.15.4",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "zod": "^3.25.76",
-    "@prisma/client": "^5.20.0",
-    "@qdrant/js-client-rest": "^1.9.0",
-    "openai": "^4.67.1",
-    "winston": "^3.13.0"
+    "winston": "^3.13.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
@@ -86,15 +87,16 @@
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
     "autoprefixer": "^10.4.21",
+    "baseline-browser-mapping": "^2.9.14",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.15.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.38.0",
     "prisma": "^5.20.0",
-    "tsx": "^4.7.0"
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.7.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
