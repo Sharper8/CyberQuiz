@@ -28,6 +28,10 @@ export class OpenAIProvider implements AIProvider {
     this.embeddingModel = process.env.OPENAI_EMBED_MODEL || 'text-embedding-3-large';
   }
 
+  get model(): string {
+    return this.generationModel;
+  }
+
   async isAvailable(): Promise<boolean> {
     return this.enabled;
   }
