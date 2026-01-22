@@ -34,7 +34,19 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, validated } = body;
+    const {
+      status,
+      validated,
+      questionText,
+      explanation,
+      correctAnswer,
+      category,
+      tags,
+      generationDomain,
+      generationSkillType,
+      generationDifficulty,
+      generationGranularity,
+    } = body;
     
     // Support both new status field and legacy validated field
     let updateData: any = {};
@@ -46,6 +58,32 @@ export async function PATCH(
       // Legacy support: convert validated boolean to status
       updateData.status = validated ? 'accepted' : 'to_review';
       updateData.isRejected = !validated;
+    }
+
+    if (questionText !== undefined) updateData.questionText = questionText;
+    if (explanation !== undefined) updateData.explanation = explanation;
+    if (category !== undefined) updateData.category = category;
+    if (generationDomain !== undefined) updateData.generationDomain = generationDomain;
+    if (generationSkillType !== undefined) updateData.generationSkillType = generationSkillType;
+    if (generationDifficulty !== undefined) updateData.generationDifficulty = generationDifficulty;
+    if (generationGranularity !== undefined) updateData.generationGranularity = generationGranularity;
+
+    if (correctAnswer !== undefined) {
+      const normalized = typeof correctAnswer === 'boolean'
+        ? (correctAnswer ? 'True' : 'False')
+        : String(correctAnswer);
+      updateData.correctAnswer = normalized;
+      updateData.options = ['True', 'False'];
+    }
+
+    if (tags !== undefined) {
+      const parsedTags = Array.isArray(tags)
+        ? tags
+        : String(tags)
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean);
+      updateData.tags = parsedTags;
     }
     
     const question = await prisma.question.update({

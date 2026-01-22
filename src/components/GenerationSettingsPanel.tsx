@@ -8,7 +8,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Settings, Save } from 'lucide-react';
+import { Settings, Save, Trash2, Plus } from 'lucide-react';
 import CyberButton from './CyberButton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -53,42 +53,62 @@ const AVAILABLE_MODELS = [
 ];
 
 const DEFAULT_DOMAINS = [
-  'Network Security',
-  'Application Security',
-  'Cloud Security',
-  'Identity & Access',
-  'Threat Intelligence',
-  'Incident Response',
-  'Cryptography',
-  'Compliance & Governance',
+  'Sécurité Réseau',
+  'Sécurité Applicative',
+  'Sécurité Cloud',
+  'Identité & Accès',
+  'Renseignement sur les Menaces',
+  'Réponse aux Incidents',
+  'Cryptographie',
+  'Conformité & Gouvernance',
 ];
 
 const DEFAULT_SKILL_TYPES = [
-  'Detection',
-  'Prevention',
-  'Analysis',
+  'Détection',
+  'Prévention',
+  'Analyse',
   'Configuration',
-  'Best Practices',
+  'Bonnes Pratiques',
 ];
 
 const DEFAULT_DIFFICULTIES = [
-  'Beginner',
-  'Intermediate',
-  'Advanced',
+  'Débutant',
+  'Intermédiaire',
+  'Avancé',
   'Expert',
 ];
 
 const DEFAULT_GRANULARITIES = [
-  'Conceptual',
-  'Procedural',
-  'Technical',
-  'Strategic',
+  'Conceptuel',
+  'Procédural',
+  'Technique',
+  'Stratégique',
 ];
+
+// Labels removed - using French values directly
+
+
+
+
+
+
 
 export function GenerationSettingsPanel() {
   const [settings, setSettings] = useState<GenerationSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // State for managing available dimension values
+  const [availableDomains, setAvailableDomains] = useState<string[]>(DEFAULT_DOMAINS);
+  const [availableSkillTypes, setAvailableSkillTypes] = useState<string[]>(DEFAULT_SKILL_TYPES);
+  const [availableDifficulties, setAvailableDifficulties] = useState<string[]>(DEFAULT_DIFFICULTIES);
+  const [availableGranularities, setAvailableGranularities] = useState<string[]>(DEFAULT_GRANULARITIES);
+  
+  // State for new value inputs
+  const [newDomain, setNewDomain] = useState('');
+  const [newSkillType, setNewSkillType] = useState('');
+  const [newDifficulty, setNewDifficulty] = useState('');
+  const [newGranularity, setNewGranularity] = useState('');
 
   useEffect(() => {
     fetchSettings();
@@ -185,6 +205,89 @@ export function GenerationSettingsPanel() {
     });
   };
 
+  // Add new dimension values
+  const addDomain = () => {
+    if (!newDomain.trim() || availableDomains.includes(newDomain.trim())) return;
+    setAvailableDomains([...availableDomains, newDomain.trim()]);
+    setNewDomain('');
+    toast.success(`Domaine "${newDomain.trim()}" ajouté`);
+  };
+
+  const addSkillType = () => {
+    if (!newSkillType.trim() || availableSkillTypes.includes(newSkillType.trim())) return;
+    setAvailableSkillTypes([...availableSkillTypes, newSkillType.trim()]);
+    setNewSkillType('');
+    toast.success(`Compétence "${newSkillType.trim()}" ajoutée`);
+  };
+
+  const addDifficulty = () => {
+    if (!newDifficulty.trim() || availableDifficulties.includes(newDifficulty.trim())) return;
+    setAvailableDifficulties([...availableDifficulties, newDifficulty.trim()]);
+    setNewDifficulty('');
+    toast.success(`Difficulté "${newDifficulty.trim()}" ajoutée`);
+  };
+
+  const addGranularity = () => {
+    if (!newGranularity.trim() || availableGranularities.includes(newGranularity.trim())) return;
+    setAvailableGranularities([...availableGranularities, newGranularity.trim()]);
+    setNewGranularity('');
+    toast.success(`Granularité "${newGranularity.trim()}" ajoutée`);
+  };
+
+  // Delete dimension values
+  const deleteDomain = (domain: string) => {
+    if (!settings) return;
+    setAvailableDomains(availableDomains.filter(d => d !== domain));
+    // Also remove from enabled if present
+    setSettings({
+      ...settings,
+      structuredSpace: {
+        ...settings.structuredSpace,
+        enabledDomains: settings.structuredSpace.enabledDomains.filter(d => d !== domain),
+      },
+    });
+    toast.success(`Domaine "${domain}" supprimé`);
+  };
+
+  const deleteSkillType = (skillType: string) => {
+    if (!settings) return;
+    setAvailableSkillTypes(availableSkillTypes.filter(s => s !== skillType));
+    setSettings({
+      ...settings,
+      structuredSpace: {
+        ...settings.structuredSpace,
+        enabledSkillTypes: settings.structuredSpace.enabledSkillTypes.filter(s => s !== skillType),
+      },
+    });
+    toast.success(`Compétence "${skillType}" supprimée`);
+  };
+
+  const deleteDifficulty = (difficulty: string) => {
+    if (!settings) return;
+    setAvailableDifficulties(availableDifficulties.filter(d => d !== difficulty));
+    setSettings({
+      ...settings,
+      structuredSpace: {
+        ...settings.structuredSpace,
+        enabledDifficulties: settings.structuredSpace.enabledDifficulties.filter(d => d !== difficulty),
+      },
+    });
+    toast.success(`Difficulté "${difficulty}" supprimée`);
+  };
+
+  const deleteGranularity = (granularity: string) => {
+    if (!settings) return;
+    setAvailableGranularities(availableGranularities.filter(g => g !== granularity));
+    setSettings({
+      ...settings,
+      structuredSpace: {
+        ...settings.structuredSpace,
+        enabledGranularities: settings.structuredSpace.enabledGranularities.filter(g => g !== granularity),
+      },
+    });
+    toast.success(`Granularité "${granularity}" supprimée`);
+  };
+
   if (!settings) {
     return (
       <div className="flex items-center gap-2">
@@ -199,14 +302,14 @@ export function GenerationSettingsPanel() {
       <DialogTrigger asChild>
         <CyberButton variant="outline" size="lg">
           <Settings className="h-5 w-5 mr-2" />
-          Generation Settings
+          Paramètres de Génération
         </CyberButton>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Generation Settings</DialogTitle>
+          <DialogTitle>Paramètres de Génération</DialogTitle>
           <DialogDescription>
-            Configure buffer size, structured generation space, and model selection
+            Configurer la taille du buffer, l'espace de génération structuré et la sélection de modèle
           </DialogDescription>
         </DialogHeader>
 
@@ -214,15 +317,15 @@ export function GenerationSettingsPanel() {
           {/* Buffer Configuration */}
           <Card>
             <CardHeader>
-              <CardTitle>Buffer Configuration</CardTitle>
-              <CardDescription>Control automatic question generation and buffer size</CardDescription>
+              <CardTitle>Configuration du Buffer</CardTitle>
+              <CardDescription>Contrôler la génération automatique et la taille du buffer</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Auto-refill Buffer</Label>
+                  <Label>Remplissage Automatique</Label>
                   <p className="text-sm text-muted-foreground">
-                    Automatically generate questions when buffer depletes
+                    Générer automatiquement des questions quand le buffer diminue
                   </p>
                 </div>
                 <Switch
@@ -234,18 +337,18 @@ export function GenerationSettingsPanel() {
               </div>
 
               <div className="space-y-2">
-                <Label>Buffer Size (questions ready for review)</Label>
+                <Label>Taille du Buffer (questions prêtes pour révision)</Label>
                 <Input
                   type="number"
                   min="1"
-                  max="50"
+                  max="999"
                   value={settings.bufferSize}
                   onChange={(e) =>
                     setSettings({ ...settings, bufferSize: parseInt(e.target.value) || 10 })
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Recommended: 10-20 for continuous operation
+                  Min: 1 | Recommandé: 50+ | Max: 999
                 </p>
               </div>
             </CardContent>
@@ -254,19 +357,19 @@ export function GenerationSettingsPanel() {
           {/* Structured Generation Space */}
           <Card>
             <CardHeader>
-              <CardTitle>Structured Generation Space</CardTitle>
+              <CardTitle>Espace de Génération Structuré</CardTitle>
               <CardDescription>
-                Enable entropy-controlled generation with configurable dimensions
+                Activer la génération contrôlée par entropie avec dimensions configurables
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Enable Structured Space</Label>
+                  <Label>Activer l'Espace Structuré</Label>
                   <p className="text-sm text-muted-foreground">
                     {settings.structuredSpace.enabled 
-                      ? 'Questions generated with slot-based diversity control'
-                      : 'Using legacy generation mode'}
+                      ? 'Questions générées avec contrôle de diversité par slot'
+                      : 'Utilisation du mode de génération classique'}
                   </p>
                 </div>
                 <Switch
@@ -283,76 +386,192 @@ export function GenerationSettingsPanel() {
               {settings.structuredSpace.enabled && (
                 <>
                   {/* Domains */}
-                  <div className="space-y-2">
-                    <Label>Enabled Domains ({settings.structuredSpace.enabledDomains.length})</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {DEFAULT_DOMAINS.map((domain) => (
-                        <div key={domain} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`domain-${domain}`}
-                            checked={settings.structuredSpace.enabledDomains.includes(domain)}
-                            onCheckedChange={() => toggleDomain(domain)}
-                          />
-                          <label htmlFor={`domain-${domain}`} className="text-sm cursor-pointer">
-                            {domain}
-                          </label>
+                  <div className="space-y-3">
+                    <Label>Domaines Activés ({settings.structuredSpace.enabledDomains.length}/{availableDomains.length})</Label>
+                    
+                    {/* Add new domain */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nouveau domaine..."
+                        value={newDomain}
+                        onChange={(e) => setNewDomain(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addDomain()}
+                      />
+                      <CyberButton
+                        variant="outline"
+                        size="sm"
+                        onClick={addDomain}
+                        disabled={!newDomain.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </CyberButton>
+                    </div>
+                    
+                    {/* Domain checkboxes with delete */}
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                      {availableDomains.map((domain) => (
+                        <div key={domain} className="flex items-center justify-between space-x-2 group">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <Checkbox
+                              id={`domain-${domain}`}
+                              checked={settings.structuredSpace.enabledDomains.includes(domain)}
+                              onCheckedChange={() => toggleDomain(domain)}
+                            />
+                            <label htmlFor={`domain-${domain}`} className="text-sm cursor-pointer flex-1">
+                              {domain}
+                            </label>
+                          </div>
+                          <button
+                            onClick={() => deleteDomain(domain)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Skill Types */}
-                  <div className="space-y-2">
-                    <Label>Enabled Skill Types ({settings.structuredSpace.enabledSkillTypes.length})</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {DEFAULT_SKILL_TYPES.map((skillType) => (
-                        <div key={skillType} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`skill-${skillType}`}
-                            checked={settings.structuredSpace.enabledSkillTypes.includes(skillType)}
-                            onCheckedChange={() => toggleSkillType(skillType)}
-                          />
-                          <label htmlFor={`skill-${skillType}`} className="text-sm cursor-pointer">
-                            {skillType}
-                          </label>
+                  <div className="space-y-3">
+                    <Label>Types de Compétences Activés ({settings.structuredSpace.enabledSkillTypes.length}/{availableSkillTypes.length})</Label>
+                    
+                    {/* Add new skill type */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nouveau type de compétence..."
+                        value={newSkillType}
+                        onChange={(e) => setNewSkillType(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addSkillType()}
+                      />
+                      <CyberButton
+                        variant="outline"
+                        size="sm"
+                        onClick={addSkillType}
+                        disabled={!newSkillType.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </CyberButton>
+                    </div>
+                    
+                    {/* Skill type checkboxes with delete */}
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                      {availableSkillTypes.map((skillType) => (
+                        <div key={skillType} className="flex items-center justify-between space-x-2 group">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <Checkbox
+                              id={`skill-${skillType}`}
+                              checked={settings.structuredSpace.enabledSkillTypes.includes(skillType)}
+                              onCheckedChange={() => toggleSkillType(skillType)}
+                            />
+                            <label htmlFor={`skill-${skillType}`} className="text-sm cursor-pointer flex-1">
+                              {skillType}
+                            </label>
+                          </div>
+                          <button
+                            onClick={() => deleteSkillType(skillType)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Difficulties */}
-                  <div className="space-y-2">
-                    <Label>Enabled Difficulties ({settings.structuredSpace.enabledDifficulties.length})</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {DEFAULT_DIFFICULTIES.map((difficulty) => (
-                        <div key={difficulty} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`diff-${difficulty}`}
-                            checked={settings.structuredSpace.enabledDifficulties.includes(difficulty)}
-                            onCheckedChange={() => toggleDifficulty(difficulty)}
-                          />
-                          <label htmlFor={`diff-${difficulty}`} className="text-sm cursor-pointer">
-                            {difficulty}
-                          </label>
+                  <div className="space-y-3">
+                    <Label>Niveaux de Difficulté Activés ({settings.structuredSpace.enabledDifficulties.length}/{availableDifficulties.length})</Label>
+                    
+                    {/* Add new difficulty */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nouveau niveau..."
+                        value={newDifficulty}
+                        onChange={(e) => setNewDifficulty(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addDifficulty()}
+                      />
+                      <CyberButton
+                        variant="outline"
+                        size="sm"
+                        onClick={addDifficulty}
+                        disabled={!newDifficulty.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </CyberButton>
+                    </div>
+                    
+                    {/* Difficulty checkboxes with delete */}
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                      {availableDifficulties.map((difficulty) => (
+                        <div key={difficulty} className="flex items-center justify-between space-x-2 group">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <Checkbox
+                              id={`diff-${difficulty}`}
+                              checked={settings.structuredSpace.enabledDifficulties.includes(difficulty)}
+                              onCheckedChange={() => toggleDifficulty(difficulty)}
+                            />
+                            <label htmlFor={`diff-${difficulty}`} className="text-sm cursor-pointer flex-1">
+                              {difficulty}
+                            </label>
+                          </div>
+                          <button
+                            onClick={() => deleteDifficulty(difficulty)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Granularities */}
-                  <div className="space-y-2">
-                    <Label>Enabled Granularities ({settings.structuredSpace.enabledGranularities.length})</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {DEFAULT_GRANULARITIES.map((granularity) => (
-                        <div key={granularity} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`gran-${granularity}`}
-                            checked={settings.structuredSpace.enabledGranularities.includes(granularity)}
-                            onCheckedChange={() => toggleGranularity(granularity)}
-                          />
-                          <label htmlFor={`gran-${granularity}`} className="text-sm cursor-pointer">
-                            {granularity}
-                          </label>
+                  <div className="space-y-3">
+                    <Label>Granularités Activées ({settings.structuredSpace.enabledGranularities.length}/{availableGranularities.length})</Label>
+                    
+                    {/* Add new granularity */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Nouvelle granularité..."
+                        value={newGranularity}
+                        onChange={(e) => setNewGranularity(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && addGranularity()}
+                      />
+                      <CyberButton
+                        variant="outline"
+                        size="sm"
+                        onClick={addGranularity}
+                        disabled={!newGranularity.trim()}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </CyberButton>
+                    </div>
+                    
+                    {/* Granularity checkboxes with delete */}
+                    <div className="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                      {availableGranularities.map((granularity) => (
+                        <div key={granularity} className="flex items-center justify-between space-x-2 group">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <Checkbox
+                              id={`gran-${granularity}`}
+                              checked={settings.structuredSpace.enabledGranularities.includes(granularity)}
+                              onCheckedChange={() => toggleGranularity(granularity)}
+                            />
+                            <label htmlFor={`gran-${granularity}`} className="text-sm cursor-pointer flex-1">
+                              {granularity}
+                            </label>
+                          </div>
+                          <button
+                            onClick={() => deleteGranularity(granularity)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -365,12 +584,12 @@ export function GenerationSettingsPanel() {
           {/* Model Selection */}
           <Card>
             <CardHeader>
-              <CardTitle>AI Model Configuration</CardTitle>
-              <CardDescription>Select models for question generation</CardDescription>
+              <CardTitle>Configuration du Modèle IA</CardTitle>
+              <CardDescription>Sélectionner les modèles pour la génération de questions</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Default Model</Label>
+                <Label>Modèle par Défaut</Label>
                 <Select
                   value={settings.defaultModel}
                   onValueChange={(value) => setSettings({ ...settings, defaultModel: value })}
@@ -389,7 +608,7 @@ export function GenerationSettingsPanel() {
               </div>
 
               <div className="space-y-2">
-                <Label>Fallback Model</Label>
+                <Label>Modèle de Secours</Label>
                 <Select
                   value={settings.fallbackModel}
                   onValueChange={(value) => setSettings({ ...settings, fallbackModel: value })}
@@ -406,7 +625,7 @@ export function GenerationSettingsPanel() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  Used when default model fails or is unavailable
+                  Utilisé quand le modèle par défaut échoue ou est indisponible
                 </p>
               </div>
             </CardContent>
@@ -416,18 +635,18 @@ export function GenerationSettingsPanel() {
         {/* Save Button */}
         <div className="flex justify-end gap-3 pt-4 border-t">
           <CyberButton variant="outline" onClick={() => setDialogOpen(false)}>
-            Cancel
+            Annuler
           </CyberButton>
           <CyberButton variant="primary" onClick={saveSettings} disabled={loading}>
             {loading ? (
               <>
                 <div className="animate-spin h-4 w-4 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                Saving...
+                Enregistrement...
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Save Settings
+                Enregistrer
               </>
             )}
           </CyberButton>

@@ -28,3 +28,4 @@ pnpm-debug.log*
 bun-debug.log*
 .env.dev
 .ssh/
+.env.local

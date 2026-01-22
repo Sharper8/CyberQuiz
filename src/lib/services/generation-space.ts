@@ -231,6 +231,7 @@ export async function linkQuestionToSlot(questionId: number, slot: GenerationSlo
     data: {
       generationDomain: slot.domain,
       generationSkillType: slot.skillType,
+      generationDifficulty: slot.difficulty,
       generationGranularity: slot.granularity,
       // Map difficulty to the legacy difficulty field
       difficulty: mapDifficultyToScore(slot.difficulty),

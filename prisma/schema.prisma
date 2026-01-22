@@ -25,12 +25,14 @@ model Question {
   status          String            @default("to_review") // to_review | accepted | rejected
   isRejected      Boolean           @default(false) // Soft delete flag for generation engine
   aiProvider      String            // ollama | openai | anthropic
+  aiModel         String?           // mistral:7b, gpt-4, etc - the actual model name
   mitreTechniques Json?             // ["T1059", ...]
   tags            Json?             // ["privilege-escalation", ...]
   
   // Structured Generation Space metadata
   generationDomain String?          // Network Security, Cloud Security, etc
   generationSkillType String?       // Detection, Prevention, Analysis, etc
+  generationDifficulty String?      // Beginner, Intermediate, Advanced, Expert
   generationGranularity String?     // Conceptual, Procedural, Technical, Strategic
   
   potentialDuplicates Json?        // [{id: 123, similarity: 0.85}, ...] for admin review

@@ -101,12 +101,13 @@ export default function GenerationPage() {
 
   const handleStartGeneration = async () => {
     try {
-      const res = await fetch('/api/admin/generation/generate', { method: 'POST' });
+      const res = await fetch('/api/admin/maintain-pool', { method: 'POST' });
       if (!res.ok) throw new Error('Impossible de démarrer la génération');
       toast.success('Génération démarrée');
       await fetchBufferStatus();
     } catch (error: any) {
       console.error('Generation start error:', error);
+      toast.error(error.message || 'Erreur lors du démarrage');
     }
   };
 

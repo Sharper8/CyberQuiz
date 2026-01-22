@@ -230,6 +230,7 @@ export async function generateQuestionsForCache(
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
+          aiModel: provider.model,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
           potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
@@ -382,6 +383,7 @@ export async function generateQuestionsWithProgress(
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
+          aiModel: provider.model,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
           potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
@@ -537,6 +539,7 @@ export async function generateToMaintainPool(
             questionType: 'true-false',
             status: 'to_review',
             aiProvider: provider.name,
+            aiModel: provider.model,
             mitreTechniques: question.mitreTechniques || [],
             tags: question.tags || [],
             potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
@@ -638,7 +641,7 @@ export async function generateQuestionForPool(
     // Save to database
     const saved = await prisma.question.create({
       data: {
-        questionText: question.text,
+        questionText: question.questionText,
         options: question.options,
         correctAnswer: question.correctAnswer,
         explanation: question.explanation,
@@ -648,17 +651,18 @@ export async function generateQuestionForPool(
         isRejected: false,
         questionHash,
         aiProvider: provider.name,
+        aiModel: provider.model,
         questionType: 'true-false',
         createdAt: new Date(),
       },
     });
 
-    // Store embedding
+    console.log(`[PoolGen] Generated and saved question ${saved.id}`);
     if (embedding.length > 0) {
       const difficultyNum = difficulty === 'easy' ? 0.3 : difficulty === 'medium' ? 0.6 : 0.9;
       await upsertEmbedding(saved.id, embedding, {
         question_id: saved.id,
-        question_text: question.text,
+        question_text: question.questionText,
         category: topic,
         difficulty: difficultyNum,
         tags: [],
