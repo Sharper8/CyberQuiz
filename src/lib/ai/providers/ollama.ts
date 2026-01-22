@@ -67,6 +67,7 @@ function extractJSONFromStreamed(raw: string): any {
 
 export class OllamaProvider implements AIProvider {
   name = 'ollama';
+  model: string;  // e.g., 'mistral:7b'
   private baseUrl: string;
   private generationModel: string;
   private embeddingModel: string;
@@ -82,6 +83,7 @@ export class OllamaProvider implements AIProvider {
     // - llama3.1:8b: 4.8 GB (will cause OOM - do not use without VM upgrade)
     // - llama2:13b: 7+ GB (exceeds typical VM memory)
     this.generationModel = process.env.OLLAMA_GENERATION_MODEL || 'mistral:7b';
+    this.model = this.generationModel;  // Set model property
     this.embeddingModel = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
     this.validationModel = process.env.OLLAMA_VALIDATION_MODEL || this.generationModel;
     

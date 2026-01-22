@@ -4,7 +4,7 @@ import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { Decimal } from '@prisma/client/runtime/library';
-import crypto from 'crypto';
+import { generateQuestionHash } from '../utils/question-hash';
 
 interface GenerationContext {
   topic: string;
@@ -17,20 +17,6 @@ const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
 const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
-
-/**
- * Generate a hash from normalized question text for exact duplicate detection
- */
-function generateQuestionHash(questionText: string): string {
-  // Normalize: lowercase, remove extra spaces, punctuation
-  const normalized = questionText
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '') // Remove punctuation
-    .replace(/\s+/g, ' ')    // Normalize spaces
-    .trim();
-  
-  return crypto.createHash('sha256').update(normalized).digest('hex');
-}
 
 /**
  * Log duplicate detection for analytics
@@ -244,6 +230,7 @@ export async function generateQuestionsForCache(
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
+          aiModel: provider.model,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
           potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
@@ -396,6 +383,7 @@ export async function generateQuestionsWithProgress(
           questionType: 'true-false',
           status: 'to_review',
           aiProvider: provider.name,
+          aiModel: provider.model,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
           potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
@@ -470,22 +458,20 @@ export async function generateToMaintainPool(
     if (!settings) {
       settings = await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 50,
+          autoRefillEnabled: true,
           maxConcurrentGeneration: 5,
         },
       });
     }
 
-    if (!settings.autoGenerateEnabled) {
+    if (!settings.autoRefillEnabled) {
       return { poolSize: 0, generatedCount: 0, failedCount: 0, durationMs: Date.now() - startTime };
     }
 
-    const generationTopic = topic || settings.generationTopic;
-    const generationDifficulty = difficulty || (settings.generationDifficulty as 'easy' | 'medium' | 'hard');
-    const targetSize = settings.targetPoolSize;
+    const generationTopic = topic || 'Cybersecurity';
+    const generationDifficulty = difficulty || 'medium';
+    const targetSize = settings.bufferSize || 50;
     const maxBatchSize = settings.maxConcurrentGeneration;
 
     // Get current pool size
@@ -553,6 +539,7 @@ export async function generateToMaintainPool(
             questionType: 'true-false',
             status: 'to_review',
             aiProvider: provider.name,
+            aiModel: provider.model,
             mitreTechniques: question.mitreTechniques || [],
             tags: question.tags || [],
             potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
@@ -620,3 +607,73 @@ export async function generateToMaintainPool(
   }
 }
 
+/**
+ * Generate a single question for pool maintenance (bypasses cache limits)
+ * Used by background pool maintenance for one-by-one generation
+ */
+export async function generateQuestionForPool(
+  topic: string,
+  provider: AIProvider,
+  difficulty: 'easy' | 'medium' | 'hard' = 'medium'
+): Promise<{ id: number; question: string } | null> {
+  try {
+    // Generate one question and save it directly to to_review
+    const context: GenerationContext = {
+      topic,
+      difficulty,
+      attemptCount: 1,
+      provider,
+    };
+
+    const { question, embedding, questionHash } = await generateSingleQuestion(context);
+
+    // Check for exact duplicates
+    const existingHash = await prisma.question.findFirst({
+      where: { questionHash },
+      select: { id: true },
+    });
+
+    if (existingHash) {
+      console.log('[PoolGen] Duplicate detected, skipping');
+      return null;
+    }
+
+    // Save to database
+    const saved = await prisma.question.create({
+      data: {
+        questionText: question.questionText,
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        explanation: question.explanation,
+        difficulty: new Decimal(difficulty === 'easy' ? 0.3 : difficulty === 'medium' ? 0.6 : 0.9),
+        category: topic,
+        status: 'to_review',
+        isRejected: false,
+        questionHash,
+        aiProvider: provider.name,
+        aiModel: provider.model,
+        questionType: 'true-false',
+        createdAt: new Date(),
+      },
+    });
+
+    console.log(`[PoolGen] Generated and saved question ${saved.id}`);
+    if (embedding.length > 0) {
+      const difficultyNum = difficulty === 'easy' ? 0.3 : difficulty === 'medium' ? 0.6 : 0.9;
+      await upsertEmbedding(saved.id, embedding, {
+        question_id: saved.id,
+        question_text: question.questionText,
+        category: topic,
+        difficulty: difficultyNum,
+        tags: [],
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    console.log(`[PoolGen] Generated and saved question ${saved.id}`);
+    return { id: saved.id, question: question.text };
+  } catch (error) {
+    console.error('[PoolGen] Failed to generate question:', error);
+    throw error;
+  }
+}

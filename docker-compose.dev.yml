@@ -7,6 +7,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
+        - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
     container_name: cyberquiz-nextjs-dev
     env_file:
       - .env.dev
@@ -47,7 +50,7 @@ services:
     image: qdrant/qdrant:latest
     container_name: cyberquiz-qdrant
     env_file:
-      - .env.dev
+      - .env
     ports:
       - "6333:6333"  # HTTP API
       - "6334:6334"  # gRPC API
@@ -62,7 +65,7 @@ services:
     image: ollama/ollama:latest
     container_name: cyberquiz-ollama
     env_file:
-      - .env.dev
+      - .env
     ports:
       - "11434:11434"
     volumes:

@@ -5,18 +5,30 @@
 
 import { ensureAdminUser } from './ensure-admin.js';
 import { checkAndWarmCache } from '../src/lib/services/question-cache-warmer.js';
+import { ensureGenerationSettings } from './ensure-generation-settings.js';
+import { initializeBackgroundServices } from '../src/lib/services/background-init.js';
 
 export async function initializeApp(): Promise<void> {
   console.log('🚀 [AppInit] Starting application initialization...\n');
 
   try {
     // Step 1: Ensure admin user exists
-    console.log('👤 [AppInit] Step 1/2: Ensuring admin user...');
+    console.log('👤 [AppInit] Step 1/4: Ensuring admin user...');
     await ensureAdminUser();
     console.log('');
 
-    // Step 2: Warm question cache (non-blocking)
-    console.log('🔥 [AppInit] Step 2/2: Warming question cache...');
+    // Step 2: Ensure generation settings exist
+    console.log('⚙️  [AppInit] Step 2/4: Ensuring generation settings...');
+    await ensureGenerationSettings();
+    console.log('');
+
+    // Step 3: Start background services
+    console.log('🔄 [AppInit] Step 3/4: Starting background services...');
+    initializeBackgroundServices();
+    console.log('');
+
+    // Step 4: Warm question cache (non-blocking)
+    console.log('🔥 [AppInit] Step 4/4: Warming question cache...');
     checkAndWarmCache(); // Don't await - runs in background
     console.log('✓ Cache warming started in background\n');
 

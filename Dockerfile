@@ -1,6 +1,9 @@
 # Dockerize Next.js app - Using Debian Bullseye for Prisma compatibility (has libssl1.1)
 FROM node:20-bullseye-slim AS base
 
+# Patch base OS packages to reduce known CVEs in the base image
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies only when needed
 FROM base AS deps
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
@@ -18,10 +21,10 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Provide dummy env vars for build (runtime values come from .env.dev)
-ENV DATABASE_URL="postgresql://user:pass@localhost:5432/cyberquiz"
-ENV JWT_SECRET="build-time-dummy-secret-minimum-32-chars-long-xxxx"
-ENV NODE_ENV=production
+# Build-time args — avoid passing secrets at build; supply them at runtime via env/secrets.
+# NOTE: Do NOT bake `NODE_ENV` into the image. The runtime (docker-compose / orchestrator)
+# should provide `NODE_ENV` via `env_file` or environment variables so it can differ
+# between environments (development/production) and avoid image-specific behavior.
 
 # Build Next.js
 RUN npm run build
@@ -31,11 +34,12 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
-# Install OpenSSL for Prisma (Bullseye has libssl1.1 by default) and Prisma CLI globally for migrations at runtime
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL for Prisma, curl for healthchecks/init, and Prisma CLI globally for migrations at runtime
+RUN apt-get update && apt-get install -y openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g prisma@5.22.0
 
-ENV NODE_ENV=production
+# NOTE: `NODE_ENV` must be supplied at runtime by the orchestrator (`env_file` / environment).
+# Do NOT bake `NODE_ENV` into the image to avoid environment-specific behaviour being fixed in the image.
 
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nextjs

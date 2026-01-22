@@ -1,11 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
-import { generateToMaintainPool } from '@/lib/services/question-generator';
-import { getAIProvider } from '@/lib/ai/provider-factory';
+import { maintainQuestionPool, getGenerationStatus } from '@/lib/services/pool-maintenance';
+
+/**
+ * GET /api/admin/maintain-pool
+ * Get current generation status
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const adminId = await verifyAdminToken(request);
+    if (!adminId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    const status = getGenerationStatus();
+    return NextResponse.json(status);
+  } catch (error) {
+    console.error('[MaintainPool GET] Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to get status' },
+      { status: 500 }
+    );
+  }
+}
 
 /**
  * POST /api/admin/maintain-pool
- * Trigger background generation to maintain question pool
+ * Manually trigger background generation to maintain question pool
  */
 export async function POST(request: NextRequest) {
   try {
@@ -17,21 +41,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { topic, difficulty } = body;
+    const result = await maintainQuestionPool();
 
-    const provider = await getAIProvider('ollama');
-    const result = await generateToMaintainPool(provider, topic, difficulty);
+    if (result.skipped) {
+      return NextResponse.json({
+        message: 'Generation already in progress or disabled',
+        ...result,
+      });
+    }
 
     return NextResponse.json({
-      poolSize: result.poolSize,
-      generatedCount: result.generatedCount,
-      failedCount: result.failedCount,
-      durationMs: result.durationMs,
-      message: `Pool maintained: ${result.generatedCount} questions generated`,
+      poolSizeBefore: result.poolSizeBefore,
+      poolSizeAfter: result.poolSizeAfter,
+      generated: result.generated,
+      message: `Pool maintained: ${result.generated} questions generated`,
     });
   } catch (error: any) {
-    console.error('[MaintainPool] Error:', error);
+    console.error('[MaintainPool POST] Error:', error);
     
     if (error.message?.includes('No AI provider available')) {
       return NextResponse.json(
@@ -41,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Failed to maintain pool', details: error.message },
+      { error: 'Failed to maintain pool', message: error.message },
       { status: 500 }
     );
   }

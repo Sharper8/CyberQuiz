@@ -7,9 +7,13 @@ import bcrypt from 'bcryptjs';
  * Usage: npx tsx scripts/create-admin.ts
  */
 
-const ADMIN_EMAIL = 'admin@cyberquiz.fr';
-const ADMIN_PASSWORD = 'password123';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@cyberquiz.fr';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const BCRYPT_ROUNDS = 10;
+
+if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️  WARNING: ADMIN_EMAIL and ADMIN_PASSWORD should be set in environment variables');
+}
 
 async function main() {
   console.log(`[admin] Starting root admin provisioning for ${ADMIN_EMAIL}`);

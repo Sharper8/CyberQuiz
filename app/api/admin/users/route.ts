@@ -1,11 +1,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
-
-const prisma = new PrismaClient();
 
 const CreateAdminSchema = z.object({
     email: z.string().email(),

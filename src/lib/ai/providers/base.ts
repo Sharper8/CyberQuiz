@@ -29,6 +29,7 @@ export interface ValidationResult {
 
 export interface AIProvider {
   name: string;
+  model: string;  // e.g., 'mistral:7b', 'gpt-4', etc
   generateQuestion(params: QuestionGenerationParams): Promise<GeneratedQuestion>;
   validateQuestion(question: GeneratedQuestion): Promise<ValidationResult>;
   generateEmbedding(text: string): Promise<number[]>;

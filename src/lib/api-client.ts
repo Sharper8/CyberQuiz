@@ -14,8 +14,13 @@ export interface Question {
   status: 'to_review' | 'accepted' | 'rejected';
   isRejected: boolean;
   aiProvider: string;
+  aiModel?: string | null;
   mitreTechniques?: string | string[];
   tags?: string | string[];
+  generationDomain?: string | null;
+  generationSkillType?: string | null;
+  generationDifficulty?: string | null;
+  generationGranularity?: string | null;
   createdAt: string;
   updatedAt: string;
   metadata?: any;
@@ -111,7 +116,18 @@ class ApiClient {
 
   async updateQuestion(
     id: string,
-    data: { validated?: boolean; status?: 'to_review' | 'accepted' | 'rejected' }
+    data: {
+      validated?: boolean;
+      status?: 'to_review' | 'accepted' | 'rejected';
+      questionText?: string;
+      explanation?: string;
+      correctAnswer?: string | boolean;
+      category?: string;
+      tags?: string[] | string;
+      generationDomain?: string | null;
+      generationSkillType?: string | null;
+      generationGranularity?: string | null;
+    }
   ): Promise<Question> {
     const res = await fetch(`${this.baseUrl}/questions/${id}`, {
       method: 'PATCH',

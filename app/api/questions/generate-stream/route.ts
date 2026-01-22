@@ -7,7 +7,7 @@ import { z } from 'zod';
 const GenerateRequestSchema = z.object({
   topic: z.string().min(1),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
-  count: z.number().int().min(1).max(10).optional(),
+  count: z.number().int().min(1).max(50).optional(),
 });
 
 /**
@@ -23,9 +23,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('[generate-stream] Received body:', body);
     const validation = GenerateRequestSchema.safeParse(body);
 
     if (!validation.success) {
+      console.error('[generate-stream] Validation failed:', validation.error.errors);
       return new Response(
         JSON.stringify({ error: 'Invalid request format', details: validation.error.errors }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
