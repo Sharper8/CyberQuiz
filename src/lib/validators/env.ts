@@ -21,7 +21,26 @@ let cached: Env | null = null;
 
 export function getEnv(): Env {
   if (cached) return cached;
-  const parsed = EnvSchema.safeParse(process.env);
+
+  // Skip strict validation during image build to avoid requiring secrets at build time.
+  // Use relaxed defaults when SKIP_ENV_VALIDATION=true (set only in Docker build stage).
+  const skipStrict = process.env.SKIP_ENV_VALIDATION === 'true';
+
+  const RelaxedEnvSchema = EnvSchema.extend({
+    DATABASE_URL: z
+      .string()
+      .url()
+      .optional()
+      .default('postgresql://placeholder:placeholder@localhost:5432/placeholder'),
+    JWT_SECRET: z
+      .string()
+      .min(32, 'JWT_SECRET must be at least 32 characters')
+      .optional()
+      .default('build-stage-secret-placeholder-min-32-chars________________'),
+  });
+
+  const schema = skipStrict ? RelaxedEnvSchema : EnvSchema;
+  const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
     console.error('Environment validation failed:', parsed.error.flatten().fieldErrors);
     throw new Error('Invalid environment configuration');
