@@ -71,10 +71,40 @@ async function ensureSettings() {
       
       await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 50,
+          autoRefillEnabled: true,
+          structuredSpaceEnabled: false,
+          enabledDomains: [
+            'Network Security',
+            'Application Security',
+            'Cloud Security',
+            'Identity & Access',
+            'Threat Intelligence',
+            'Incident Response',
+            'Cryptography',
+            'Compliance & Governance'
+          ],
+          enabledSkillTypes: [
+            'Detection',
+            'Prevention',
+            'Analysis',
+            'Configuration',
+            'Best Practices'
+          ],
+          enabledDifficulties: [
+            'Beginner',
+            'Intermediate',
+            'Advanced',
+            'Expert'
+          ],
+          enabledGranularities: [
+            'Conceptual',
+            'Procedural',
+            'Technical',
+            'Strategic'
+          ],
+          defaultModel: 'ollama:mistral:7b',
+          fallbackModel: 'ollama:mistral:7b',
           maxConcurrentGeneration: 10,
         },
       });
@@ -82,8 +112,8 @@ async function ensureSettings() {
       console.log('  ✓ Created default generation settings');
     } else {
       console.log('  ✓ Generation settings already configured');
-      console.log(\`    - Target pool size: \${settings.targetPoolSize}\`);
-      console.log(\`    - Auto-generate: \${settings.autoGenerateEnabled ? 'enabled' : 'disabled'}\`);
+      console.log(`    - Buffer size: ${settings.bufferSize}`);
+      console.log(`    - Auto-refill: ${settings.autoRefillEnabled ? 'enabled' : 'disabled'}`);
     }
   } catch (error) {
     console.error('  ❌ Failed to ensure generation settings:', error.message);
