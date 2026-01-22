@@ -102,6 +102,17 @@ export default {
             transform: "translateY(100%)",
           },
         },
+        "timer-ring": {
+          "0%": {
+            boxShadow: "0 0 0 4px hsl(var(--primary) / 0.8), inset 0 0 0 4px hsl(var(--primary) / 0.4)",
+          },
+          "50%": {
+            boxShadow: "0 0 0 6px hsl(var(--primary) / 0.6), inset 0 0 0 4px hsl(var(--primary) / 0.2)",
+          },
+          "100%": {
+            boxShadow: "0 0 0 4px hsl(var(--primary) / 0.8), inset 0 0 0 4px hsl(var(--primary) / 0.4)",
+          },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -109,6 +120,7 @@ export default {
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "slide-up": "slide-up 0.5s ease-out",
         "cyber-scan": "cyber-scan 3s linear infinite",
+        "timer-ring": "timer-ring 1s ease-in-out infinite",
       },
     },
   },

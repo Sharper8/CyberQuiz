@@ -106,11 +106,19 @@ export function ExportImportPanel({ onImportSuccess }: ExportImportPanelProps) {
         throw new Error(result.message || result.error || 'Import failed');
       }
 
+      // Count different types of errors
+      const duplicateErrors = result.errors?.filter((e: any) => e.error.includes('already exists')) || [];
+      const otherErrors = (result.errors || []).filter((e: any) => !e.error.includes('already exists'));
+
       toast.success(`Imported ${result.imported} questions successfully`);
 
-      if (result.errors?.length > 0) {
-        toast.warning(`${result.errors.length} rows had errors`);
-        console.warn('Import errors:', result.errors);
+      if (duplicateErrors.length > 0) {
+        toast.warning(`${duplicateErrors.length} questions already existing (not imported)`);
+      }
+
+      if (otherErrors.length > 0) {
+        toast.warning(`${otherErrors.length} rows had errors`);
+        console.warn('Import errors:', otherErrors);
       }
 
       setImportDialogOpen(false);

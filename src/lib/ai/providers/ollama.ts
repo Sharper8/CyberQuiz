@@ -75,9 +75,24 @@ export class OllamaProvider implements AIProvider {
   constructor() {
     const env = getEnv();
     this.baseUrl = env.OLLAMA_BASE_URL || 'http://localhost:11434';
-    this.generationModel = process.env.OLLAMA_GENERATION_MODEL || 'llama3.1:8b';
+    
+    // Get model from env or use default
+    // ⚠️  IMPORTANT: Only use memory-safe models
+    // - mistral:7b: ~3.8 GB (recommended for production VMs with 7.6 GB RAM)
+    // - llama3.1:8b: 4.8 GB (will cause OOM - do not use without VM upgrade)
+    // - llama2:13b: 7+ GB (exceeds typical VM memory)
+    this.generationModel = process.env.OLLAMA_GENERATION_MODEL || 'mistral:7b';
     this.embeddingModel = process.env.OLLAMA_EMBED_MODEL || 'nomic-embed-text';
     this.validationModel = process.env.OLLAMA_VALIDATION_MODEL || this.generationModel;
+    
+    // Validate that we're not using memory-intensive models in constrained environments
+    const unsafeModels = ['llama3.1:8b', 'llama2:13b', 'neural-chat:13b'];
+    if (unsafeModels.some(m => this.generationModel.startsWith(m))) {
+      console.warn(
+        `⚠️  WARNING: Model "${this.generationModel}" may require excessive memory. ` +
+        `Ensure your system has adequate RAM before using this model.`
+      );
+    }
   }
 
   async isAvailable(): Promise<boolean> {

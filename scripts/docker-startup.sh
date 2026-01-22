@@ -4,6 +4,10 @@
 
 echo "🚀 [Startup] Initializing CyberQuiz..."
 
+# Regenerate Prisma Client with runtime DATABASE_URL
+echo "🔧 [Startup] Regenerating Prisma Client..."
+npx prisma generate
+
 # Run database migrations
 echo "📦 [Startup] Running database migrations..."
 npx prisma migrate deploy

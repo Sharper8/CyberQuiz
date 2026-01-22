@@ -94,7 +94,6 @@ export default function AdminPage() {
       toast.error("Erreur lors de l'ajout");
     }
   };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -265,7 +264,17 @@ export default function AdminPage() {
             filteredQuestions.map((question) => {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
-              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const rawAnswer = question.correctAnswer || (question.answer ? 'true' : 'false');
+              
+              // Parse answer to determine if true or false
+              const answerLower = String(rawAnswer).toLowerCase().trim();
+              const isCorrectTrue =
+                answerLower === 'true' ||
+                answerLower === '1' ||
+                answerLower === 'vrai' ||
+                answerLower === 'oui' ||
+                answerLower === 'yes';
+              
               const isAiGenerated = question.aiProvider !== 'manual' && question.aiProvider !== 'seed';
               
               return (
@@ -310,7 +319,7 @@ export default function AdminPage() {
                       )}
                       <p className="text-sm text-muted-foreground">
                         Réponse correcte : <span className="font-semibold text-foreground">
-                          {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
+                          {isCorrectTrue ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
                       </p>
                       

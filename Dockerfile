@@ -18,9 +18,14 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Provide dummy env vars for build (runtime values come from .env.dev)
-ENV DATABASE_URL="postgresql://user:pass@localhost:5432/cyberquiz"
-ENV JWT_SECRET="build-time-dummy-secret-minimum-32-chars-long-xxxx"
+# Build-time arguments from docker-compose
+# These can be overridden at build time and are NOT baked into the final image layers
+ARG DATABASE_URL
+ARG JWT_SECRET
+
+# Set as ENV for Next.js build process (will be overridden at runtime by env_file)
+ENV DATABASE_URL=${DATABASE_URL:-postgresql://build:build@localhost:5432/build}
+ENV JWT_SECRET=${JWT_SECRET:-build-time-placeholder-min-32-chars-xxxxxxxxxxxxxxx}
 ENV NODE_ENV=production
 
 # Build Next.js
@@ -35,7 +40,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl ca-certificates curl && rm -rf /var/lib/apt/lists/*
 RUN npm install -g prisma@5.22.0
 
-ENV NODE_ENV=production
+# Runtime env vars are supplied by docker-compose via env_file
+# The build-time ENV values above are overridden at container startup
 
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nextjs
@@ -59,8 +65,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-startup.sh ./
 RUN chmod +x docker-startup.sh
 
 # Copy Prisma schema and migrations for runtime
+# NOTE: We do NOT copy node_modules/.prisma or node_modules/@prisma from builder
+# because they contain the build-time DATABASE_URL. The startup script will regenerate them.
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
