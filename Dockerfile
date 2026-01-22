@@ -26,6 +26,20 @@ RUN npx prisma generate
 # should provide `NODE_ENV` via `env_file` or environment variables so it can differ
 # between environments (development/production) and avoid image-specific behavior.
 
+# Accept build args for Next.js build (needed for static page generation)
+ARG DATABASE_URL
+ARG JWT_SECRET
+ARG OLLAMA_BASE_URL=http://ollama:11434
+ARG QDRANT_URL=http://qdrant:6333
+ARG ALLOW_EXTERNAL_AI=false
+
+# Set as environment variables for build
+ENV DATABASE_URL=$DATABASE_URL
+ENV JWT_SECRET=$JWT_SECRET
+ENV OLLAMA_BASE_URL=$OLLAMA_BASE_URL
+ENV QDRANT_URL=$QDRANT_URL
+ENV ALLOW_EXTERNAL_AI=$ALLOW_EXTERNAL_AI
+
 # Build Next.js
 RUN npm run build
 

@@ -4,11 +4,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=${DATABASE_URL}
+        - JWT_SECRET=${JWT_SECRET}
+        - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+        - QDRANT_URL=${QDRANT_URL}
+        - ALLOW_EXTERNAL_AI=${ALLOW_EXTERNAL_AI}
     container_name: cyberquiz-nextjs-prod
     env_file:
       - .env
     environment:
       NODE_ENV: production
+      # Override runtime URLs to use Docker service names
+      DATABASE_URL: ${DATABASE_URL}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
+      QDRANT_URL: ${QDRANT_URL}
     ports:
       - "3100:3000"
     depends_on:
