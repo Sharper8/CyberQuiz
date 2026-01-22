@@ -18,10 +18,12 @@ COPY . .
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Provide dummy env vars for build (runtime values come from .env.dev)
-ENV DATABASE_URL="postgresql://user:pass@localhost:5432/cyberquiz"
-ENV JWT_SECRET="build-time-dummy-secret-minimum-32-chars-long-xxxx"
-ENV NODE_ENV=production
+# Build-time args — do NOT bake secrets into the image. Pass real values at runtime via env files or a secrets manager.
+ARG DATABASE_URL
+ARG JWT_SECRET
+# NOTE: Do NOT bake `NODE_ENV` into the image. The runtime (docker-compose / orchestrator)
+# should provide `NODE_ENV` via `env_file` or environment variables so it can differ
+# between environments (development/production) and avoid image-specific behavior.
 
 # Build Next.js
 RUN npm run build
@@ -35,7 +37,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g prisma@5.22.0
 
-ENV NODE_ENV=production
+# NOTE: `NODE_ENV` must be supplied at runtime by the orchestrator (`env_file` / environment).
+# Do NOT bake `NODE_ENV` into the image to avoid environment-specific behaviour being fixed in the image.
 
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 nextjs
