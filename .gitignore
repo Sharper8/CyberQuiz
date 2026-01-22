@@ -8,8 +8,7 @@ build/
 
 # Environment files
 .env
-.env
-.env.*.local
+.env.dev
 
 # SSH keys
 .ssh/
@@ -26,6 +25,4 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 bun-debug.log*
-.env.dev
-.ssh/
-.env.local
+logs/
