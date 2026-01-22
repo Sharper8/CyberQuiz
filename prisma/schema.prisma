@@ -27,6 +27,12 @@ model Question {
   aiProvider      String            // ollama | openai | anthropic
   mitreTechniques Json?             // ["T1059", ...]
   tags            Json?             // ["privilege-escalation", ...]
+  
+  // Structured Generation Space metadata
+  generationDomain String?          // Network Security, Cloud Security, etc
+  generationSkillType String?       // Detection, Prevention, Analysis, etc
+  generationGranularity String?     // Conceptual, Procedural, Technical, Strategic
+  
   potentialDuplicates Json?        // [{id: 123, similarity: 0.85}, ...] for admin review
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -135,11 +141,25 @@ model AdminUser {
 }
 model GenerationSettings {
   id                    Int       @id @default(autoincrement())
-  targetPoolSize        Int       @default(50) // Target number of to_review questions to maintain
-  autoGenerateEnabled   Boolean   @default(true) // Enable auto-generation when pool falls below target
-  generationTopic       String    @default("Cybersecurity") // Default topic for auto-generation
-  generationDifficulty  String    @default("medium") // default|easy|medium|hard
-  maxConcurrentGeneration Int    @default(5) // Max questions to generate in one batch
+  bufferSize            Int       @default(10) // Target buffer size for to_review questions
+  autoRefillEnabled     Boolean   @default(true) // Auto-refill buffer when questions validated/rejected
+  
+  // Structured Generation Space toggle
+  structuredSpaceEnabled Boolean  @default(false) // Enable entropy-controlled generation
+  
+  // Generation Space Dimensions (JSON arrays of enabled values)
+  enabledDomains        Json      @default("[\"Network Security\", \"Application Security\", \"Cloud Security\", \"Identity & Access\", \"Threat Intelligence\", \"Incident Response\", \"Cryptography\", \"Compliance & Governance\"]")
+  enabledSkillTypes     Json      @default("[\"Detection\", \"Prevention\", \"Analysis\", \"Configuration\", \"Best Practices\"]")
+  enabledDifficulties   Json      @default("[\"Beginner\", \"Intermediate\", \"Advanced\", \"Expert\"]")
+  enabledGranularities  Json      @default("[\"Conceptual\", \"Procedural\", \"Technical\", \"Strategic\"]")
+  
+  // Model configuration
+  defaultModel          String    @default("ollama:mistral:7b") // Default AI model
+  fallbackModel         String    @default("ollama:mistral:7b") // Fallback if default fails
+  
+  // Legacy fields for backwards compatibility
+  maxConcurrentGeneration Int    @default(5)
+  
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   generationLogs        GenerationLog[]
@@ -194,4 +214,18 @@ model BannedUser {
   reason    String?
   bannedAt  DateTime @default(now())
   bannedBy  String?
+}
+
+// Track recently used generation slots to avoid repetition
+model GenerationSlotHistory {
+  id              Int       @id @default(autoincrement())
+  domain          String
+  skillType       String
+  difficulty      String
+  granularity     String
+  usedAt          DateTime  @default(now())
+  questionId      Int?      // Question that was generated with this slot
+  
+  @@index([usedAt])
+  @@index([domain, skillType, difficulty, granularity])
 }

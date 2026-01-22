@@ -16,23 +16,21 @@ export async function ensureGenerationSettings(): Promise<void> {
       
       await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 10,
+          autoRefillEnabled: true,
           maxConcurrentGeneration: 10,
+          structuredSpaceEnabled: false,
         },
       });
 
       console.log('  ✓ Created default generation settings');
-      console.log('    - Target pool size: 50');
-      console.log('    - Auto-generate: enabled');
-      console.log('    - Topic: Cybersecurity');
+      console.log('    - Buffer size: 10');
+      console.log('    - Auto-refill: enabled');
       console.log('    - Difficulty: medium');
     } else {
       console.log('  ✓ Generation settings already configured');
-      console.log(`    - Target pool size: ${settings.targetPoolSize}`);
-      console.log(`    - Auto-generate: ${settings.autoGenerateEnabled ? 'enabled' : 'disabled'}`);
+      console.log(`    - Buffer size: ${settings.bufferSize}`);
+      console.log(`    - Auto-refill: ${settings.autoRefillEnabled ? 'enabled' : 'disabled'}`);
     }
   } catch (error) {
     console.error('  ❌ Failed to ensure generation settings:', error);

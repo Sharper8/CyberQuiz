@@ -8,7 +8,7 @@ import {
 } from '@/lib/services/admin-review';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
 import { getAIProvider } from '@/lib/ai/provider-factory';
-import { generateToMaintainPool } from '@/lib/services/question-generator';
+import { ensureBufferFilled } from '@/lib/services/buffer-maintenance'; // New industrial-grade buffer
 import { z } from 'zod';
 
 const ReviewSchema = z.object({
@@ -104,25 +104,13 @@ export async function POST(request: NextRequest) {
     if (action === 'accept') {
       const question = await acceptQuestion(questionId, adminId, reason);
       
-      // Map difficulty from decimal to category
-      const difficultyMap = (diff: number): 'easy' | 'medium' | 'hard' => {
-        if (diff < 0.33) return 'easy';
-        if (diff < 0.67) return 'medium';
-        return 'hard';
-      };
-
-      // Auto-generate ONE question in background to maintain pool (non-blocking)
-      // This ensures the pool always has questions ready for review
-      generateToMaintainPool(
-        await getAIProvider('ollama'),
-        question.category,
-        difficultyMap(Number(question.difficulty))
-      ).catch((err) => {
-        console.error('[AutoGenerate] Failed to maintain pool:', err);
+      // Trigger automatic buffer refill (non-blocking, industrial-grade)
+      ensureBufferFilled().catch((err) => {
+        console.error('[BufferRefill] Failed to refill buffer:', err);
       });
 
       return NextResponse.json(
-        { message: 'Question accepted and added to quiz pool. New question generation triggered.' },
+        { message: 'Question accepted. Buffer refill triggered.' },
         { status: 200 }
       );
     } else if (action === 'reject') {
@@ -133,8 +121,14 @@ export async function POST(request: NextRequest) {
         );
       }
       await rejectQuestion(questionId, adminId, reason);
+      
+      // Trigger automatic buffer refill (non-blocking)
+      ensureBufferFilled().catch((err) => {
+        console.error('[BufferRefill] Failed to refill buffer:', err);
+      });
+      
       return NextResponse.json(
-        { message: 'Question rejected and soft-deleted' },
+        { message: 'Question rejected. Buffer refill triggered.' },
         { status: 200 }
       );
     }

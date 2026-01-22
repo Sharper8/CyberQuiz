@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { ensureBufferFilled } from '@/lib/services/buffer-maintenance';
 
 // DELETE /api/questions/[id] - Soft delete by marking as rejected
 export async function DELETE(
@@ -53,6 +54,11 @@ export async function PATCH(
       include: {
         metadata: true,
       },
+    });
+
+    // Trigger buffer refill asynchronously when a question leaves the review pool
+    ensureBufferFilled().catch((err) => {
+      console.error('[BufferRefill] Failed to refill buffer after status change:', err);
     });
     
     return NextResponse.json(question);

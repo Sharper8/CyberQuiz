@@ -4,10 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db/prisma';
 import { getGenerationStatus } from '@/lib/services/pool-maintenance';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: Request) {
   try {
@@ -24,10 +22,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       poolSize: poolCount,
-      targetPoolSize: settings?.targetPoolSize || 50,
-      autoGenerateEnabled: settings?.autoGenerateEnabled || true,
-      generationTopic: settings?.generationTopic || 'Cybersecurity',
-      generationDifficulty: settings?.generationDifficulty || 'medium',
+      bufferSize: settings?.bufferSize || 10,
+      autoRefillEnabled: settings?.autoRefillEnabled || true,
       maxConcurrentGeneration: settings?.maxConcurrentGeneration || 10,
       isGenerating: genStatus.isGenerating,
       isPaused: genStatus.isPaused,

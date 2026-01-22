@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles, Plus } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Badge } from "@/components/ui/badge";
 import { ExportImportPanel } from "@/components/ExportImportPanel";
-import { PoolMaintenancePanel } from "@/components/PoolMaintenancePanel";
 import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
 import { toast } from "sonner";
@@ -32,6 +31,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
@@ -41,6 +42,10 @@ export default function AdminPage() {
   useEffect(() => {
     fetchQuestions();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
 
   const fetchQuestions = async () => {
     try {
@@ -94,6 +99,7 @@ export default function AdminPage() {
       toast.error("Erreur lors de l'ajout");
     }
   };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -109,6 +115,11 @@ export default function AdminPage() {
   const filteredQuestions = filter === 'all' 
     ? questions 
     : questions.filter(q => q.status === filter);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedQuestions = filteredQuestions.slice(startIndex, startIndex + pageSize);
 
   const stats = {
     total: questions.length,
@@ -207,19 +218,17 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
 
-          <div className="flex gap-4 items-center">
-            {/* Pool Maintenance Panel - replaces old generate button */}
-            <PoolMaintenancePanel onGenerationComplete={fetchQuestions} />
-
-            {/* Export/Import Panel */}
-            <ExportImportPanel onImportSuccess={fetchQuestions} />
-          </div>
+          {/* Export/Import Panel */}
+          <ExportImportPanel onImportSuccess={fetchQuestions} />
         </div>
 
         {/* Questions List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Banque de questions ({filteredQuestions.length})</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Banque de questions ({filteredQuestions.length})</h2>
+              <p className="text-sm text-muted-foreground">Affichage {filteredQuestions.length === 0 ? 0 : startIndex + 1}-{Math.min(filteredQuestions.length, startIndex + pageSize)} sur {filteredQuestions.length}</p>
+            </div>
             
             {/* Filter Tabs */}
             <div className="flex gap-2">
@@ -261,21 +270,21 @@ export default function AdminPage() {
               </p>
             </div>
           ) : (
-            filteredQuestions.map((question) => {
+            paginatedQuestions.map((question) => {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
-              const rawAnswer = question.correctAnswer || (question.answer ? 'true' : 'false');
-              
-              // Parse answer to determine if true or false
-              const answerLower = String(rawAnswer).toLowerCase().trim();
-              const isCorrectTrue =
-                answerLower === 'true' ||
-                answerLower === '1' ||
-                answerLower === 'vrai' ||
-                answerLower === 'oui' ||
-                answerLower === 'yes';
-              
+              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
               const isAiGenerated = question.aiProvider !== 'manual' && question.aiProvider !== 'seed';
+              const potentialDuplicates = (() => {
+                if (!question.potentialDuplicates) return [];
+                if (Array.isArray(question.potentialDuplicates)) return question.potentialDuplicates;
+                try {
+                  const parsed = JSON.parse(String(question.potentialDuplicates));
+                  return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                  return [];
+                }
+              })();
               
               return (
                 <div
@@ -319,18 +328,18 @@ export default function AdminPage() {
                       )}
                       <p className="text-sm text-muted-foreground">
                         Réponse correcte : <span className="font-semibold text-foreground">
-                          {isCorrectTrue ? "OUI (Vrai)" : "NON (Faux)"}
+                          {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
                       </p>
                       
                       {/* Similarity section - displayed directly */}
-                      {question.potentialDuplicates && Array.isArray(question.potentialDuplicates) && question.potentialDuplicates.length > 0 && (
+                      {potentialDuplicates.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-border">
                           <p className="text-sm font-semibold text-cyber-orange mb-2">
-                            ⚠️ Questions similaires détectées ({question.potentialDuplicates.length})
+                            ⚠️ Questions similaires détectées ({potentialDuplicates.length})
                           </p>
                           <div className="space-y-2 text-xs">
-                            {question.potentialDuplicates.slice(0, 3).map((dup, idx) => {
+                            {potentialDuplicates.slice(0, 3).map((dup, idx) => {
                               const similarQuestion = questions.find(q => q.id === dup.id);
                               return (
                                 <div key={idx} className="bg-muted/50 rounded p-2 space-y-1">
@@ -347,8 +356,8 @@ export default function AdminPage() {
                                 </div>
                               );
                             })}
-                            {question.potentialDuplicates.length > 3 && (
-                              <p className="pl-2 text-muted-foreground">+{question.potentialDuplicates.length - 3} autres</p>
+                            {potentialDuplicates.length > 3 && (
+                              <p className="pl-2 text-muted-foreground">+{potentialDuplicates.length - 3} autres</p>
                             )}
                           </div>
                         </div>
@@ -396,6 +405,31 @@ export default function AdminPage() {
                 </div>
               );
             })
+          )}
+          {filteredQuestions.length > 0 && (
+            <div className="flex flex-col items-center gap-2 pt-4 border-t border-border text-sm text-muted-foreground">
+              <div className="flex items-center gap-3">
+                <span>Page {currentPage} / {totalPages}</span>
+                <div className="flex gap-2">
+                  <CyberButton
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Précédent
+                  </CyberButton>
+                  <CyberButton
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Suivant
+                  </CyberButton>
+                </div>
+              </div>
+            </div>
           )}
         </div>
     </div>

@@ -1,15 +1,24 @@
 import { NextResponse } from 'next/server';
-import { startPoolMaintenance } from '@/lib/services/pool-maintenance';
+import { ensureBufferFilled } from '@/lib/services/buffer-maintenance';
 
 /**
  * Initialize background services
  * Called once during app startup
+ * 
+ * New industrial-grade system:
+ * - No polling required
+ * - Event-driven buffer refills
+ * - Initial buffer fill on startup
  */
 export async function POST(request: Request) {
   try {
-    console.log('[BackgroundServices] Starting pool maintenance...');
-    startPoolMaintenance(120000); // Check pool every 2 minutes
-    console.log('[BackgroundServices] ✓ Pool maintenance service started (interval: 2 minutes)');
+    console.log('[BackgroundServices] Industrial-grade buffer system active');
+    console.log('[BackgroundServices] Triggering initial buffer fill...');
+    
+    // Non-blocking initial buffer fill
+    ensureBufferFilled().catch(err => {
+      console.error('[BackgroundServices] Initial buffer fill failed:', err);
+    });
 
     return NextResponse.json({ 
       success: true, 

@@ -1,0 +1,15 @@
+{"event":"login","level":"info","message":"[Auth]","service":"cyber-quiz","sessionId":3,"timestamp":"2026-01-22 20:24:21","username":"azaz"}
+{"currentSize":9,"level":"info","message":"[Buffer] Refilling buffer","questionsNeeded":1,"service":"cyber-quiz","timestamp":"2026-01-22 20:25:45"}
+{"attempt":1,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:25:45"}
+{"currentSize":8,"level":"info","message":"[Buffer] Refilling buffer","questionsNeeded":2,"service":"cyber-quiz","timestamp":"2026-01-22 20:27:09"}
+{"attempt":1,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:27:09"}
+{"level":"warn","message":"[Buffer] Semantic duplicate found","questionId":6,"service":"cyber-quiz","similarityScore":0.90597326,"timestamp":"2026-01-22 20:27:48"}
+{"attempt":1,"level":"warn","message":"[Buffer] Duplicate detected, retrying","service":"cyber-quiz","timestamp":"2026-01-22 20:27:48"}
+{"attempt":2,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:27:48"}
+{"level":"info","message":"[Buffer] Question generated successfully","questionId":20,"service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:28:30"}
+{"attempt":1,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:28:30"}
+{"level":"info","message":"[Buffer] Question generated successfully","questionId":21,"service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:28:53"}
+{"currentSize":9,"level":"info","message":"[Buffer] Refilling buffer","questionsNeeded":1,"service":"cyber-quiz","timestamp":"2026-01-22 20:50:53"}
+{"attempt":1,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:50:53"}
+{"event":"login","level":"info","message":"[Auth]","service":"cyber-quiz","sessionId":4,"timestamp":"2026-01-22 20:52:05","username":"azzazaz"}
+{"level":"info","message":"[Buffer] Question generated successfully","questionId":22,"service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 20:52:13"}

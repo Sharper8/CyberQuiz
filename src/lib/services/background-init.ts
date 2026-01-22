@@ -1,16 +1,23 @@
 /**
  * Background service initializer
- * Starts the question pool maintenance service
+ * Industrial-grade buffer maintenance is triggered on-demand,
+ * not via polling. This file is kept for future background tasks.
  */
-import { startPoolMaintenance } from '@/lib/services/pool-maintenance';
+import { ensureBufferFilled } from './buffer-maintenance';
 
-// Start the background maintenance service
-// Runs every 2 minutes to check and maintain pool
 export function initializeBackgroundServices() {
-  console.log('[BackgroundServices] Initializing...');
+  console.log('[BackgroundServices] Industrial-grade buffer system active');
+  console.log('[BackgroundServices] Buffer refills trigger automatically on question review');
   
-  // Start pool maintenance (check every 2 minutes)
-  startPoolMaintenance(120000); // 2 minutes
+  // The new buffer-maintenance.ts system is event-driven:
+  // - Triggers when questions are accepted/rejected
+  // - Queues generation jobs asynchronously
+  // - No polling needed
   
-  console.log('[BackgroundServices] Started pool maintenance service');
+  // Initial buffer fill on startup (non-blocking)
+  setTimeout(() => {
+    ensureBufferFilled().catch(err => {
+      console.error('[BackgroundServices] Initial buffer fill failed:', err);
+    });
+  }, 5000); // Wait 5 seconds after startup
 }

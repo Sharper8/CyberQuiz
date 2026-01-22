@@ -34,7 +34,7 @@ export async function maintainQuestionPool(): Promise<{
   try {
     // Get settings
     const settings = await prisma.generationSettings.findFirst();
-    if (!settings || !settings.autoGenerateEnabled) {
+    if (!settings || !settings.autoRefillEnabled) {
       return {
         poolSizeBefore: 0,
         poolSizeAfter: 0,
@@ -48,7 +48,7 @@ export async function maintainQuestionPool(): Promise<{
       where: { status: 'to_review' },
     });
 
-    const needed = settings.targetPoolSize - poolSizeBefore;
+    const needed = (settings.bufferSize || 50) - poolSizeBefore;
     
     if (needed <= 0) {
       // Pool is full, no generation needed
@@ -63,14 +63,14 @@ export async function maintainQuestionPool(): Promise<{
     // Generate needed questions one by one
     const qsToGenerate = needed;
     
-    console.log(`[PoolMaintenance] Pool at ${poolSizeBefore}/${settings.targetPoolSize}, need to generate ${qsToGenerate}...`);
+    console.log(`[PoolMaintenance] Pool at ${poolSizeBefore}/${settings.bufferSize || 50}, need to generate ${qsToGenerate}...`);
 
     // Create generation log entry
     const logEntry = await prisma.generationLog.create({
       data: {
         settingsId: settings.id,
-        topic: settings.generationTopic,
-        difficulty: settings.generationDifficulty,
+        topic: 'Cybersecurity',
+        difficulty: 'medium',
         batchSize: qsToGenerate,
         generatedCount: 0,
         savedCount: 0,
@@ -112,9 +112,9 @@ export async function maintainQuestionPool(): Promise<{
           console.log(`[PoolMaintenance] Generating question ${i + 1}/${qsToGenerate}...`);
 
           await generateQuestionForPool(
-            settings.generationTopic,
+            'Cybersecurity',
             provider,
-            settings.generationDifficulty as 'easy' | 'medium' | 'hard'
+            'medium'
           );
 
           generatedCount++;

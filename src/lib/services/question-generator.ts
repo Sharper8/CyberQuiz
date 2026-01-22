@@ -4,7 +4,7 @@ import { AIProvider } from '../ai/providers/base';
 import { GeneratedQuestionSchema } from '../validators/question';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { Decimal } from '@prisma/client/runtime/library';
-import crypto from 'crypto';
+import { generateQuestionHash } from '../utils/question-hash';
 
 interface GenerationContext {
   topic: string;
@@ -17,20 +17,6 @@ const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
 const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
-
-/**
- * Generate a hash from normalized question text for exact duplicate detection
- */
-function generateQuestionHash(questionText: string): string {
-  // Normalize: lowercase, remove extra spaces, punctuation
-  const normalized = questionText
-    .toLowerCase()
-    .replace(/[^\w\s]/g, '') // Remove punctuation
-    .replace(/\s+/g, ' ')    // Normalize spaces
-    .trim();
-  
-  return crypto.createHash('sha256').update(normalized).digest('hex');
-}
 
 /**
  * Log duplicate detection for analytics
@@ -470,22 +456,20 @@ export async function generateToMaintainPool(
     if (!settings) {
       settings = await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 50,
+          autoRefillEnabled: true,
           maxConcurrentGeneration: 5,
         },
       });
     }
 
-    if (!settings.autoGenerateEnabled) {
+    if (!settings.autoRefillEnabled) {
       return { poolSize: 0, generatedCount: 0, failedCount: 0, durationMs: Date.now() - startTime };
     }
 
-    const generationTopic = topic || settings.generationTopic;
-    const generationDifficulty = difficulty || (settings.generationDifficulty as 'easy' | 'medium' | 'hard');
-    const targetSize = settings.targetPoolSize;
+    const generationTopic = topic || 'Cybersecurity';
+    const generationDifficulty = difficulty || 'medium';
+    const targetSize = settings.bufferSize || 50;
     const maxBatchSize = settings.maxConcurrentGeneration;
 
     // Get current pool size

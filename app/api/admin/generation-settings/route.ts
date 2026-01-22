@@ -4,10 +4,8 @@ import { prisma } from '@/lib/db/prisma';
 import { z } from 'zod';
 
 const UpdateSettingsSchema = z.object({
-  targetPoolSize: z.number().int().min(1).max(500).optional(),
-  autoGenerateEnabled: z.boolean().optional(),
-  generationTopic: z.string().min(1).max(255).optional(),
-  generationDifficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  bufferSize: z.number().int().min(1).max(500).optional(),
+  autoRefillEnabled: z.boolean().optional(),
   maxConcurrentGeneration: z.number().int().min(1).max(20).optional(),
 });
 
@@ -31,10 +29,8 @@ export async function GET(request: NextRequest) {
       // Create default if not exists
       const defaultSettings = await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 50,
+          autoRefillEnabled: true,
           maxConcurrentGeneration: 5,
         },
       });
@@ -81,10 +77,8 @@ export async function POST(request: NextRequest) {
     if (!settings) {
       settings = await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 50,
+          autoRefillEnabled: true,
           maxConcurrentGeneration: 5,
         },
       });
