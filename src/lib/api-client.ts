@@ -202,6 +202,16 @@ class ApiClient {
     if (!res.ok) throw new Error('Failed to delete score');
     return res.json();
   }
+
+  // Admin: Clear entire leaderboard
+  async clearLeaderboard(): Promise<{ success: boolean; message: string; deletedCount: number }> {
+    const res = await fetch(`${this.baseUrl}/admin/scores`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error('Failed to clear leaderboard');
+    return res.json();
+  }
 }
 
 export const api = new ApiClient();

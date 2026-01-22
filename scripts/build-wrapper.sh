@@ -1,6 +1,6 @@
-#!/bin/bash
+﻿#!/bin/bash
 set -euo pipefail
-echo "🔍 Build Debug Info"
+echo "ðŸ” Build Debug Info"
 node -v || true
 npm -v || true
 echo "Working dir: $(pwd)"
@@ -18,7 +18,7 @@ node_modules/.bin/prisma -v || echo "Prisma CLI not available"
 
 echo "Starting Next.js build (verbose)"
 set -x
-npm run build || { echo "❌ BUILD FAILED"; exit 1; }
+npm run build || { echo "âŒ BUILD FAILED"; exit 1; }
 set +x
 
-echo "✅ Build script completed"
+echo "âœ… Build script completed"

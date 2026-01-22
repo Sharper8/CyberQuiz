@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw, Trash2, Ban } from "lucide-react";
+import { RefreshCw, Trash2, Ban, Trash } from "lucide-react";
 
 import { api, Score } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,10 @@ export default function AdminLeaderboardPage() {
   const [scores, setScores] = useState<Score[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [selectedScore, setSelectedScore] = useState<Score | null>(null);
   const [deleteAction, setDeleteAction] = useState<'delete' | 'ban'>('delete');
+  const [clearLoading, setClearLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -76,16 +78,45 @@ export default function AdminLeaderboardPage() {
     }
   };
 
+  const confirmClearLeaderboard = async () => {
+    setClearLoading(true);
+    try {
+      await api.clearLeaderboard();
+      
+      toast.success('Leaderboard supprimé avec succès');
+      
+      // Clear all scores from local state
+      setScores([]);
+    } catch (error) {
+      console.error('Error clearing leaderboard:', error);
+      toast.error('Erreur lors de la suppression du leaderboard');
+    } finally {
+      setClearLoading(false);
+      setClearDialogOpen(false);
+    }
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-gradient mb-2">Leaderboard</h1>
         </div>
-        <Button variant="outline" className="gap-2" onClick={load} disabled={loading}>
-          <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" onClick={load} disabled={loading}>
+            <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
+            Actualiser
+          </Button>
+          <Button 
+            variant="destructive" 
+            className="gap-2"
+            onClick={() => setClearDialogOpen(true)}
+            disabled={clearLoading || scores.length === 0}
+          >
+            <Trash className="h-4 w-4" />
+            Vider le leaderboard
+          </Button>
+        </div>
       </div>
 
       <div className="bg-card border border-border rounded-lg overflow-hidden">
@@ -185,6 +216,29 @@ export default function AdminLeaderboardPage() {
               className={deleteAction === 'ban' ? 'bg-destructive hover:bg-destructive/90' : ''}
             >
               {deleteAction === 'ban' ? 'Bannir et supprimer' : 'Supprimer'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Vider le leaderboard</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer <strong>tous les scores</strong> du leaderboard ?
+              <br /><br />
+              Cette action est <strong>irréversible</strong> et supprimera définitivement tous les {scores.length} scores enregistrés.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmClearLeaderboard}
+              disabled={clearLoading}
+              className='bg-destructive hover:bg-destructive/90'
+            >
+              {clearLoading ? 'Suppression...' : 'Vider le leaderboard'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
