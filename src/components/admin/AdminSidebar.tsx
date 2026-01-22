@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Users, HelpCircle, LogOut } from "lucide-react";
+import { BarChart3, Users, HelpCircle, LogOut, Settings, Sparkles } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,13 @@ type NavItem = {
 const navItems: NavItem[] = [
   {
     href: "/admin",
-    label: "Questions",
+    label: "Banque de Questions",
     icon: HelpCircle,
+  },
+  {
+    href: "/admin/generation",
+    label: "Génération",
+    icon: Sparkles,
   },
   {
     href: "/admin/users",

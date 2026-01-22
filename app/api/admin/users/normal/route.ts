@@ -1,9 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db/prisma';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
-
-const prisma = new PrismaClient();
 
 // GET /api/admin/users/normal - List all normal users (players)
 export async function GET(request: NextRequest) {

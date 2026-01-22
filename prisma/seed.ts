@@ -8,12 +8,25 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// Load credentials from environment variables
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@cyberquiz.fr';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'password';
+
+if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+  console.warn('⚠️  WARNING: ADMIN_EMAIL and ADMIN_PASSWORD should be set in environment variables');
+  console.warn(`   Using defaults: ${ADMIN_EMAIL} / (password from env or "password")`);
+}
+
 interface SeedQuestion {
   question: string;
   answer: boolean;
   category: string;
   explanation: string;
   difficulty: number;
+  domain?: string;
+  skillType?: string;
+  generationDifficulty?: string;
+  granularity?: string;
 }
 
 // Pre-defined questions for initial seed (following specification categories)
@@ -24,21 +37,33 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "Sécurité Réseau",
     explanation: "HTTPS utilise TLS/SSL pour chiffrer les communications entre le client et le serveur, assurant la confidentialité des données transmises.",
-    difficulty: 0.2
+    difficulty: 0.2,
+    domain: "Fondamentaux",
+    skillType: "Chiffrement",
+    generationDifficulty: "Facile",
+    granularity: "Concept"
   },
   {
     question: "Un firewall peut bloquer tout type d'attaque informatique",
     answer: false,
     category: "Sécurité Réseau",
     explanation: "Un firewall ne peut bloquer que certaines attaques au niveau réseau. Il ne protège pas contre les attaques applicatives, le social engineering, ou les malwares déjà présents.",
-    difficulty: 0.3
+    difficulty: 0.3,
+    domain: "Fondamentaux",
+    skillType: "Sécurité Réseau",
+    generationDifficulty: "Facile",
+    granularity: "Limitation"
   },
   {
     question: "WPA3 est plus sécurisé que WPA2 pour les réseaux WiFi",
     answer: true,
     category: "Sécurité Réseau",
     explanation: "WPA3 introduit un chiffrement plus robuste (SAE au lieu de PSK), une protection contre les attaques par force brute, et le forward secrecy.",
-    difficulty: 0.4
+    difficulty: 0.4,
+    domain: "Fondamentaux",
+    skillType: "Sécurité Réseau",
+    generationDifficulty: "Moyen",
+    granularity: "Comparaison"
   },
   
   // Web Application Security - Easy/Medium
@@ -47,21 +72,33 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "Sécurité Web",
     explanation: "Les injections SQL exploitent des vulnérabilités dans les requêtes pour exécuter du code SQL malveillant, permettant de lire, modifier ou supprimer des données.",
-    difficulty: 0.3
+    difficulty: 0.3,
+    domain: "Développement",
+    skillType: "Vulnérabilités Web",
+    generationDifficulty: "Facile",
+    granularity: "Technique"
   },
   {
     question: "Le XSS (Cross-Site Scripting) ne fonctionne que sur les sites en HTTP",
     answer: false,
     category: "Sécurité Web",
     explanation: "Le XSS peut affecter autant les sites en HTTP qu'en HTTPS. HTTPS protège le transport des données mais pas contre l'injection de scripts côté client.",
-    difficulty: 0.5
+    difficulty: 0.5,
+    domain: "Développement",
+    skillType: "Vulnérabilités Web",
+    generationDifficulty: "Moyen",
+    granularity: "Nuance"
   },
   {
     question: "Les en-têtes Content-Security-Policy aident à prévenir les attaques XSS",
     answer: true,
     category: "Sécurité Web",
     explanation: "CSP permet de définir des règles strictes sur les sources de contenu autorisées, réduisant significativement le risque d'exécution de scripts malveillants.",
-    difficulty: 0.6
+    difficulty: 0.6,
+    domain: "Développement",
+    skillType: "Défense Web",
+    generationDifficulty: "Difficile",
+    granularity: "Solution"
   },
 
   // Cryptography - Medium
@@ -70,21 +107,33 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "Cryptographie",
     explanation: "Dans le chiffrement symétrique (AES, DES, etc.), une seule clé secrète est partagée entre les parties pour les opérations de chiffrement et déchiffrement.",
-    difficulty: 0.3
+    difficulty: 0.3,
+    domain: "Fondamentaux",
+    skillType: "Cryptographie",
+    generationDifficulty: "Facile",
+    granularity: "Définition"
   },
   {
     question: "SHA-256 est un algorithme de chiffrement",
     answer: false,
     category: "Cryptographie",
     explanation: "SHA-256 est une fonction de hachage cryptographique, pas un algorithme de chiffrement. Elle génère une empreinte unique mais le processus n'est pas réversible.",
-    difficulty: 0.5
+    difficulty: 0.5,
+    domain: "Fondamentaux",
+    skillType: "Cryptographie",
+    generationDifficulty: "Moyen",
+    granularity: "Distinction"
   },
   {
     question: "RSA utilise une paire de clés publique/privée",
     answer: true,
     category: "Cryptographie",
     explanation: "RSA est un algorithme de chiffrement asymétrique utilisant une clé publique pour chiffrer et une clé privée correspondante pour déchiffrer.",
-    difficulty: 0.4
+    difficulty: 0.4,
+    domain: "Fondamentaux",
+    skillType: "Cryptographie",
+    generationDifficulty: "Moyen",
+    granularity: "Concept"
   },
 
   // Red Team Operations - Medium/Hard
@@ -93,14 +142,22 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "Red Team",
     explanation: "Metasploit est un outil open-source permettant de développer, tester et exécuter des exploits contre des systèmes cibles dans le cadre de tests de sécurité.",
-    difficulty: 0.5
+    difficulty: 0.5,
+    domain: "Opérations",
+    skillType: "Outils Red Team",
+    generationDifficulty: "Moyen",
+    granularity: "Outil"
   },
   {
     question: "Le port scanning est toujours détectable par les systèmes IDS/IPS",
     answer: false,
     category: "Red Team",
     explanation: "Des techniques de scanning furtif (SYN scan, fragmentation, timing delays) peuvent contourner certaines détections IDS/IPS basiques.",
-    difficulty: 0.7
+    difficulty: 0.7,
+    domain: "Opérations",
+    skillType: "Outils Red Team",
+    generationDifficulty: "Difficile",
+    granularity: "Nuance"
   },
 
   // Blue Team Operations - Medium
@@ -109,14 +166,22 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "Blue Team",
     explanation: "Les SIEM (Security Information and Event Management) collectent, analysent et corrèlent les événements de sécurité pour détecter des incidents.",
-    difficulty: 0.4
+    difficulty: 0.4,
+    domain: "Opérations",
+    skillType: "Monitoring",
+    generationDifficulty: "Facile",
+    granularity: "Outil"
   },
   {
     question: "La réponse à incident doit toujours commencer par l'effacement des preuves",
     answer: false,
     category: "Blue Team",
     explanation: "La préservation des preuves (forensics) est cruciale. L'effacement prématuré empêche l'analyse post-incident et peut avoir des implications légales.",
-    difficulty: 0.6
+    difficulty: 0.6,
+    domain: "Opérations",
+    skillType: "Réponse aux Incidents",
+    generationDifficulty: "Difficile",
+    granularity: "Procédure"
   },
 
   // Incident Response - Medium/Hard
@@ -125,14 +190,22 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "Réponse à Incident",
     explanation: "La RAM contient des données volatiles critiques (processus actifs, connexions, clés de chiffrement) qui sont perdues à l'extinction.",
-    difficulty: 0.7
+    difficulty: 0.7,
+    domain: "Opérations",
+    skillType: "Forensique",
+    generationDifficulty: "Difficile",
+    granularity: "Technique"
   },
   {
     question: "Isoler un système compromis du réseau suffit à stopper toute exfiltration de données",
     answer: false,
     category: "Réponse à Incident",
     explanation: "Un malware peut avoir déjà établi des canaux cachés, des tâches programmées, ou compromettre d'autres systèmes avant l'isolation.",
-    difficulty: 0.6
+    difficulty: 0.6,
+    domain: "Opérations",
+    skillType: "Réponse aux Incidents",
+    generationDifficulty: "Moyen",
+    granularity: "Limitation"
   },
 
   // Cloud Security - Medium
@@ -141,14 +214,22 @@ const seedQuestions: SeedQuestion[] = [
     answer: false,
     category: "Sécurité Cloud",
     explanation: "En IaaS, le fournisseur gère l'infrastructure physique, mais le client est responsable de l'OS, des applications et des données (modèle de responsabilité partagée).",
-    difficulty: 0.5
+    difficulty: 0.5,
+    domain: "Infrastructure",
+    skillType: "Cloud",
+    generationDifficulty: "Moyen",
+    granularity: "Responsabilité"
   },
   {
     question: "Les buckets S3 sont privés par défaut",
     answer: true,
     category: "Sécurité Cloud",
     explanation: "AWS S3 crée les buckets avec des permissions privées par défaut depuis 2018. Les erreurs de configuration publique sont dues à des modifications intentionnelles mal sécurisées.",
-    difficulty: 0.4
+    difficulty: 0.4,
+    domain: "Infrastructure",
+    skillType: "Cloud",
+    generationDifficulty: "Facile",
+    granularity: "Configuration"
   },
 
   // MITRE ATT&CK - Hard
@@ -157,14 +238,22 @@ const seedQuestions: SeedQuestion[] = [
     answer: true,
     category: "MITRE ATT&CK",
     explanation: "T1059 décrit l'utilisation d'interpréteurs (PowerShell, Bash, Python) pour exécuter des commandes malveillantes sur un système compromis.",
-    difficulty: 0.8
+    difficulty: 0.8,
+    domain: "Opérations",
+    skillType: "MITRE ATT&CK",
+    generationDifficulty: "Difficile",
+    granularity: "Technique"
   },
   {
     question: "Le lateral movement fait partie de la phase de reconnaissance selon MITRE ATT&CK",
     answer: false,
     category: "MITRE ATT&CK",
     explanation: "Le lateral movement (déplacement latéral) est une tactique distincte visant à se déplacer dans le réseau après le compromis initial. La reconnaissance est une phase préliminaire.",
-    difficulty: 0.7
+    difficulty: 0.7,
+    domain: "Opérations",
+    skillType: "MITRE ATT&CK",
+    generationDifficulty: "Difficile",
+    granularity: "Classification"
   },
 
   // Password Security - Easy/Medium
@@ -173,14 +262,22 @@ const seedQuestions: SeedQuestion[] = [
     answer: false,
     category: "Mots de passe",
     explanation: "Bien que conforme à beaucoup de politiques, 8 caractères reste vulnérable aux attaques par force brute modernes. 12+ caractères avec complexité est recommandé.",
-    difficulty: 0.4
+    difficulty: 0.4,
+    domain: "Fondamentaux",
+    skillType: "Authentification",
+    generationDifficulty: "Facile",
+    granularity: "Nuance"
   },
   {
     question: "Le hashage bcrypt inclut automatiquement un salt aléatoire",
     answer: true,
     category: "Mots de passe",
     explanation: "Bcrypt génère et stocke automatiquement un salt unique pour chaque mot de passe, rendant les rainbow tables inefficaces.",
-    difficulty: 0.5
+    difficulty: 0.5,
+    domain: "Fondamentaux",
+    skillType: "Cryptographie",
+    generationDifficulty: "Moyen",
+    granularity: "Technique"
   }
 ];
 
@@ -189,16 +286,16 @@ async function main() {
 
   // 1. Create admin user
   console.log('👤 Creating admin user...');
-  const passwordHash = await bcrypt.hash('password123', 10);
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
   
   const admin = await prisma.adminUser.upsert({
-    where: { email: 'admin@cyberquiz.fr' },
+    where: { email: ADMIN_EMAIL },
     update: {
       passwordHash,
       role: 'admin',
     },
     create: {
-      email: 'admin@cyberquiz.fr',
+      email: ADMIN_EMAIL,
       passwordHash,
       role: 'admin',
     },
@@ -227,6 +324,10 @@ async function main() {
           mitreTechniques: q.category === 'MITRE ATT&CK' ? ['T1059'] : [],
           tags: [q.category.toLowerCase()],
           qualityScore: 1.0, // Perfect quality for seed questions
+          generationDomain: q.domain || null,
+          generationSkillType: q.skillType || null,
+          generationDifficulty: q.generationDifficulty || null,
+          generationGranularity: q.granularity || null,
         },
       });
 
@@ -337,12 +438,12 @@ async function main() {
 
   console.log('\n🎉 Database seeded successfully!');
   console.log('\n📊 Summary:');
-  console.log(`   - 1 admin user (admin@cyberquiz.fr)`);
+  console.log(`   - 1 admin user (${ADMIN_EMAIL})`);
   console.log(`   - ${createdCount} validated questions across 9 categories`);
   console.log(`   - 1 sample quiz session`);
   console.log(`   - ${sampleScores.length} leaderboard entries`);
   console.log('\n🚀 You can now:');
-  console.log('   - Login to admin panel with admin@cyberquiz.fr:password123');
+  console.log(`   - Login to admin panel with ${ADMIN_EMAIL}:<password>`);
   console.log('   - Start a quiz from the home page');
   console.log('   - View the leaderboard');
   console.log('   - Generate more questions with AI\n');

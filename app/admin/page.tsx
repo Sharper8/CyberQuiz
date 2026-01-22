@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CheckCircle2, XCircle, Sparkles, Plus, LogOut } from "lucide-react";
+import { CheckCircle2, XCircle, Sparkles, Plus, ChevronDown } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { ExportImportPanel } from "@/components/ExportImportPanel";
 import { useAdmin } from "@/hooks/useAdmin";
 import { api, Question } from "@/lib/api-client";
@@ -25,36 +26,54 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'accepted' | 'to_review' | 'rejected'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
   const [newQuestion, setNewQuestion] = useState({
     question: "",
     answer: true,
     category: "Sécurité",
   });
-  const [generating, setGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState<{
-    step: string;
-    message: string;
-    current?: number;
-    total?: number;
-  } | null>(null);
-  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editQuestion, setEditQuestion] = useState<Question | null>(null);
+  const [editForm, setEditForm] = useState({
+    questionText: "",
+    correctAnswer: "True",
+    explanation: "",
+    category: "",
+    tags: "",
+    generationDomain: "",
+    generationSkillType: "",
+    generationDifficulty: "",
+    generationGranularity: "",
+  });
+  const [expandedMetadata, setExpandedMetadata] = useState<Set<number>>(new Set());
+
+  const toggleMetadata = (questionId: number) => {
+    setExpandedMetadata(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(questionId)) {
+        newSet.delete(questionId);
+      } else {
+        newSet.add(questionId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     fetchQuestions();
-
-    // Cleanup on unmount: abort any ongoing generation
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
 
   const fetchQuestions = async () => {
     try {
@@ -109,83 +128,48 @@ export default function AdminPage() {
     }
   };
 
-  const handleGenerateQuestions = async () => {
-    setGenerating(true);
-    setGenerationProgress({ step: 'init', message: 'Démarrage...' });
-    
-    // Create abort controller for this generation request
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-    
+  const openEditDialog = (question: Question) => {
+    const tags = Array.isArray(question.tags)
+      ? question.tags.join(", ")
+      : typeof question.tags === "string"
+        ? question.tags
+        : "";
+    setEditQuestion(question);
+    setEditForm({
+      questionText: question.questionText || question.question || "",
+      correctAnswer: question.correctAnswer || (question.answer ? "True" : "False") || "True",
+      explanation: question.explanation || "",
+      category: question.category || "",
+      tags,
+      generationDomain: question.generationDomain || "",
+      generationSkillType: question.generationSkillType || "",
+      generationDifficulty: question.generationDifficulty || "",
+      generationGranularity: question.generationGranularity || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editQuestion) return;
     try {
-      // Use streaming endpoint for real-time progress
-      const response = await fetch('/api/questions/generate-stream', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        signal: abortController.signal,
-        body: JSON.stringify({
-          topic: 'Cybersécurité',
-          difficulty: 'medium',
-          count: 5
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to start generation');
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error('No response body');
-      }
-
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            const eventMatch = line.match(/event: (\w+)\ndata: (.+)/s);
-            if (eventMatch) {
-              const [, event, dataStr] = eventMatch;
-              try {
-                const data = JSON.parse(dataStr);
-
-                if (event === 'progress') {
-                  setGenerationProgress(data);
-                  toast.info(data.message, { duration: 2000 });
-                } else if (event === 'complete') {
-                  toast.success('Questions générées avec succès!');
-                  await fetchQuestions();
-                  setGenerating(false);
-                  setGenerationProgress(null);
-                } else if (event === 'error') {
-                  toast.error(data.message);
-                  setGenerating(false);
-                  setGenerationProgress(null);
-                }
-              } catch (parseError) {
-                console.error('Failed to parse event data:', parseError);
-              }
-            }
-          }
-        }
-      }
+      const payload = {
+        questionText: editForm.questionText,
+        correctAnswer: editForm.correctAnswer,
+        explanation: editForm.explanation,
+        category: editForm.category,
+        tags: editForm.tags,
+        generationDomain: editForm.generationDomain || null,
+        generationSkillType: editForm.generationSkillType || null,
+        generationDifficulty: editForm.generationDifficulty || null,
+        generationGranularity: editForm.generationGranularity || null,
+      };
+      const updated = await api.updateQuestion(editQuestion.id.toString(), payload);
+      setQuestions((prev) => prev.map((q) => (q.id === updated.id ? { ...q, ...updated } : q)));
+      setEditDialogOpen(false);
+      setEditQuestion(null);
+      toast.success("Question mise à jour");
     } catch (error: any) {
-      // Don't show error toast if the error was due to abort (page refresh/unmount)
-      if (error.name !== 'AbortError') {
-        toast.error(error.message || "Erreur lors de la génération");
-      }
-      setGenerating(false);
-      setGenerationProgress(null);
+      toast.error("Échec de la mise à jour");
     }
   };
 
@@ -204,6 +188,11 @@ export default function AdminPage() {
   const filteredQuestions = filter === 'all' 
     ? questions 
     : questions.filter(q => q.status === filter);
+
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedQuestions = filteredQuestions.slice(startIndex, startIndex + pageSize);
 
   const stats = {
     total: questions.length,
@@ -302,77 +291,17 @@ export default function AdminPage() {
             </DialogContent>
           </Dialog>
 
-          <div className="flex gap-4 items-end">
-            <CyberButton
-              variant="secondary"
-              size="lg"
-              onClick={handleGenerateQuestions}
-              disabled={generating}
-            >
-              {generating ? (
-                <>
-                  <div className="animate-spin h-5 w-5 mr-2 border-2 border-current border-t-transparent rounded-full" />
-                  {generationProgress?.message || "Génération..."}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Générer avec IA
-                </>
-              )}
-            </CyberButton>
-
-            {/* Export/Import Panel */}
-            <ExportImportPanel onImportSuccess={fetchQuestions} />
-          </div>
+          {/* Export/Import Panel */}
+          <ExportImportPanel onImportSuccess={fetchQuestions} />
         </div>
-
-        {/* Generation Progress Display */}
-        {generating && generationProgress && (
-          <div className="bg-card border border-primary rounded-lg p-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-primary">
-                  Génération en cours...
-                </h3>
-                {generationProgress.current !== undefined && generationProgress.total && (
-                  <span className="text-sm text-muted-foreground">
-                    {generationProgress.current}/{generationProgress.total}
-                  </span>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  {generationProgress.message}
-                </p>
-                
-                {generationProgress.total && (
-                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-primary h-full transition-all duration-300 ease-out"
-                      style={{ 
-                        width: `${((generationProgress.current || 0) / generationProgress.total) * 100}%` 
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="animate-pulse">●</div>
-                <span>
-                  Étape: <span className="font-mono text-primary">{generationProgress.step}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Questions List */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Banque de questions ({filteredQuestions.length})</h2>
+            <div>
+              <h2 className="text-2xl font-bold">Banque de questions ({filteredQuestions.length})</h2>
+              <p className="text-sm text-muted-foreground">Affichage {filteredQuestions.length === 0 ? 0 : startIndex + 1}-{Math.min(filteredQuestions.length, startIndex + pageSize)} sur {filteredQuestions.length}</p>
+            </div>
             
             {/* Filter Tabs */}
             <div className="flex gap-2">
@@ -414,21 +343,20 @@ export default function AdminPage() {
               </p>
             </div>
           ) : (
-            filteredQuestions.map((question) => {
+            paginatedQuestions.map((question) => {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
-              const rawAnswer = question.correctAnswer || (question.answer ? 'true' : 'false');
-              
-              // Parse answer to determine if true or false
-              const answerLower = String(rawAnswer).toLowerCase().trim();
-              const isCorrectTrue =
-                answerLower === 'true' ||
-                answerLower === '1' ||
-                answerLower === 'vrai' ||
-                answerLower === 'oui' ||
-                answerLower === 'yes';
-              
-              const isAiGenerated = question.aiProvider !== 'manual' && question.aiProvider !== 'seed';
+              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const potentialDuplicates = (() => {
+                if (!question.potentialDuplicates) return [];
+                if (Array.isArray(question.potentialDuplicates)) return question.potentialDuplicates;
+                try {
+                  const parsed = JSON.parse(String(question.potentialDuplicates));
+                  return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                  return [];
+                }
+              })();
               
               return (
                 <div
@@ -437,34 +365,84 @@ export default function AdminPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline" className="text-primary border-primary">
-                          {question.category}
-                        </Badge>
-                        {isAiGenerated && (
-                          <Badge variant="secondary" className="gap-1">
-                            <Sparkles className="h-3 w-3" />
-                            IA ({question.aiProvider})
-                          </Badge>
-                        )}
+                      {/* Status, AI provider, and one-line metadata */}
+                      <div className="flex items-center gap-2 mb-3 flex-wrap text-sm">
+                        {/* Status and Model - Primary emphasis */}
                         {question.status === 'accepted' ? (
-                          <Badge className="bg-secondary text-secondary-foreground gap-1">
+                          <Badge className="bg-secondary text-secondary-foreground gap-1 font-semibold">
                             <CheckCircle2 className="h-3 w-3" />
                             Dans le pool
                           </Badge>
                         ) : question.status === 'rejected' ? (
-                          <Badge variant="destructive" className="gap-1">
+                          <Badge variant="destructive" className="gap-1 font-semibold">
                             <XCircle className="h-3 w-3" />
                             Rejetée
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="gap-1 border-cyber-red text-cyber-red">
+                          <Badge variant="outline" className="gap-1 border-cyber-red text-cyber-red font-semibold">
                             <XCircle className="h-3 w-3" />
                             En attente
                           </Badge>
                         )}
+                        
+                        {/* AI Provider/Model - Always show */}
+                        <Badge variant="secondary" className="gap-1 font-semibold">
+                          <Sparkles className="h-3 w-3" />
+                          {question.aiModel || question.aiProvider || 'unknown'}
+                        </Badge>
+
+                        {/* Metadata trigger on the same line */}
+                        {(question.generationDomain || question.generationSkillType || question.generationDifficulty || question.generationGranularity) && (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 cursor-pointer hover:bg-accent transition-colors"
+                            onClick={() => toggleMetadata(question.id)}
+                          >
+                            Options
+                            <ChevronDown
+                              className="h-3 w-3 transition-transform duration-200"
+                              style={{ transform: expandedMetadata.has(question.id) ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                            />
+                          </Badge>
+                        )}
+
                       </div>
-                      <p className="text-lg font-medium mb-2">{questionText}</p>
+
+                      {/* Metadata content near top when open */}
+                      {expandedMetadata.has(question.id) && (
+                        <div className="mb-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                            {question.generationDomain && (
+                              <div className="bg-muted/40 rounded p-2">
+                                <span className="block text-muted-foreground font-semibold mb-1">Domaine</span>
+                                <span className="text-foreground">{question.generationDomain}</span>
+                              </div>
+                            )}
+                            {question.generationSkillType && (
+                              <div className="bg-muted/40 rounded p-2">
+                                <span className="block text-muted-foreground font-semibold mb-1">Compétence</span>
+                                <span className="text-foreground">{question.generationSkillType}</span>
+                              </div>
+                            )}
+                            {question.generationDifficulty && (
+                              <div className="bg-muted/40 rounded p-2">
+                                <span className="block text-muted-foreground font-semibold mb-1">Difficulté</span>
+                                <span className="text-foreground">{question.generationDifficulty}</span>
+                              </div>
+                            )}
+                            {question.generationGranularity && (
+                              <div className="bg-muted/40 rounded p-2">
+                                <span className="block text-muted-foreground font-semibold mb-1">Granularité</span>
+                                <span className="text-foreground">{question.generationGranularity}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Question text */}
+                      <p className="text-lg font-medium mb-3">{questionText}</p>
+                      
                       {question.explanation && (
                         <p className="text-sm text-muted-foreground mb-2">
                           <span className="font-semibold">Explication:</span> {question.explanation}
@@ -472,18 +450,18 @@ export default function AdminPage() {
                       )}
                       <p className="text-sm text-muted-foreground">
                         Réponse correcte : <span className="font-semibold text-foreground">
-                          {isCorrectTrue ? "OUI (Vrai)" : "NON (Faux)"}
+                          {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
                       </p>
                       
                       {/* Similarity section - displayed directly */}
-                      {question.potentialDuplicates && Array.isArray(question.potentialDuplicates) && question.potentialDuplicates.length > 0 && (
+                      {potentialDuplicates.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-border">
                           <p className="text-sm font-semibold text-cyber-orange mb-2">
-                            ⚠️ Questions similaires détectées ({question.potentialDuplicates.length})
+                            ⚠️ Questions similaires détectées ({potentialDuplicates.length})
                           </p>
                           <div className="space-y-2 text-xs">
-                            {question.potentialDuplicates.slice(0, 3).map((dup, idx) => {
+                            {potentialDuplicates.slice(0, 3).map((dup, idx) => {
                               const similarQuestion = questions.find(q => q.id === dup.id);
                               return (
                                 <div key={idx} className="bg-muted/50 rounded p-2 space-y-1">
@@ -500,14 +478,21 @@ export default function AdminPage() {
                                 </div>
                               );
                             })}
-                            {question.potentialDuplicates.length > 3 && (
-                              <p className="pl-2 text-muted-foreground">+{question.potentialDuplicates.length - 3} autres</p>
+                            {potentialDuplicates.length > 3 && (
+                              <p className="pl-2 text-muted-foreground">+{potentialDuplicates.length - 3} autres</p>
                             )}
                           </div>
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      <CyberButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEditDialog(question)}
+                      >
+                        Modifier
+                      </CyberButton>
                       {question.status === 'to_review' && (
                         <>
                           <CyberButton
@@ -550,7 +535,127 @@ export default function AdminPage() {
               );
             })
           )}
+          {filteredQuestions.length > 0 && (
+            <div className="flex flex-col items-center gap-2 pt-4 border-t border-border text-sm text-muted-foreground">
+              <div className="flex items-center gap-3">
+                <span>Page {currentPage} / {totalPages}</span>
+                <div className="flex gap-2">
+                  <CyberButton
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  >
+                    Précédent
+                  </CyberButton>
+                  <CyberButton
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  >
+                    Suivant
+                  </CyberButton>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Edit Question Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Modifier la question</DialogTitle>
+              <DialogDescription>Mettre à jour le texte, la réponse et les métadonnées.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-question">Question</Label>
+                <Textarea
+                  id="edit-question"
+                  value={editForm.questionText}
+                  onChange={(e) => setEditForm({ ...editForm, questionText: e.target.value })}
+                  rows={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-explanation">Explication</Label>
+                <Textarea
+                  id="edit-explanation"
+                  value={editForm.explanation}
+                  onChange={(e) => setEditForm({ ...editForm, explanation: e.target.value })}
+                  rows={3}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Catégorie</Label>
+                  <Input
+                    id="edit-category"
+                    value={editForm.category}
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-answer">Réponse correcte</Label>
+                  <Select
+                    value={editForm.correctAnswer}
+                    onValueChange={(value) => setEditForm({ ...editForm, correctAnswer: value })}
+                  >
+                    <SelectTrigger id="edit-answer">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="True">OUI (Vrai)</SelectItem>
+                      <SelectItem value="False">NON (Faux)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Metadata fields - READ ONLY for AI-generated questions */}
+              {editQuestion?.aiProvider && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-muted-foreground/20">
+                  <Label className="text-xs font-semibold text-muted-foreground mb-2 block">Métadonnées (Lecture seule)</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    {editForm.generationDomain && (
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground mb-1">Domaine</span>
+                        <span className="text-foreground">{editForm.generationDomain}</span>
+                      </div>
+                    )}
+                    {editForm.generationSkillType && (
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground mb-1">Compétence</span>
+                        <span className="text-foreground">{editForm.generationSkillType}</span>
+                      </div>
+                    )}
+                    {editForm.generationDifficulty && (
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground mb-1">Difficulté</span>
+                        <span className="text-foreground">{editForm.generationDifficulty}</span>
+                      </div>
+                    )}
+                    {editForm.generationGranularity && (
+                      <div>
+                        <span className="block text-[10px] uppercase font-semibold text-muted-foreground mb-1">Granularité</span>
+                        <span className="text-foreground">{editForm.generationGranularity}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <CyberButton variant="outline" onClick={() => setEditDialogOpen(false)}>
+                  Annuler
+                </CyberButton>
+                <CyberButton variant="primary" onClick={handleSaveEdit}>
+                  Enregistrer
+                </CyberButton>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }
