@@ -1,9 +1,9 @@
-#!/bin/sh
+﻿#!/bin/sh
 
-echo "🚀 Starting Ollama server and pulling models..."
+echo "ðŸš€ Starting Ollama server and pulling models..."
 
 # ============================================================================
-# ⚠️  IMPORTANT: Model Selection
+# âš ï¸  IMPORTANT: Model Selection
 # ============================================================================
 # Current model: mistral:7b (~3.8 GB RAM required)
 # 
@@ -26,21 +26,21 @@ OLLAMA_PID=$!
 sleep 5
 
 # Pull models in FOREGROUND to ensure they're ready before container is marked healthy
-echo "📥 Pulling mistral:7b model (this may take a few minutes)..."
+echo "ðŸ“¥ Pulling mistral:7b model (this may take a few minutes)..."
 if /bin/ollama pull mistral:7b; then
-  echo "✅ mistral:7b pulled successfully"
+  echo "âœ… mistral:7b pulled successfully"
 else
-  echo "⚠️  mistral:7b pull failed"
+  echo "âš ï¸  mistral:7b pull failed"
 fi
 
-echo "📥 Pulling nomic-embed-text model..."
+echo "ðŸ“¥ Pulling nomic-embed-text model..."
 if /bin/ollama pull nomic-embed-text; then
-  echo "✅ nomic-embed-text pulled successfully"
+  echo "âœ… nomic-embed-text pulled successfully"
 else
-  echo "⚠️  nomic-embed-text pull failed"
+  echo "âš ï¸  nomic-embed-text pull failed"
 fi
 
-echo "✅ Ollama server started and models pulled"
+echo "âœ… Ollama server started and models pulled"
 
 # Keep container running
 wait $OLLAMA_PID

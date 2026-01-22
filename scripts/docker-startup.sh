@@ -1,19 +1,19 @@
-#!/bin/sh
+﻿#!/bin/sh
 # Startup script for production
 # Ensures admin user exists before starting the app
 
-echo "🚀 [Startup] Initializing CyberQuiz..."
+echo "ðŸš€ [Startup] Initializing CyberQuiz..."
 
 # Regenerate Prisma Client with runtime DATABASE_URL
-echo "🔧 [Startup] Regenerating Prisma Client..."
+echo "ðŸ”§ [Startup] Regenerating Prisma Client..."
 npx prisma generate
 
 # Run database migrations
-echo "📦 [Startup] Running database migrations..."
+echo "ðŸ“¦ [Startup] Running database migrations..."
 npx prisma migrate deploy
 
 # Ensure admin user exists
-echo "👤 [Startup] Ensuring admin user..."
+echo "ðŸ‘¤ [Startup] Ensuring admin user..."
 node -e "
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
@@ -44,9 +44,9 @@ async function ensureAdmin() {
       }
     });
 
-    console.log('[Admin] ✅ Created admin user:', adminEmail);
+    console.log('[Admin] âœ… Created admin user:', adminEmail);
   } catch (error) {
-    console.error('[Admin] ❌ Failed:', error.message);
+    console.error('[Admin] âŒ Failed:', error.message);
   } finally {
     await prisma.\$disconnect();
   }

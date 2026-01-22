@@ -1,18 +1,18 @@
-#!/bin/bash
+﻿#!/bin/bash
 
 # Script de test pour l'API export/import
 
 set -e
 
-echo "🧪 Test de l'API Export/Import"
+echo "ðŸ§ª Test de l'API Export/Import"
 echo "=============================="
 
 BASE_URL="http://localhost:3000"
-TOKEN="" # À obtenir après login admin
+TOKEN="" # Ã€ obtenir aprÃ¨s login admin
 
 # Fonction pour faire login
 login() {
-  echo "🔐 Tentative de login admin..."
+  echo "ðŸ” Tentative de login admin..."
   
   RESPONSE=$(curl -s -X POST "$BASE_URL/api/auth/login" \
     -H "Content-Type: application/json" \
@@ -24,12 +24,12 @@ login() {
   TOKEN=$(echo $RESPONSE | grep -o '"token":"[^"]*' | cut -d'"' -f4)
   
   if [ -z "$TOKEN" ]; then
-    echo "❌ Erreur lors du login"
-    echo "Réponse: $RESPONSE"
+    echo "âŒ Erreur lors du login"
+    echo "RÃ©ponse: $RESPONSE"
     exit 1
   fi
   
-  echo "✅ Login réussi"
+  echo "âœ… Login rÃ©ussi"
 }
 
 # Test d'export
@@ -38,7 +38,7 @@ test_export() {
   local status=${2:-"all"}
   
   echo ""
-  echo "📤 Test export: format=$format, status=$status"
+  echo "ðŸ“¤ Test export: format=$format, status=$status"
   
   RESPONSE=$(curl -s -b "auth-token=$TOKEN" \
     -o "export_test_${format}.${format}" \
@@ -47,20 +47,20 @@ test_export() {
   
   if [ "$RESPONSE" = "200" ]; then
     SIZE=$(ls -lh "export_test_${format}.${format}" | awk '{print $5}')
-    echo "✅ Export réussi ($SIZE)"
+    echo "âœ… Export rÃ©ussi ($SIZE)"
   else
-    echo "❌ Export échoué (HTTP $RESPONSE)"
+    echo "âŒ Export Ã©chouÃ© (HTTP $RESPONSE)"
   fi
 }
 
 # Test d'import
 test_import() {
   echo ""
-  echo "📥 Test import depuis sample-questions.csv"
+  echo "ðŸ“¥ Test import depuis sample-questions.csv"
   
-  # Vérifier que le fichier existe
+  # VÃ©rifier que le fichier existe
   if [ ! -f "sample-questions.csv" ]; then
-    echo "❌ Fichier sample-questions.csv non trouvé"
+    echo "âŒ Fichier sample-questions.csv non trouvÃ©"
     return
   fi
   
@@ -71,13 +71,13 @@ test_import() {
   IMPORTED=$(echo $RESPONSE | grep -o '"imported":[0-9]*' | cut -d':' -f2)
   ERRORS=$(echo $RESPONSE | grep -o '"errors":\[' | wc -l)
   
-  echo "📊 Résultats:"
-  echo "   Questions importées: $IMPORTED"
-  echo "   Erreurs détectées: $ERRORS"
-  echo "   Réponse complète: $RESPONSE"
+  echo "ðŸ“Š RÃ©sultats:"
+  echo "   Questions importÃ©es: $IMPORTED"
+  echo "   Erreurs dÃ©tectÃ©es: $ERRORS"
+  echo "   RÃ©ponse complÃ¨te: $RESPONSE"
 }
 
-# Exécution
+# ExÃ©cution
 echo ""
 login
 
@@ -87,7 +87,7 @@ test_export "xlsx" "accepted"
 test_import
 
 echo ""
-echo "✅ Tests terminés!"
+echo "âœ… Tests terminÃ©s!"
 echo ""
-echo "📁 Fichiers générés:"
+echo "ðŸ“ Fichiers gÃ©nÃ©rÃ©s:"
 ls -lh export_test_* 2>/dev/null || echo "   (aucun fichier)"

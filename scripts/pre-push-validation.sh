@@ -1,10 +1,10 @@
-#!/bin/bash
+﻿#!/bin/bash
 # Pre-Push Validation Script for CyberQuiz
 # Ensures everything is ready for teammates to deploy
 
 set -e  # Exit on error
 
-echo "🔍 CyberQuiz Pre-Push Validation"
+echo "ðŸ” CyberQuiz Pre-Push Validation"
 echo "=================================="
 echo ""
 
@@ -26,19 +26,19 @@ check() {
     printf "%-60s" "Checking $description..."
     
     if eval "$command" > /dev/null 2>&1; then
-        echo -e "${GREEN}✓${NC}"
+        echo -e "${GREEN}âœ“${NC}"
     else
         if [ "$critical" = "true" ]; then
-            echo -e "${RED}✗ FAIL${NC}"
+            echo -e "${RED}âœ— FAIL${NC}"
             ((ERRORS++))
         else
-            echo -e "${YELLOW}⚠ WARN${NC}"
+            echo -e "${YELLOW}âš  WARN${NC}"
             ((WARNINGS++))
         fi
     fi
 }
 
-echo "📋 File Structure Checks"
+echo "ðŸ“‹ File Structure Checks"
 echo "------------------------"
 check "docker-compose.yml exists" "[ -f docker-compose.yml ]"
 check "docker-compose.dev.yml exists" "[ -f docker-compose.dev.yml ]"
@@ -50,7 +50,7 @@ check "DEPLOYMENT_CHECKLIST.md exists" "[ -f DEPLOYMENT_CHECKLIST.md ]"
 check "QUICKSTART_DEVELOPERS.md exists" "[ -f QUICKSTART_DEVELOPERS.md ]"
 echo ""
 
-echo "🔒 Security Checks"
+echo "ðŸ”’ Security Checks"
 echo "------------------"
 check ".env is gitignored" "grep -q '^\\.env$' .gitignore"
 check ".env.dev is gitignored" "grep -q '^\\.env\\.dev$' .gitignore"
@@ -58,7 +58,7 @@ check "No hardcoded secrets in docker-compose.yml" "! grep -q 'JWT_SECRET.*your-
 check ".env does not exist in git" "! git ls-files | grep -q '^\\.env$'" "false"
 echo ""
 
-echo "🐳 Docker Configuration Checks"
+echo "ðŸ³ Docker Configuration Checks"
 echo "-------------------------------"
 check "docker-compose.yml syntax valid" "docker-compose config > /dev/null"
 check "docker-compose.dev.yml syntax valid" "docker-compose -f docker-compose.dev.yml config > /dev/null"
@@ -68,7 +68,7 @@ check "Container names defined in prod" "grep -q 'container_name.*-prod' docker-
 check "Container names defined in dev" "grep -q 'container_name.*-dev' docker-compose.dev.yml"
 echo ""
 
-echo "📦 Environment Configuration Checks"
+echo "ðŸ“¦ Environment Configuration Checks"
 echo "------------------------------------"
 check ".env.example has DATABASE_URL" "grep -q 'DATABASE_URL' .env.example"
 check ".env.example has JWT_SECRET" "grep -q 'JWT_SECRET' .env.example"
@@ -81,7 +81,7 @@ check ".env.example has helpful comments" "grep -q '#' .env.example"
 check ".env.example has CHANGE_ME placeholders" "grep -q 'CHANGE_ME' .env.example"
 echo ""
 
-echo "🗄️ Database Schema Checks"
+echo "ðŸ—„ï¸ Database Schema Checks"
 echo "-------------------------"
 check "Question model has questionHash" "grep -q 'questionHash' prisma/schema.prisma"
 check "DuplicateLog model exists" "grep -q 'model DuplicateLog' prisma/schema.prisma"
@@ -90,7 +90,7 @@ check "Migration for questionHash exists" "find prisma/migrations -name '*.sql' 
 check "Migration for DuplicateLog exists" "find prisma/migrations -name '*.sql' -exec grep -l 'DuplicateLog' {} \; | head -1 | grep -q ."
 echo ""
 
-echo "📝 Documentation Checks"
+echo "ðŸ“ Documentation Checks"
 echo "------------------------"
 check "README.md exists" "[ -f README.md ]"
 check "QUICKSTART.md exists" "[ -f QUICKSTART.md ]" "false"
@@ -98,7 +98,7 @@ check "Deployment docs exist" "[ -f docs/DEPLOYMENT.md ] || [ -f DEPLOYMENT_CHEC
 check "Developer guide exists" "[ -f QUICKSTART_DEVELOPERS.md ]"
 echo ""
 
-echo "🔧 Code Quality Checks"
+echo "ðŸ”§ Code Quality Checks"
 echo "----------------------"
 check "TypeScript compiles" "npx tsc --noEmit 2>&1 | grep -q 'error TS' && exit 1 || exit 0" "false"
 check "Prisma client generated" "[ -d node_modules/@prisma/client ]" "false"
@@ -106,26 +106,26 @@ check "Next.js build files exist" "[ -f next.config.mjs ]"
 check "Package.json exists" "[ -f package.json ]"
 echo ""
 
-echo "🆕 New Features Validation"
+echo "ðŸ†• New Features Validation"
 echo "--------------------------"
 check "Question hash function exists" "grep -q 'generateQuestionHash' src/lib/services/question-generator.ts"
 check "Duplicate logging function exists" "grep -q 'logDuplicate' src/lib/services/question-generator.ts"
 check "Duplicate stats API exists" "[ -f app/api/admin/duplicate-stats/route.ts ]"
 check "Admin panel shows similar questions text" "grep -q 'similarQuestion.questionText' app/admin/page.tsx"
-check "Quality criteria text removed" "! grep -q 'Variété.*Véracité.*Non-interprétable' app/admin/page.tsx"
+check "Quality criteria text removed" "! grep -q 'VariÃ©tÃ©.*VÃ©racitÃ©.*Non-interprÃ©table' app/admin/page.tsx"
 echo ""
 
 # Summary
 echo ""
 echo "=================================="
-echo "📊 Validation Summary"
+echo "ðŸ“Š Validation Summary"
 echo "=================================="
 echo ""
 
 if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
-    echo -e "${GREEN}✓ All checks passed!${NC}"
+    echo -e "${GREEN}âœ“ All checks passed!${NC}"
     echo ""
-    echo "🚀 Ready to push!"
+    echo "ðŸš€ Ready to push!"
     echo ""
     echo "Next steps for your colleagues:"
     echo "1. Clone the repository"
@@ -135,7 +135,7 @@ if [ $ERRORS -eq 0 ] && [ $WARNINGS -eq 0 ]; then
     echo ""
     exit 0
 else
-    echo -e "${RED}✗ Validation failed!${NC}"
+    echo -e "${RED}âœ— Validation failed!${NC}"
     echo ""
     echo "Errors: $ERRORS"
     echo "Warnings: $WARNINGS"
