@@ -50,7 +50,7 @@ async function logDuplicate(
  * Find similar questions for admin review (semantic similarity)
  * Returns questions with similarity > threshold
  */
-async function findSimilarQuestions(embedding: number[]): Promise<Array<{id: number, similarity: number}>> {
+export async function findSimilarQuestions(embedding: number[]): Promise<Array<{id: number, similarity: number}>> {
   const results = await searchSimilar(embedding, 10);
   
   // Filter out exact duplicates (above 0.95) and only show semantic similarities (0.75-0.95)

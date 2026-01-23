@@ -11,6 +11,7 @@ import { selectGenerationSlot, getGenerationSpaceConfig, linkQuestionToSlot } fr
 import { getAIProvider } from '../ai/provider-factory';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { upsertEmbedding, searchSimilar } from '../db/qdrant';
+import { findSimilarQuestions } from './question-generator';
 import { generateQuestionHash } from '../utils/question-hash';
 import { logger } from '../logging/logger';
 
@@ -188,6 +189,9 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         continue; // Retry with different slot
       }
 
+      // Find similar questions for admin review
+      const potentialDuplicates = await findSimilarQuestions(embedding);
+
       // Save question to database
       const question = await prisma.question.create({
         data: {
@@ -207,6 +211,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           generationGranularity: config.enabled ? slot.granularity : null,
           mitreTechniques: JSON.stringify(generated.mitreTechniques || []),
           tags: JSON.stringify(generated.tags || []),
+          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
         },
       });
 

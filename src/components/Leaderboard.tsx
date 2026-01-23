@@ -79,10 +79,7 @@ export default function Leaderboard() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-primary">{score.score} pts</div>
-                  <div className="text-xs text-muted-foreground">
-                    {score.score}/{score.totalQuestions} ({score.accuracyPercentage.toFixed(0)}%)
-                  </div>
+                  <div className="font-bold text-primary">{score.accuracyPercentage.toFixed(0)}%</div>
                 </div>
               </div>
             ))}

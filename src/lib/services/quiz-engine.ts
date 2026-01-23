@@ -73,6 +73,7 @@ export async function getNextQuestion(
     where: {
       status: 'accepted', // Only use questions admins have approved
       isRejected: false,
+      questionType: 'true-false', // Only use true-false questions
       id: {
         notIn: answeredIds,
       },

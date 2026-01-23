@@ -346,7 +346,14 @@ export default function AdminPage() {
             paginatedQuestions.map((question) => {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
-              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const rawAnswer = question.correctAnswer || (question.answer ? 'Vrai' : 'Faux');
+              // Normalize answer to handle all possible formats (True/False, Vrai/Faux, OUI/NON, true/false)
+              const isCorrectTrue = 
+                String(rawAnswer).toLowerCase() === 'true' ||
+                String(rawAnswer).toLowerCase() === 'vrai' ||
+                String(rawAnswer).toLowerCase() === 'oui' ||
+                String(rawAnswer) === '1' ||
+                String(rawAnswer).toLowerCase() === 'yes';
               const potentialDuplicates = (() => {
                 if (!question.potentialDuplicates) return [];
                 if (Array.isArray(question.potentialDuplicates)) return question.potentialDuplicates;
@@ -450,7 +457,7 @@ export default function AdminPage() {
                       )}
                       <p className="text-sm text-muted-foreground">
                         Réponse correcte : <span className="font-semibold text-foreground">
-                          {correctAnswer === 'True' ? "OUI (Vrai)" : "NON (Faux)"}
+                          {isCorrectTrue ? "OUI (Vrai)" : "NON (Faux)"}
                         </span>
                       </p>
                       

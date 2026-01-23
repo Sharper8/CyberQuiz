@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Target, Clock, FolderTree, User, UserCog, AlertCircle } from "lucide-react";
+import { Shield, User, UserCog, AlertCircle } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
-import ModeCard from "@/components/ModeCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -13,7 +12,6 @@ import Leaderboard from "@/components/Leaderboard";
 
 export default function Home() {
   const [pseudo, setPseudo] = useState("");
-  const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -87,26 +85,7 @@ export default function Home() {
     return null;
   };
 
-  const modes = [
-    {
-      id: "classic",
-      title: "Mode Classique",
-      description: "Questions aléatoires jusqu'à épuisement du pool",
-      icon: Target,
-    },
-    {
-      id: "thematic",
-      title: "Mode Thématique",
-      description: "Questions par catégorie (Phishing, Mots de passe, RGPD...)",
-      icon: FolderTree,
-    },
-    {
-      id: "chrono",
-      title: "Mode Chrono",
-      description: "Répondre le plus vite possible avant la fin du timer",
-      icon: Clock,
-    },
-  ];
+
 
   const handleStart = async () => {
     const trimmed = pseudo.trim();
@@ -118,7 +97,7 @@ export default function Home() {
     }
     
     setError(""); // Clear error on successful validation
-    const mode = selectedMode || "classic";
+    const mode = "classic"; // Only classic mode
     
     try {
       // Create a quiz session first to get sessionId
@@ -204,23 +183,6 @@ export default function Home() {
               </Alert>
             )}
           </div>
-
-          {/* Mode Selection - Optional, hidden by default */}
-          <details className="space-y-4">
-            <summary className="text-lg font-bold text-center cursor-pointer hover:text-primary transition-colors">
-              Choix du mode de jeu (optionnel)
-            </summary>
-            <div className="grid gap-4 md:grid-cols-3 pt-4">
-              {modes.map((mode) => (
-                <ModeCard
-                  key={mode.id}
-                  {...mode}
-                  onClick={() => setSelectedMode(mode.id)}
-                  isActive={selectedMode === mode.id}
-                />
-              ))}
-            </div>
-          </details>
 
           {/* Start Button */}
           <div className="flex justify-center pt-4">

@@ -92,7 +92,7 @@ function QuizContent() {
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
-  const [timeLeft, setTimeLeft] = useState(30);
+  const [timeLeft, setTimeLeft] = useState(10); // 10 seconds per question
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [answerTimeLeft, setAnswerTimeLeft] = useState(5); // Timer for answer reveal
@@ -162,25 +162,30 @@ function QuizContent() {
     validateAndFetch();
   }, [pseudo, router]);
 
+  // Countdown timer for the question (60 seconds)
   useEffect(() => {
     if (isLoading || questions.length === 0) return;
-    if (mode !== "chrono") return;
-    if (answered || timeLeft <= 0) return;
-
-    const timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
+    if (answered) return; // Stop when answered
+    if (timeLeft <= 0) return; // Stop when time is up
+    
+    const timer = setTimeout(() => {
+      setTimeLeft((prev) => Math.max(prev - 1, 0));
+    }, 1000);
+    
     return () => clearTimeout(timer);
-  }, [timeLeft, answered, mode, isLoading, questions.length]);
+  }, [timeLeft, answered, isLoading, questions.length]);
 
-  // Track elapsed time on current question
+  // Track elapsed time on current question (for non-chrono modes)
   useEffect(() => {
     if (isLoading || questions.length === 0 || answered) return;
+    if (mode === "chrono") return; // Only track elapsed time in non-chrono modes
 
     const timer = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - questionStartTime) / 1000));
     }, 100);
 
     return () => clearInterval(timer);
-  }, [questionStartTime, answered, isLoading, questions.length]);
+  }, [questionStartTime, answered, mode, isLoading, questions.length]);
 
   // Auto-advance to next question after 5 seconds of answer reveal
   useEffect(() => {
@@ -288,12 +293,12 @@ function QuizContent() {
       setScore(score + 1);
     }
 
-    // Classic mode: wrong answer after 5 questions = game over
-    if (mode === "classic" && newQuestionsAnswered >= 5 && !isCorrect) {
+    // End quiz immediately on first wrong answer
+    if (!isCorrect) {
       setTimeout(async () => {
         await saveScore(score, newQuestionsAnswered);
         toast.error("Mauvaise réponse ! Le quiz est terminé.");
-        router.push("/?ended=true");
+        router.push(`/score?score=${score}&total=${newQuestionsAnswered}&mode=classic&pseudo=${pseudo}`);
       }, 1500);
       return;
     }
@@ -309,7 +314,7 @@ function QuizContent() {
       setAnswered(false);
       setSelectedAnswer(null);
       setAnswerTimeLeft(5);
-      setTimeLeft(30);
+      setTimeLeft(10); // Reset to 10 seconds for next question
       setQuestionStartTime(Date.now());
       setElapsedTime(0);
     } else {
@@ -340,18 +345,15 @@ function QuizContent() {
           <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2">
             <Clock className="h-5 w-5" />
             <span className="text-xl font-bold tabular-nums">
-              {mode === "chrono" ? `${timeLeft}s` : `${elapsedTime}s`}
+              {`${timeLeft}s`}
             </span>
           </div>
           
           <div />
         </div>
 
-        {/* Progress - no question count shown */}
+        {/* Progress bar */}
         <div className="space-y-2">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span className="text-secondary font-medium">{currentQuestion.category}</span>
-          </div>
           <Progress value={progress} className="h-2 bg-secondary/20" />
         </div>
 
@@ -444,13 +446,7 @@ function QuizContent() {
           </div>
         </div>
 
-        {/* Timer progress for chrono mode */}
-        {mode === "chrono" && !answered && (
-          <Progress 
-            value={(timeLeft / 30) * 100} 
-            className="h-1"
-          />
-        )}
+        {/* No timer progress - using default elapsed time mode */}
 
         {/* Footer with stop button */}
         <div className="flex justify-center pt-4">
