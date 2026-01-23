@@ -1,16 +1,62 @@
 #!/bin/bash
 # Startup script for production
-# Ensures admin user exists before starting the app
+# Ensures migrations, admin user, and settings exist before starting the app
 
-echo "[Startup] Initializing CyberQuiz..."
+set -e  # Exit on any error
+
+echo "[Startup] ========================================"
+echo "[Startup] Initializing CyberQuiz Production..."
+echo "[Startup] ========================================"
+
+# Wait for database to be fully ready
+echo "[Startup] Waiting for database connection..."
+max_attempts=30
+attempt=0
+while [ $attempt -lt $max_attempts ]; do
+  if npx prisma db execute --stdin <<< "SELECT 1" &>/dev/null; then
+    echo "[Startup] ✓ Database connection established"
+    break
+  fi
+  attempt=$((attempt + 1))
+  echo "[Startup]   Attempt $attempt/$max_attempts..."
+  sleep 2
+done
+
+if [ $attempt -eq $max_attempts ]; then
+  echo "[Startup] ✗ Failed to connect to database after $max_attempts attempts"
+  exit 1
+fi
 
 # Regenerate Prisma Client with runtime DATABASE_URL
 echo "[Startup] Regenerating Prisma Client..."
-npx prisma generate
+if npx prisma generate; then
+  echo "[Startup] ✓ Prisma Client generated successfully"
+else
+  echo "[Startup] ✗ Failed to generate Prisma Client"
+  exit 1
+fi
 
 # Run database migrations
 echo "[Startup] Running database migrations..."
-npx prisma migrate deploy
+if npx prisma migrate deploy; then
+  echo "[Startup] ✓ Migrations completed successfully"
+else
+  echo "[Startup] ✗ Migration deployment failed"
+  exit 1
+fi
+
+# Verify critical tables exist
+echo "[Startup] Verifying database schema..."
+tables_to_check=("AdminUser" "GenerationSettings" "Question" "QuizSession" "Score")
+for table in "${tables_to_check[@]}"; do
+  if npx prisma db execute --stdin <<< "SELECT 1 FROM \"$table\" LIMIT 1" &>/dev/null; then
+    echo "[Startup]   ✓ Table $table exists"
+  else
+    echo "[Startup]   ✗ Table $table missing - schema verification failed"
+    exit 1
+  fi
+done
+echo "[Startup] ✓ Database schema verified"
 
 # Ensure admin user exists
 echo "[Startup] Ensuring admin user..."
@@ -133,20 +179,12 @@ async function ensureSettings() {
 ensureSettings().catch(console.error);
 EOJS
 
-echo "[Startup] Initialization complete!"
+echo "[Startup] ========================================"
+echo "[Startup] ✓ Initialization complete!"
+echo "[Startup] ========================================"
 echo "[Startup] Starting Next.js server..."
+echo ""
 
-# Start the Next.js server in the background to allow initialization
-node server.js &
-SERVER_PID=$!
-
-# Wait for server to be ready
-echo "[Startup] Waiting for server to be ready..."
-sleep 5
-
-# Initialize background services via API
-echo "[Startup] Starting background services..."
-curl -X POST http://localhost:3000/api/init || echo "  Background service initialization failed (will retry on next request)"
-
-# Bring server process to foreground
-wait $SERVER_PID
+# Start the Next.js server directly (no backgrounding)
+# The /api/init endpoint will be called on first request
+exec node server.js
