@@ -22,9 +22,14 @@ export async function GET(request: NextRequest) {
         explanation: true,
         // Explicitly exclude correctAnswer
       },
-      orderBy: { createdAt: 'desc' },
       take: 100, // Limit to prevent excessive data transfer
     });
+
+    // Randomize question order using Fisher-Yates shuffle
+    for (let i = questions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [questions[i], questions[j]] = [questions[j], questions[i]];
+    }
 
     return NextResponse.json(questions);
   } catch (error: any) {
