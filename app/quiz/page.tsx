@@ -149,7 +149,14 @@ function QuizContent() {
           };
         });
 
-        setQuestions(convertedQuestions);
+        // Shuffle questions using Fisher-Yates algorithm for true randomization
+        const shuffled = [...convertedQuestions];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+
+        setQuestions(shuffled);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching questions:', error);
