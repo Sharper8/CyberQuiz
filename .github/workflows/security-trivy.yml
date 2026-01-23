@@ -1,0 +1,114 @@
+name: Security - Trivy vulnerabilities
+
+on:
+  pull_request:
+  push:
+    branches: [ "main", "release" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+env:
+  TRIVY_SEVERITY: "HIGH,CRITICAL"
+
+jobs:
+  trivy_repo_fs:
+    name: Trivy - Repo (deps/filesystem)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trivy FS scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+
+      - name: Trivy FS scan (SARIF)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          format: sarif
+          output: trivy-fs.sarif
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: Upload SARIF (FS)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+
+  trivy_nextjs_image:
+    name: Trivy - Next.js image (build + scan)
+    runs-on: ubuntu-latest
+    needs: trivy_repo_fs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Next.js image
+        run: docker build -t cyberquiz-nextjs:ci -f Dockerfile .
+
+      - name: Trivy image scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: cyberquiz-nextjs:ci
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+
+      - name: Trivy image scan (SARIF)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: cyberquiz-nextjs:ci
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          format: sarif
+          output: trivy-image.sarif
+          ignore-unfixed: true
+          exit-code: 0
+
+      - name: Upload SARIF (Image)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image.sarif
+
+  trivy_third_party_images:
+    name: Trivy - Third-party images (compose)
+    runs-on: ubuntu-latest
+    needs: trivy_repo_fs
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - "postgres:15-alpine"
+          - "qdrant/qdrant:latest"
+          - "ollama/ollama:latest"
+          - "dpage/pgadmin4:latest"
+    steps:
+      - name: Pull image
+        run: docker pull ${{ matrix.image }}
+
+      - name: Trivy scan ${{ matrix.image }}
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ matrix.image }}
+          vuln-type: os,library
+          severity: ${{ env.TRIVY_SEVERITY }}
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
