@@ -45,23 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check username uniqueness (7-day window)
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const recentSession = await prisma.quizSession.findFirst({
-      where: {
-        username: validation.data,
-        createdAt: { gte: sevenDaysAgo },
-      },
-    });
-
-    if (recentSession) {
-      return NextResponse.json(
-        { error: 'Username already used in the last 7 days. Please choose a different username.' },
-        { status: 409 }
-      );
-    }
-
-    // Initialize quiz session
+    // Initialize quiz session (usernames can be reused)
     const session = await initializeQuizSession(validation.data);
 
     logAuthEvent('login', validation.data, {

@@ -387,7 +387,6 @@ async function main() {
   console.log('🏆 Creating sample leaderboard scores...');
   
   const sampleScores = [
-    { username: 'CyberNinja', score: 95, totalQuestions: 100, topic: 'Sécurité Web', sessionId: sampleSession.id },
     { username: 'HackerPro', score: 88, totalQuestions: 100, topic: 'Sécurité Réseau', sessionId: null },
     { username: 'SecOpsGuru', score: 92, totalQuestions: 100, topic: 'Blue Team', sessionId: null },
     { username: 'PentestMaster', score: 85, totalQuestions: 100, topic: 'Red Team', sessionId: null },

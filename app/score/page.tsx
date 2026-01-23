@@ -7,19 +7,8 @@ import CyberButton from "@/components/CyberButton";
 import CyberBackground from "@/components/CyberBackground";
 import { api, type Score } from "@/lib/api-client";
 
-// Mock leaderboard as fallback
-const mockLeaderboard = [
-  { pseudo: "CyberNinja", score: 10, mode: "chrono" },
-  { pseudo: "SecureMax", score: 9, mode: "classic" },
-  { pseudo: "HackerPro", score: 9, mode: "thematic" },
-  { pseudo: "NetGuard", score: 8, mode: "classic" },
-  { pseudo: "DataShield", score: 8, mode: "chrono" },
-  { pseudo: "FirewallKing", score: 7, mode: "thematic" },
-  { pseudo: "PhishFighter", score: 7, mode: "classic" },
-  { pseudo: "CodeBreaker", score: 6, mode: "chrono" },
-  { pseudo: "SecureGirl", score: 6, mode: "classic" },
-  { pseudo: "CyberWatch", score: 5, mode: "thematic" },
-];
+// Mock leaderboard as fallback (empty by default, uses real data from API)
+const mockLeaderboard: any[] = [];
 
 function ScorePage() {
   const searchParams = useSearchParams();
@@ -92,10 +81,10 @@ function ScorePage() {
           <div className="inline-block bg-gradient-to-r from-primary to-secondary p-1 rounded-2xl mb-4">
             <div className="bg-card px-8 py-4 rounded-xl">
               <div className="text-6xl font-bold text-gradient">
-                {score}/{total}
+                {percentage}%
               </div>
               <div className="text-xl text-muted-foreground mt-2">
-                {percentage}% de réussite
+                de réussite
               </div>
             </div>
           </div>
@@ -162,7 +151,7 @@ function ScorePage() {
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-primary">
-                  {entry.score}
+                  {Math.round((entry.score / entry.totalQuestions) * 100)}%
                 </div>
               </div>
             ))

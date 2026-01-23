@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: 'accepted',
         isRejected: false,
+        questionType: 'true-false', // Only use true-false questions
       },
       select: {
         id: true,
