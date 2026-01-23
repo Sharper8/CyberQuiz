@@ -27,14 +27,8 @@ if [ $attempt -eq $max_attempts ]; then
   exit 1
 fi
 
-# Regenerate Prisma Client with runtime DATABASE_URL
-echo "[Startup] Regenerating Prisma Client..."
-if npx prisma generate; then
-  echo "[Startup] ✓ Prisma Client generated successfully"
-else
-  echo "[Startup] ✗ Failed to generate Prisma Client"
-  exit 1
-fi
+# Note: Prisma Client was already generated during Docker build
+# No need to regenerate at runtime - it causes permission issues
 
 # Run database migrations
 echo "[Startup] Running database migrations..."
