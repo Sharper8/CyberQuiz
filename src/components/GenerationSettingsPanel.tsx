@@ -342,13 +342,30 @@ export function GenerationSettingsPanel() {
                   type="number"
                   min="1"
                   max="999"
+                  step="1"
                   value={settings.bufferSize}
-                  onChange={(e) =>
-                    setSettings({ ...settings, bufferSize: parseInt(e.target.value) || 10 })
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    // Allow empty string (user is deleting) or valid numbers
+                    if (value === '') {
+                      setSettings({ ...settings, bufferSize: '' as any });
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue) && numValue >= 1) {
+                        setSettings({ ...settings, bufferSize: numValue });
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // On blur, ensure we have a valid value (fallback to 1 if invalid)
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseInt(value)) || parseInt(value) < 1) {
+                      setSettings({ ...settings, bufferSize: 1 });
+                    }
+                  }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Min: 1 | Recommandé: 50+ | Max: 999
+                  Min: 1 | Recommandé: 10-50 | Max: 999
                 </p>
               </div>
             </CardContent>

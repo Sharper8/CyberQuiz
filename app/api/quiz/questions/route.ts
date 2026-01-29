@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
@@ -8,23 +10,22 @@ import { prisma } from '@/lib/db/prisma';
  */
 export async function GET(request: NextRequest) {
   try {
-    const questions = await prisma.question.findMany({
-      where: {
-        status: 'accepted',
-        isRejected: false,
-        questionType: 'true-false', // Only use true-false questions
-      },
-      select: {
-        id: true,
-        questionText: true,
-        options: true,
-        category: true,
-        explanation: true,
-        // Explicitly exclude correctAnswer
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100, // Limit to prevent excessive data transfer
-    });
+    // Use raw SQL to get random questions
+    const questions = await prisma.$queryRaw<Array<{
+      id: number;
+      questionText: string;
+      options: any;
+      category: string | null;
+      explanation: string;
+    }>>`
+      SELECT id, "questionText", options, category, explanation
+      FROM "Question"
+      WHERE status = 'accepted'
+        AND "isRejected" = false
+        AND "questionType" = 'true-false'
+      ORDER BY RANDOM()
+      LIMIT 100
+    `;
 
     return NextResponse.json(questions);
   } catch (error: any) {

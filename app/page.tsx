@@ -10,6 +10,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import CyberBackground from "@/components/CyberBackground";
 import Leaderboard from "@/components/Leaderboard";
 
+// Skip static generation - this page uses client context and dynamic routing
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [pseudo, setPseudo] = useState("");
   const [error, setError] = useState("");
@@ -150,7 +153,7 @@ export default function Home() {
               <span className="bg-gradient-to-r from-cyan-400 to-cyan-200 bg-clip-text text-transparent">CyberQuiz</span>
             </h1>
             <p className="text-lg md:text-xl text-gray-300">
-              Teste ta vigilance numérique ⚡
+              ⚡ Teste tes connaissances en cybersécurité !
             </p>
           </div>
         </div>
@@ -207,7 +210,7 @@ export default function Home() {
             </h3>
             <p className="text-muted-foreground leading-relaxed">
               CyberQuiz est une plateforme interactive qui teste tes connaissances en cybersécurité
-              à travers des affirmations Oui/Non. Propulsé par l'IA, le quiz s'enrichit constamment
+              à travers des affirmations Vrai/Faux. Propulsé par l'IA, le quiz s'enrichit constamment
               de nouvelles questions pour t'aider à développer tes réflexes de sécurité numérique.
             </p>
           </div>

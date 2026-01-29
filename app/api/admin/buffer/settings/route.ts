@@ -9,6 +9,9 @@ import { updateBufferSettings } from '@/lib/services/buffer-maintenance';
 import { updateGenerationSpaceConfig, getGenerationSpaceConfig } from '@/lib/services/generation-space';
 import { prisma } from '@/lib/db/prisma';
 
+// Force dynamic - admin settings require runtime database access
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const settings = await prisma.generationSettings.findFirst();

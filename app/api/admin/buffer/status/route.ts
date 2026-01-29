@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * API Route: Buffer Status
  * GET /api/admin/buffer/status

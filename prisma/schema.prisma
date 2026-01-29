@@ -64,7 +64,7 @@ model QuestionMetadata {
 
 model QuizSession {
   id             Int                  @id @default(autoincrement())
-  username       String               // Required for leaderboard; uniqueness enforced per quiz session
+  username       String               @unique // Required for leaderboard; unique across all sessions
   topic          String
   questionCount  Int
   startTime      DateTime             @default(now())

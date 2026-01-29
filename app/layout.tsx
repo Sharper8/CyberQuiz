@@ -4,19 +4,21 @@ import "../src/index.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Providers } from "./providers";
 import { AccessibilitySettings } from "@/components/AccessibilitySettings";
+
+// Skip static generation for the entire app since it requires runtime context and database access
+export const dynamic = 'force-dynamic';
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "CyberQuiz - Teste ta vigilance numérique",
+  title: "CyberQuiz - Teste tes connaissances en cybersécurité",
   description: "Quiz interactif sur la cybersécurité alimenté par l'IA. Testez vos connaissances en matière de sécurité numérique à travers différents modes de jeu.",
   authors: [{ name: "CyberQuiz" }],
   openGraph: {
-    title: "CyberQuiz - Teste ta vigilance numérique",
+    title: "CyberQuiz - Teste tes connaissances en cybersécurité",
     description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
     type: "website",
   },
@@ -31,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />

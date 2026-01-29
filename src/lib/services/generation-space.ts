@@ -141,45 +141,56 @@ export async function selectGenerationSlot(): Promise<GenerationSlot> {
  * Get recent slot history for entropy control
  */
 async function getRecentSlotHistory(): Promise<GenerationSlot[]> {
-  const cutoffDate = new Date();
-  cutoffDate.setHours(cutoffDate.getHours() - SLOT_HISTORY_WINDOW_HOURS);
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - SLOT_HISTORY_WINDOW_HOURS);
 
-  const history = await prisma.generationSlotHistory.findMany({
-    where: {
-      usedAt: { gte: cutoffDate },
-    },
-    orderBy: { usedAt: 'desc' },
-    take: SLOT_HISTORY_LIMIT,
-  });
+    const history = await prisma.generationSlotHistory.findMany({
+      where: {
+        usedAt: { gte: cutoffDate },
+      },
+      orderBy: { usedAt: 'desc' },
+      take: SLOT_HISTORY_LIMIT,
+    });
 
-  return history.map(h => ({
-    domain: h.domain,
-    skillType: h.skillType,
-    difficulty: h.difficulty,
-    granularity: h.granularity,
-  }));
+    return history.map(h => ({
+      domain: h.domain,
+      skillType: h.skillType,
+      difficulty: h.difficulty,
+      granularity: h.granularity,
+    }));
+  } catch (error) {
+    // Table doesn't exist in production yet - return empty history
+    console.warn('[GenerationSpace] GenerationSlotHistory table not found, using empty history');
+    return [];
+  }
 }
 
 /**
  * Record a slot usage in history
  */
 async function recordSlotUsage(slot: GenerationSlot, questionId?: number): Promise<void> {
-  await prisma.generationSlotHistory.create({
-    data: {
-      domain: slot.domain,
-      skillType: slot.skillType,
-      difficulty: slot.difficulty,
-      granularity: slot.granularity,
-      questionId,
-    },
-  });
+  try {
+    await prisma.generationSlotHistory.create({
+      data: {
+        domain: slot.domain,
+        skillType: slot.skillType,
+        difficulty: slot.difficulty,
+        granularity: slot.granularity,
+        questionId,
+      },
+    });
 
-  // Cleanup old history (keep only recent)
-  const cutoffDate = new Date();
-  cutoffDate.setHours(cutoffDate.getHours() - (SLOT_HISTORY_WINDOW_HOURS * 2));
-  await prisma.generationSlotHistory.deleteMany({
-    where: { usedAt: { lt: cutoffDate } },
-  });
+    // Cleanup old history (keep only recent)
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - (SLOT_HISTORY_WINDOW_HOURS * 2));
+    await prisma.generationSlotHistory.deleteMany({
+      where: { usedAt: { lt: cutoffDate } },
+    });
+  } catch (error) {
+    // Table doesn't exist in production yet - skip recording
+    console.warn('[GenerationSpace] GenerationSlotHistory table not found, skipping record');
+  }
 }
 
 /**
@@ -240,16 +251,21 @@ export async function linkQuestionToSlot(questionId: number, slot: GenerationSlo
   });
 
   // Update the slot history record to link it to the question
-  await prisma.generationSlotHistory.updateMany({
-    where: {
-      domain: slot.domain,
-      skillType: slot.skillType,
-      difficulty: slot.difficulty,
-      granularity: slot.granularity,
-      questionId: null,
-    },
-    data: { questionId },
-  });
+  try {
+    await prisma.generationSlotHistory.updateMany({
+      where: {
+        domain: slot.domain,
+        skillType: slot.skillType,
+        difficulty: slot.difficulty,
+        granularity: slot.granularity,
+        questionId: null,
+      },
+      data: { questionId },
+    });
+  } catch (error) {
+    // Table doesn't exist in production yet - skip update
+    console.warn('[GenerationSpace] GenerationSlotHistory table not found, skipping link update');
+  }
 }
 
 /**

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import bcrypt from 'bcryptjs';
@@ -20,13 +22,11 @@ export async function POST(request: NextRequest) {
 
     // Lookup admin user
     const admin = await prisma.adminUser.findUnique({ where: { email } });
-    console.log('[Auth/login] Admin found:', !!admin);
     if (!admin) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
     const passwordValid = await bcrypt.compare(password, admin.passwordHash);
-    console.log('[Auth/login] Password valid:', passwordValid);
     if (!passwordValid) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }

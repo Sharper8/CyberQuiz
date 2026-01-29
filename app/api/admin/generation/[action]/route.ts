@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * Pause/Resume generation endpoints
  */

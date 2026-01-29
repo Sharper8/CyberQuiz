@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { generateQuestionsForCache } from '@/lib/services/question-generator';
 import { getAIProvider } from '@/lib/ai/provider-factory';

@@ -27,13 +27,7 @@ function ScorePage() {
     const fetchLeaderboard = async () => {
       try {
         const scores = await api.getScores(10);
-        // Convert API Score to leaderboard format
-        const formattedLeaderboard = scores.map(score => ({
-          pseudo: score.username,
-          score: score.score,
-          mode: score.topic || "classic"
-        }));
-        setLeaderboard(formattedLeaderboard);
+        setLeaderboard(scores);
       } catch (error) {
         console.error('Error fetching leaderboard:', error);
         // Use mock leaderboard as fallback
@@ -46,26 +40,15 @@ function ScorePage() {
     fetchLeaderboard();
   }, []);
 
-  const percentage = Math.round((score / total) * 100);
-
-  const getModeLabel = (mode: string) => {
-    const labels: Record<string, string> = {
-      classic: "Classique",
-      thematic: "Thématique",
-      chrono: "Chrono"
-    };
-    return labels[mode] || mode;
-  };
-
-  const getMedal = (score: number, total: number) => {
-    const percentage = (score / total) * 100;
-    if (percentage >= 90) return { icon: Trophy, color: "text-yellow-400", label: "Expert" };
-    if (percentage >= 70) return { icon: Award, color: "text-primary", label: "Avancé" };
-    if (percentage >= 50) return { icon: Target, color: "text-secondary", label: "Intermédiaire" };
+  const getMedal = (score: number) => {
+    if (score >= 150) return { icon: Trophy, color: "text-yellow-400", label: "Expert" };
+    if (score >= 100) return { icon: Award, color: "text-primary", label: "Avancé" };
+    if (score >= 50) return { icon: Target, color: "text-secondary", label: "Intermédiaire" };
     return { icon: Target, color: "text-muted-foreground", label: "Débutant" };
   };
 
-  const medal = getMedal(score, total);
+  const medal = getMedal(score);
+  const userRank = leaderboard.findIndex(entry => entry.username === pseudo && entry.score === score) + 1;
   const MedalIcon = medal.icon;
 
   return (
@@ -76,15 +59,17 @@ function ScorePage() {
         <div className="bg-card border-2 border-primary rounded-lg p-8 text-center shadow-2xl shadow-primary/20">
           <MedalIcon className={`h-20 w-20 mx-auto mb-4 ${medal.color} animate-pulse-glow`} />
           <h2 className="text-4xl font-bold mb-2">{pseudo}</h2>
-          <p className="text-muted-foreground mb-6">Mode {getModeLabel(mode)}</p>
+          {userRank > 0 && (
+            <p className="text-muted-foreground mb-4">Classement: #{userRank}</p>
+          )}
           
           <div className="inline-block bg-gradient-to-r from-primary to-secondary p-1 rounded-2xl mb-4">
             <div className="bg-card px-8 py-4 rounded-xl">
               <div className="text-6xl font-bold text-gradient">
-                {percentage}%
+                {score}
               </div>
               <div className="text-xl text-muted-foreground mt-2">
-                de réussite
+                {score === 10 ? 'point' : 'points'}
               </div>
             </div>
           </div>
@@ -95,7 +80,7 @@ function ScorePage() {
             <CyberButton
               variant="secondary"
               size="lg"
-              onClick={() => router.push("/")}
+              onClick={() => router.push("/quiz")}
             >
               <RotateCcw className="h-5 w-5 mr-2" />
               Rejouer
@@ -131,7 +116,7 @@ function ScorePage() {
                 <div
                   key={index}
                   className={`flex items-center justify-between p-4 transition-colors hover:bg-muted/50 ${
-                    entry.pseudo === pseudo && entry.score === score ? "bg-primary/10" : ""
+                    entry.username === pseudo && entry.score === score ? "bg-primary/10" : ""
                   }`}
                 >
                   <div className="flex items-center gap-4">
@@ -144,14 +129,14 @@ function ScorePage() {
                     {index + 1}
                   </div>
                   <div>
-                    <div className="font-semibold">{entry.pseudo}</div>
+                    <div className="font-semibold">{entry.username}</div>
                     <div className="text-sm text-muted-foreground">
-                      Mode {getModeLabel(entry.mode)}
+                      {new Date(entry.completedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-primary">
-                  {Math.round((entry.score / entry.totalQuestions) * 100)}%
+                  {entry.score}
                 </div>
               </div>
             ))

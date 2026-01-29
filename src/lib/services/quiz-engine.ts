@@ -1,4 +1,5 @@
 import { prisma } from '../db/prisma';
+import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 /**
@@ -69,19 +70,47 @@ export async function getNextQuestion(
   const answeredIds = session.sessionQuestions.map((q) => q.questionId);
 
   // Fetch next question: random from DB, excluding already-answered
-  const question = await prisma.question.findFirst({
-    where: {
-      status: 'accepted', // Only use questions admins have approved
-      isRejected: false,
-      questionType: 'true-false', // Only use true-false questions
-      id: {
-        notIn: answeredIds,
-      },
-    },
-    orderBy: {
-      id: 'asc', // Deterministic ordering for consistency
-    },
-  });
+  // Use raw SQL for true randomization with ORDER BY RANDOM()
+  let question;
+  
+  if (answeredIds.length > 0) {
+    const questions = await prisma.$queryRaw<Array<{
+      id: number;
+      questionText: string;
+      options: any;
+      correctAnswer: string;
+      difficulty: any;
+      explanation: string;
+    }>>`
+      SELECT id, "questionText", options, "correctAnswer", difficulty, explanation
+      FROM "Question"
+      WHERE status = 'accepted'
+        AND "isRejected" = false
+        AND "questionType" = 'true-false'
+        AND id NOT IN (${Prisma.join(answeredIds)})
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+    question = questions?.[0];
+  } else {
+    const questions = await prisma.$queryRaw<Array<{
+      id: number;
+      questionText: string;
+      options: any;
+      correctAnswer: string;
+      difficulty: any;
+      explanation: string;
+    }>>`
+      SELECT id, "questionText", options, "correctAnswer", difficulty, explanation
+      FROM "Question"
+      WHERE status = 'accepted'
+        AND "isRejected" = false
+        AND "questionType" = 'true-false'
+      ORDER BY RANDOM()
+      LIMIT 1
+    `;
+    question = questions?.[0];
+  }
 
   if (!question) {
     return null; // No more questions available

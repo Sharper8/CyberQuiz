@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest } from 'next/server';
 import { generateQuestionsWithProgress } from '@/lib/services/question-generator';
 import { getAIProvider } from '@/lib/ai/provider-factory';

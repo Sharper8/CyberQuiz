@@ -63,6 +63,7 @@ type QuizQuestion = {
   question: string;
   answer: boolean;
   category: string;
+  explanation?: string;
 };
 
 function validateUsername(username: string): string | null {
@@ -95,8 +96,9 @@ function QuizContent() {
   const [timeLeft, setTimeLeft] = useState(10); // 10 seconds per question
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [answerTimeLeft, setAnswerTimeLeft] = useState(5); // Timer for answer reveal
+  const [answerTimeLeft, setAnswerTimeLeft] = useState(10); // Timer for answer reveal
   const [stoppingQuiz, setStoppingQuiz] = useState(false);
+  const [isTimeExpired, setIsTimeExpired] = useState(false); // Track timeout scenarios
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
   const [elapsedTime, setElapsedTime] = useState(0); // Timer for how long on current question
 
@@ -117,9 +119,12 @@ function QuizContent() {
         return;
       }
 
-      // Fetch accepted questions from database
+      // Fetch accepted questions from database with randomization
       try {
-        const response = await api.getQuestions();
+        const response = await api.getQuestions({ 
+          status: 'accepted',
+          randomize: true // Request random ordering from server
+        });
         const acceptedQuestions = response.filter(q => q.status === 'accepted');
 
         if (acceptedQuestions.length === 0) {
@@ -131,8 +136,8 @@ function QuizContent() {
 
         const convertedQuestions = acceptedQuestions.map(apiQuestion => {
           // Parse correctAnswer to boolean
-          // Accepts: "Vrai", "OUI", "true", "1", "yes" → true
-          // Accepts: "Faux", "NON", "false", "0", "no" → false
+          // Accepts: "Vrai", "true", "1", "yes" → true
+          // Accepts: "Faux", "false", "0", "no" → false
           const answerLower = String(apiQuestion.correctAnswer).toLowerCase().trim();
           const correctAnswer = 
             answerLower === 'true' ||
@@ -146,10 +151,18 @@ function QuizContent() {
             question: apiQuestion.questionText,
             answer: correctAnswer,
             category: apiQuestion.category || 'Général',
+            explanation: apiQuestion.explanation || undefined,
           };
         });
 
-        setQuestions(convertedQuestions);
+        // Client-side shuffle for extra randomization (Fisher-Yates algorithm)
+        const shuffledQuestions = [...convertedQuestions];
+        for (let i = shuffledQuestions.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffledQuestions[i], shuffledQuestions[j]] = [shuffledQuestions[j], shuffledQuestions[i]];
+        }
+
+        setQuestions(shuffledQuestions);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching questions:', error);
@@ -166,7 +179,14 @@ function QuizContent() {
   useEffect(() => {
     if (isLoading || questions.length === 0) return;
     if (answered) return; // Stop when answered
-    if (timeLeft <= 0) return; // Stop when time is up
+    
+    if (timeLeft <= 0) {
+      // Time's up! Auto-submit as wrong answer
+      if (!answered) {
+        handleAnswer(false, true); // Submit wrong answer with time expired flag
+      }
+      return;
+    }
     
     const timer = setTimeout(() => {
       setTimeLeft((prev) => Math.max(prev - 1, 0));
@@ -187,12 +207,27 @@ function QuizContent() {
     return () => clearInterval(timer);
   }, [questionStartTime, answered, mode, isLoading, questions.length]);
 
-  // Auto-advance to next question after 5 seconds of answer reveal
+  // Auto-advance to next question after countdown
   useEffect(() => {
     if (!answered || answerTimeLeft === null) return;
 
     if (answerTimeLeft === 0) {
-      handleNextQuestion();
+      // For correct answers, go to next question
+      if (selectedAnswer === currentQuestion.answer) {
+        handleNextQuestion();
+      } else {
+        // For wrong answers or timeout, redirect to score page
+        const finalScore = score;
+        const totalQuestions = questionsAnswered;
+        saveScore(finalScore, totalQuestions).then(() => {
+          if (isTimeExpired) {
+            toast.error("Temps écoulé ! Le quiz est terminé.");
+          } else {
+            toast.error("Mauvaise réponse ! Le quiz est terminé.");
+          }
+          router.push(`/score?score=${finalScore}&total=${totalQuestions}&mode=classic&pseudo=${pseudo}`);
+        });
+      }
       return;
     }
 
@@ -217,6 +252,13 @@ function QuizContent() {
     } finally {
       router.push("/");
     }
+  };
+
+  const handleGoToResults = async () => {
+    const finalScore = score;
+    const totalQuestions = questionsAnswered;
+    await saveScore(finalScore, totalQuestions);
+    router.push(`/score?score=${finalScore}&total=${totalQuestions}&mode=classic&pseudo=${pseudo}`);
   };
 
   // Handle loading state
@@ -279,10 +321,10 @@ function QuizContent() {
     }
   };
 
-  const handleAnswer = (answer: boolean | null) => {
+  const handleAnswer = (answer: boolean | null, timeExpired: boolean = false) => {
     setAnswered(true);
     setSelectedAnswer(answer);
-    setAnswerTimeLeft(5); // Start 5-second countdown to next question
+    setIsTimeExpired(timeExpired); // Track if this was a timeout
     if (!currentQuestion) return;
 
     const newQuestionsAnswered = questionsAnswered + 1;
@@ -290,20 +332,17 @@ function QuizContent() {
     
     const isCorrect = answer === currentQuestion.answer;
     if (isCorrect) {
-      setScore(score + 1);
+      setScore(score + 10);
     }
 
-    // End quiz immediately on first wrong answer
-    if (!isCorrect) {
-      setTimeout(async () => {
-        await saveScore(score, newQuestionsAnswered);
-        toast.error("Mauvaise réponse ! Le quiz est terminé.");
-        router.push(`/score?score=${score}&total=${newQuestionsAnswered}&mode=classic&pseudo=${pseudo}`);
-      }, 1500);
+    // End quiz immediately on first wrong answer or time expired
+    if (!isCorrect || timeExpired) {
+      setAnswerTimeLeft(10); // Show 10-second countdown for wrong answers
       return;
     }
 
-    // Will auto-advance via useEffect after 5 seconds
+    // Start 10-second countdown for correct answers
+    setAnswerTimeLeft(10);
   };
 
   const handleNextQuestion = async () => {
@@ -313,7 +352,8 @@ function QuizContent() {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setAnswered(false);
       setSelectedAnswer(null);
-      setAnswerTimeLeft(5);
+      setIsTimeExpired(false); // Reset timeout flag
+      setAnswerTimeLeft(10);
       setTimeLeft(10); // Reset to 10 seconds for next question
       setQuestionStartTime(Date.now());
       setElapsedTime(0);
@@ -342,9 +382,21 @@ function QuizContent() {
             <span className="text-2xl font-bold">{score}</span>
           </div>
           
-          <div className="flex items-center gap-2 text-primary bg-card border border-border rounded-lg px-4 py-2">
-            <Clock className="h-5 w-5" />
-            <span className="text-xl font-bold tabular-nums">
+          <div className={`flex items-center gap-2 bg-card border rounded-lg px-4 py-2 transition-colors ${
+            timeLeft <= 3 ? 'border-red-500 bg-red-500/10 animate-pulse' : 
+            timeLeft <= 5 ? 'border-yellow-500 bg-yellow-500/10' : 
+            'border-border'
+          }`}>
+            <Clock className={`h-5 w-5 ${
+              timeLeft <= 3 ? 'text-red-500' : 
+              timeLeft <= 5 ? 'text-yellow-500' : 
+              'text-primary'
+            }`} />
+            <span className={`text-xl font-bold tabular-nums ${
+              timeLeft <= 3 ? 'text-red-500' : 
+              timeLeft <= 5 ? 'text-yellow-500' : 
+              'text-primary'
+            }`}>
               {`${timeLeft}s`}
             </span>
           </div>
@@ -386,7 +438,7 @@ function QuizContent() {
                     onClick={() => handleAnswer(true)}
                     className="h-24 text-2xl font-bold"
                   >
-                    OUI
+                    VRAI
                   </CyberButton>
                   <CyberButton
                     size="xl"
@@ -394,19 +446,26 @@ function QuizContent() {
                     onClick={() => handleAnswer(false)}
                     className="h-24 text-2xl font-bold"
                   >
-                    NON
+                    FAUX
                   </CyberButton>
                 </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <div className={`text-center p-6 rounded-lg ${
-                  selectedAnswer === currentQuestion.answer 
+                  isTimeExpired
+                    ? "bg-orange-500/10 border-2 border-orange-500"
+                    : selectedAnswer === currentQuestion.answer 
                     ? "bg-secondary/10 border-2 border-secondary" 
                     : "bg-destructive/10 border-2 border-destructive"
                 }`}>
                   <div className="flex items-center justify-center gap-3 mb-2">
-                    {selectedAnswer === currentQuestion.answer ? (
+                    {isTimeExpired ? (
+                      <>
+                        <XCircle className="h-8 w-8 text-orange-500" />
+                        <span className="text-2xl font-bold text-orange-500">Temps écoulé ! ⏱️</span>
+                      </>
+                    ) : selectedAnswer === currentQuestion.answer ? (
                       <>
                         <CheckCircle2 className="h-8 w-8 text-secondary" />
                         <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
@@ -420,26 +479,62 @@ function QuizContent() {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
-                      {currentQuestion.answer ? "OUI" : "NON"}
+                      {currentQuestion.answer ? "VRAI" : "FAUX"}
                     </span>
                   </p>
                   
-                  {/* Auto-advance countdown */}
-                  <div className="mt-4 pt-4 border-t border-border space-y-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
+                  {/* Explanation */}
+                  {currentQuestion.explanation && (
+                    <div className="mt-3 p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-foreground">
+                        <span className="font-semibold">Explication : </span>
+                        {currentQuestion.explanation}
                       </p>
-                      <Progress value={(answerTimeLeft / 5) * 100} className="h-1" />
                     </div>
-                    <CyberButton 
-                      onClick={() => handleNextQuestion()}
-                      variant="secondary"
-                      className="w-full"
-                    >
-                      Question suivante
-                    </CyberButton>
-                  </div>
+                  )}
+                  {!currentQuestion.explanation && (
+                    <div className="mt-3 p-3 bg-muted/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground italic">-</p>
+                    </div>
+                  )}
+                  
+                  {/* Auto-advance countdown - for correct answers */}
+                  {selectedAnswer === currentQuestion.answer && answerTimeLeft !== null && (
+                    <div className="mt-4 pt-4 border-t border-border space-y-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
+                        </p>
+                        <Progress value={(answerTimeLeft / 10) * 100} className="h-1" />
+                      </div>
+                      <CyberButton 
+                        onClick={() => handleNextQuestion()}
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        Question suivante
+                      </CyberButton>
+                    </div>
+                  )}
+                  
+                  {/* Countdown for wrong answers - show timer and skip button */}
+                  {(selectedAnswer !== currentQuestion.answer || isTimeExpired) && answerTimeLeft !== null && (
+                    <div className="mt-4 pt-4 border-t border-border space-y-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Redirection dans: <span className="font-bold text-lg text-destructive">{answerTimeLeft}s</span>
+                        </p>
+                        <Progress value={(answerTimeLeft / 10) * 100} className="h-1 bg-destructive/20" />
+                      </div>
+                      <CyberButton 
+                        onClick={handleGoToResults}
+                        variant="incorrect"
+                        className="w-full"
+                      >
+                        Voir les résultats maintenant
+                      </CyberButton>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

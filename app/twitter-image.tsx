@@ -93,7 +93,7 @@ export default async function TwitterImage() {
             maxWidth: 960,
           }}
         >
-          Teste ta vigilance numérique avec des modes variés
+          Teste tes connaissances en cybersécurité 
         </div>
 
         <div

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 
@@ -8,6 +10,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const validated = searchParams.get('validated'); // Legacy support
     const includeRejected = searchParams.get('includeRejected') === 'true' || status === 'rejected';
+    const randomize = searchParams.get('randomize') === 'true';
     
     let where: any = {};
     if (!includeRejected) {
@@ -21,6 +24,33 @@ export async function GET(request: NextRequest) {
     // Legacy validated parameter support
     else if (validated !== null) {
       where.status = validated === 'true' ? 'accepted' : 'to_review';
+    }
+    
+    // Use raw SQL for random ordering to ensure true randomness
+    if (randomize) {
+      const whereConditions = [];
+      
+      if (!includeRejected) {
+        whereConditions.push('"isRejected" = false');
+      }
+      if (status) {
+        whereConditions.push(`status = '${status}'`);
+      } else if (validated !== null) {
+        const targetStatus = validated === 'true' ? 'accepted' : 'to_review';
+        whereConditions.push(`status = '${targetStatus}'`);
+      }
+      
+      const whereClause = whereConditions.length > 0 ? 'WHERE ' + whereConditions.join(' AND ') : '';
+      
+      const query = `
+        SELECT * FROM "Question"
+        ${whereClause}
+        ORDER BY RANDOM()
+      `;
+      
+      const questions = await prisma.$queryRawUnsafe(query);
+      
+      return NextResponse.json(questions);
     }
     
     const questions = await prisma.question.findMany({

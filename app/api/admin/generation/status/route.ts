@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * Admin generation status endpoint
  * Returns: pool size, generation status, is paused

@@ -4,15 +4,20 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Build args reference .env file variables
+        - DATABASE_URL=${DATABASE_URL}
+        - JWT_SECRET=${JWT_SECRET}
+        - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+        - QDRANT_URL=${QDRANT_URL}
+        - ALLOW_EXTERNAL_AI=${ALLOW_EXTERNAL_AI}
+        - NODE_ENV=production
     container_name: cyberquiz-nextjs-prod
     env_file:
-      - .env
+      - .env  # Loads all variables
     environment:
+      # Only override NODE_ENV (rest comes from env_file)
       NODE_ENV: production
-      # Override runtime URLs to use Docker service names
-      DATABASE_URL: ${DATABASE_URL}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL}
-      QDRANT_URL: ${QDRANT_URL}
     ports:
       - "3100:3000"
     depends_on:
@@ -23,31 +28,23 @@ services:
       ollama:
         condition: service_started
     restart: unless-stopped
-    networks:
-      - cyberquiz-network
 
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: cyberquiz-postgres-prod
     env_file:
-      - .env
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data-prod:/var/lib/postgresql/data
+      - .env  # Provides POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data-prod:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - cyberquiz-network
 
   # Qdrant Vector Database
   qdrant:
@@ -61,8 +58,6 @@ services:
     volumes:
       - qdrant-data:/qdrant/storage
     restart: unless-stopped
-    networks:
-      - cyberquiz-network
 
   # Ollama AI Provider (local LLM)
   ollama:
@@ -77,8 +72,7 @@ services:
       - ./scripts/init-ollama.sh:/init-ollama.sh
     entrypoint: ["/bin/sh", "/init-ollama.sh"]
     restart: unless-stopped
-    networks:
-      - cyberquiz-network
+
     # GPU support (optional)
     # deploy:
     #   resources:
@@ -97,17 +91,15 @@ services:
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
-    networks:
-      - cyberquiz-network
-
-networks:
-  cyberquiz-network:
-    driver: bridge
 
 volumes:
   postgres-data-prod:
   qdrant-data:
   ollama-data:
+  pgadmin-data:
