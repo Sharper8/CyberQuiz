@@ -78,7 +78,16 @@ export async function ensureBufferFilled(): Promise<void> {
   const questionsNeeded = status.targetSize - status.currentSize;
 
   if (questionsNeeded <= 0) {
-    logger.info('[Buffer] Buffer is full', { currentSize: status.currentSize, targetSize: status.targetSize });
+    logger.info('[Buffer] Buffer is full or over capacity', { 
+      currentSize: status.currentSize, 
+      targetSize: status.targetSize,
+      queuedJobs: generationQueue.length 
+    });
+    // Clear any remaining queued jobs if buffer is already full
+    if (generationQueue.length > 0) {
+      logger.info('[Buffer] Clearing queued jobs as buffer is full', { cleared: generationQueue.length });
+      generationQueue.length = 0;
+    }
     return;
   }
 
@@ -120,6 +129,18 @@ async function processQueue(): Promise<void> {
   lastGenerationStatus.inFlight = true;
 
   while (generationQueue.length > 0) {
+    // Check if buffer is already full before processing next job
+    const status = await getBufferStatus();
+    if (status.currentSize >= status.targetSize) {
+      logger.info('[Buffer] Target reached, clearing remaining queue', {
+        currentSize: status.currentSize,
+        targetSize: status.targetSize,
+        remainingJobs: generationQueue.length,
+      });
+      generationQueue.length = 0; // Clear the queue
+      break;
+    }
+
     const job = generationQueue.shift();
     if (job) {
       lastGenerationStatus.lastStartedAt = new Date().toISOString();

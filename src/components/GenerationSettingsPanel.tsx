@@ -342,13 +342,25 @@ export function GenerationSettingsPanel() {
                   type="number"
                   min="1"
                   max="999"
+                  step="1"
                   value={settings.bufferSize}
-                  onChange={(e) =>
-                    setSettings({ ...settings, bufferSize: parseInt(e.target.value) || 10 })
-                  }
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    // Only update if it's a valid number >= 1, otherwise keep current value
+                    if (!isNaN(value) && value >= 1) {
+                      setSettings({ ...settings, bufferSize: value });
+                    }
+                  }}
+                  onBlur={(e) => {
+                    // On blur, ensure we have a valid value (fallback to 1 if invalid)
+                    const value = parseInt(e.target.value);
+                    if (isNaN(value) || value < 1) {
+                      setSettings({ ...settings, bufferSize: 1 });
+                    }
+                  }}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Min: 1 | Recommandé: 50+ | Max: 999
+                  Min: 1 | Recommandé: 10-50 | Max: 999
                 </p>
               </div>
             </CardContent>

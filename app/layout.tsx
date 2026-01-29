@@ -5,7 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "./providers";
-import { ReactNode } from "react";
+import { AccessibilitySettings } from "@/components/AccessibilitySettings";
 
 // Skip static generation for the entire app since it requires runtime context and database access
 export const dynamic = 'force-dynamic';
@@ -50,6 +50,7 @@ export default function RootLayout({
             <main id="main-content">
               {children}
             </main>
+            <AccessibilitySettings />
           </TooltipProvider>
         </Providers>
       </body>
