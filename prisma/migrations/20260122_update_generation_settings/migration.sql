@@ -6,15 +6,15 @@ ALTER TABLE "GenerationSettings" DROP COLUMN IF EXISTS "autoGenerateEnabled";
 ALTER TABLE "GenerationSettings" DROP COLUMN IF EXISTS "generationTopic";
 ALTER TABLE "GenerationSettings" DROP COLUMN IF EXISTS "generationDifficulty";
 
-ALTER TABLE "GenerationSettings" ADD COLUMN "bufferSize" INTEGER NOT NULL DEFAULT 10;
-ALTER TABLE "GenerationSettings" ADD COLUMN "autoRefillEnabled" BOOLEAN NOT NULL DEFAULT true;
-ALTER TABLE "GenerationSettings" ADD COLUMN "structuredSpaceEnabled" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "GenerationSettings" ADD COLUMN "enabledDomains" JSONB NOT NULL DEFAULT '["Network Security", "Application Security", "Cloud Security", "Identity & Access", "Threat Intelligence", "Incident Response", "Cryptography", "Compliance & Governance"]';
-ALTER TABLE "GenerationSettings" ADD COLUMN "enabledSkillTypes" JSONB NOT NULL DEFAULT '["Detection", "Prevention", "Analysis", "Configuration", "Best Practices"]';
-ALTER TABLE "GenerationSettings" ADD COLUMN "enabledDifficulties" JSONB NOT NULL DEFAULT '["Beginner", "Intermediate", "Advanced", "Expert"]';
-ALTER TABLE "GenerationSettings" ADD COLUMN "enabledGranularities" JSONB NOT NULL DEFAULT '["Conceptual", "Procedural", "Technical", "Strategic"]';
-ALTER TABLE "GenerationSettings" ADD COLUMN "defaultModel" VARCHAR(255) NOT NULL DEFAULT 'ollama:mistral:7b';
-ALTER TABLE "GenerationSettings" ADD COLUMN "fallbackModel" VARCHAR(255) NOT NULL DEFAULT 'ollama:mistral:7b';
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "bufferSize" INTEGER NOT NULL DEFAULT 10;
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "autoRefillEnabled" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "structuredSpaceEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "enabledDomains" JSONB NOT NULL DEFAULT '["Network Security", "Application Security", "Cloud Security", "Identity & Access", "Threat Intelligence", "Incident Response", "Cryptography", "Compliance & Governance"]';
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "enabledSkillTypes" JSONB NOT NULL DEFAULT '["Detection", "Prevention", "Analysis", "Configuration", "Best Practices"]';
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "enabledDifficulties" JSONB NOT NULL DEFAULT '["Beginner", "Intermediate", "Advanced", "Expert"]';
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "enabledGranularities" JSONB NOT NULL DEFAULT '["Conceptual", "Procedural", "Technical", "Strategic"]';
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "defaultModel" VARCHAR(255) NOT NULL DEFAULT 'ollama:mistral:7b';
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "fallbackModel" VARCHAR(255) NOT NULL DEFAULT 'ollama:mistral:7b';
 
 -- Create GenerationSlotHistory table if it doesn't exist
 CREATE TABLE IF NOT EXISTS "GenerationSlotHistory" (
@@ -32,6 +32,6 @@ CREATE INDEX "GenerationSlotHistory_usedAt_idx" ON "GenerationSlotHistory"("used
 CREATE INDEX "GenerationSlotHistory_slot_idx" ON "GenerationSlotHistory"("domain", "skillType", "difficulty", "granularity");
 
 -- Update Question table to add generation metadata
-ALTER TABLE "Question" ADD COLUMN "generationDomain" TEXT;
-ALTER TABLE "Question" ADD COLUMN "generationSkillType" TEXT;
-ALTER TABLE "Question" ADD COLUMN "generationGranularity" TEXT;
+ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "generationDomain" TEXT;
+ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "generationSkillType" TEXT;
+ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "generationGranularity" TEXT;

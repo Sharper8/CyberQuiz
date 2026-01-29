@@ -68,8 +68,8 @@ export async function getNextQuestion(
 
   const answeredIds = session.sessionQuestions.map((q) => q.questionId);
 
-  // Fetch ALL available questions first, then randomize
-  const availableQuestions = await prisma.question.findMany({
+  // Fetch next question: random from DB, excluding already-answered
+  const question = await prisma.question.findFirst({
     where: {
       status: 'accepted', // Only use questions admins have approved
       isRejected: false,
@@ -78,15 +78,10 @@ export async function getNextQuestion(
         notIn: answeredIds,
       },
     },
+    orderBy: {
+      id: 'asc', // Deterministic ordering for consistency
+    },
   });
-
-  if (availableQuestions.length === 0) {
-    return null; // No more questions available
-  }
-
-  // Pick a random question from available questions
-  const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-  const question = availableQuestions[randomIndex];
 
   if (!question) {
     return null; // No more questions available

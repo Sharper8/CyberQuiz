@@ -1,5 +1,5 @@
 # CyberQuiz Development Environment
-# Simple one-command setup: docker-compose up
+# Simple one-command setup: docker-compose -f docker-compose.dev.yml up
 
 services:
   # Next.js App (Development)
@@ -7,6 +7,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
+        - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+        - OLLAMA_BASE_URL=http://ollama:11434
+        - QDRANT_URL=http://qdrant:6333
+        - ALLOW_EXTERNAL_AI=false
+        - NODE_ENV=development
     container_name: cyberquiz-nextjs-dev
     env_file:
       - .env.dev
@@ -15,6 +22,8 @@ services:
       - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
       - OLLAMA_BASE_URL=http://ollama:11434
       - QDRANT_URL=http://qdrant:6333
+      - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+      - NODE_ENV=development
     ports:
       - "3333:3000"
     depends_on:
@@ -24,12 +33,6 @@ services:
         condition: service_started
       ollama:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
     restart: unless-stopped
     networks:
       - cyberquiz-network

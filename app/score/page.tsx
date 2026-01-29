@@ -46,16 +46,23 @@ function ScorePage() {
     fetchLeaderboard();
   }, []);
 
-  // Calculate score as number of correct answers × 10
-  const finalScore = score * 10;
   const percentage = Math.round((score / total) * 100);
+
+  const getModeLabel = (mode: string) => {
+    const labels: Record<string, string> = {
+      classic: "Classique",
+      thematic: "Thématique",
+      chrono: "Chrono"
+    };
+    return labels[mode] || mode;
+  };
 
   const getMedal = (score: number, total: number) => {
     const percentage = (score / total) * 100;
-    if (percentage >= 90) return { icon: Trophy, color: "text-yellow-400" };
-    if (percentage >= 70) return { icon: Award, color: "text-primary" };
-    if (percentage >= 50) return { icon: Target, color: "text-secondary" };
-    return { icon: Target, color: "text-muted-foreground" };
+    if (percentage >= 90) return { icon: Trophy, color: "text-yellow-400", label: "Expert" };
+    if (percentage >= 70) return { icon: Award, color: "text-primary", label: "Avancé" };
+    if (percentage >= 50) return { icon: Target, color: "text-secondary", label: "Intermédiaire" };
+    return { icon: Target, color: "text-muted-foreground", label: "Débutant" };
   };
 
   const medal = getMedal(score, total);
@@ -69,17 +76,20 @@ function ScorePage() {
         <div className="bg-card border-2 border-primary rounded-lg p-8 text-center shadow-2xl shadow-primary/20">
           <MedalIcon className={`h-20 w-20 mx-auto mb-4 ${medal.color} animate-pulse-glow`} />
           <h2 className="text-4xl font-bold mb-2">{pseudo}</h2>
+          <p className="text-muted-foreground mb-6">Mode {getModeLabel(mode)}</p>
           
-          <div className="inline-block bg-gradient-to-r from-primary to-secondary p-1 rounded-2xl my-6">
+          <div className="inline-block bg-gradient-to-r from-primary to-secondary p-1 rounded-2xl mb-4">
             <div className="bg-card px-8 py-4 rounded-xl">
               <div className="text-6xl font-bold text-gradient">
-                {finalScore}
+                {percentage}%
               </div>
               <div className="text-xl text-muted-foreground mt-2">
-                points
+                de réussite
               </div>
             </div>
           </div>
+
+          <p className="text-xl font-semibold text-primary mb-6">{medal.label}</p>
 
           <div className="flex gap-4 justify-center">
             <CyberButton
@@ -135,10 +145,13 @@ function ScorePage() {
                   </div>
                   <div>
                     <div className="font-semibold">{entry.pseudo}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Mode {getModeLabel(entry.mode)}
+                    </div>
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-primary">
-                  {entry.score * 10}
+                  {Math.round((entry.score / entry.totalQuestions) * 100)}%
                 </div>
               </div>
             ))

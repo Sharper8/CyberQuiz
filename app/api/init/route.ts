@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { ensureBufferFilled } from '@/lib/services/buffer-maintenance';
 

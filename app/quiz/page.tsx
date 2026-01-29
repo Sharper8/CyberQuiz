@@ -92,13 +92,13 @@ function QuizContent() {
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
-  const [timeLeft, setTimeLeft] = useState(5); // 5 seconds per question
+  const [timeLeft, setTimeLeft] = useState(10); // 10 seconds per question
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [answerTimeLeft, setAnswerTimeLeft] = useState(5); // Timer for answer reveal
   const [stoppingQuiz, setStoppingQuiz] = useState(false);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
-  const [showingWrongAnswer, setShowingWrongAnswer] = useState(false);
-  const [wrongAnswerTimer, setWrongAnswerTimer] = useState(3); // Show wrong answer for 3 seconds
+  const [elapsedTime, setElapsedTime] = useState(0); // Timer for how long on current question
 
   // Validate username and fetch questions on mount
   useEffect(() => {
@@ -149,14 +149,7 @@ function QuizContent() {
           };
         });
 
-        // Shuffle questions using Fisher-Yates algorithm for true randomization
-        const shuffled = [...convertedQuestions];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-
-        setQuestions(shuffled);
+        setQuestions(convertedQuestions);
         setIsLoading(false);
       } catch (error) {
         console.error('Error fetching questions:', error);
@@ -169,44 +162,43 @@ function QuizContent() {
     validateAndFetch();
   }, [pseudo, router]);
 
-  // Countdown timer for the question (5 seconds, auto-fail if time runs out)
+  // Countdown timer for the question (60 seconds)
   useEffect(() => {
     if (isLoading || questions.length === 0) return;
-    if (answered || showingWrongAnswer) return; // Stop when answered or showing wrong answer
-    if (timeLeft <= 0) {
-      // Time's up - treat as wrong answer
-      handleAnswer(null); // null = timeout/no answer
-      return;
-    }
+    if (answered) return; // Stop when answered
+    if (timeLeft <= 0) return; // Stop when time is up
     
     const timer = setTimeout(() => {
       setTimeLeft((prev) => Math.max(prev - 1, 0));
     }, 1000);
     
     return () => clearTimeout(timer);
-  }, [timeLeft, answered, showingWrongAnswer, isLoading, questions.length]);
+  }, [timeLeft, answered, isLoading, questions.length]);
 
-  // Wrong answer display timer (show for 3 seconds before ending quiz)
+  // Track elapsed time on current question (for non-chrono modes)
   useEffect(() => {
-    if (!showingWrongAnswer) return;
-    
-    if (wrongAnswerTimer === 0) {
-      // End quiz after showing wrong answer
-      const finalScore = score;
-      const totalQuestions = questionsAnswered;
-      saveScore(finalScore, totalQuestions).then(() => {
-        toast.error("Mauvaise réponse ! Le quiz est terminé.");
-        router.push(`/score?score=${finalScore}&total=${totalQuestions}&mode=classic&pseudo=${pseudo}`);
-      });
+    if (isLoading || questions.length === 0 || answered) return;
+    if (mode === "chrono") return; // Only track elapsed time in non-chrono modes
+
+    const timer = setInterval(() => {
+      setElapsedTime(Math.floor((Date.now() - questionStartTime) / 1000));
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [questionStartTime, answered, mode, isLoading, questions.length]);
+
+  // Auto-advance to next question after 5 seconds of answer reveal
+  useEffect(() => {
+    if (!answered || answerTimeLeft === null) return;
+
+    if (answerTimeLeft === 0) {
+      handleNextQuestion();
       return;
     }
 
-    const timer = setTimeout(() => {
-      setWrongAnswerTimer((prev) => prev - 1);
-    }, 1000);
-    
+    const timer = setTimeout(() => setAnswerTimeLeft((prev) => prev - 1), 1000);
     return () => clearTimeout(timer);
-  }, [showingWrongAnswer, wrongAnswerTimer, score, questionsAnswered, pseudo, router]);
+  }, [answered, answerTimeLeft]);
 
   const handleStopQuiz = async () => {
     setStoppingQuiz(true);
@@ -290,27 +282,28 @@ function QuizContent() {
   const handleAnswer = (answer: boolean | null) => {
     setAnswered(true);
     setSelectedAnswer(answer);
+    setAnswerTimeLeft(5); // Start 5-second countdown to next question
     if (!currentQuestion) return;
 
     const newQuestionsAnswered = questionsAnswered + 1;
     setQuestionsAnswered(newQuestionsAnswered);
     
     const isCorrect = answer === currentQuestion.answer;
-    
     if (isCorrect) {
-      // Correct answer - immediately go to next question
       setScore(score + 1);
-      
-      // Small delay for visual feedback, then proceed
-      setTimeout(() => {
-        handleNextQuestion();
-      }, 300);
-    } else {
-      // Wrong answer or timeout - show wrong answer for 3 seconds
-      setShowingWrongAnswer(true);
-      setWrongAnswerTimer(3);
-      // Quiz will end automatically via useEffect
     }
+
+    // End quiz immediately on first wrong answer
+    if (!isCorrect) {
+      setTimeout(async () => {
+        await saveScore(score, newQuestionsAnswered);
+        toast.error("Mauvaise réponse ! Le quiz est terminé.");
+        router.push(`/score?score=${score}&total=${newQuestionsAnswered}&mode=classic&pseudo=${pseudo}`);
+      }, 1500);
+      return;
+    }
+
+    // Will auto-advance via useEffect after 5 seconds
   };
 
   const handleNextQuestion = async () => {
@@ -320,12 +313,11 @@ function QuizContent() {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
       setAnswered(false);
       setSelectedAnswer(null);
-      setTimeLeft(5); // Reset to 5 seconds for next question
+      setAnswerTimeLeft(5);
+      setTimeLeft(10); // Reset to 10 seconds for next question
       setQuestionStartTime(Date.now());
-      setShowingWrongAnswer(false);
-      setWrongAnswerTimer(3);
+      setElapsedTime(0);
     } else {
-      // Quiz complete - all questions answered correctly
       const finalScore = score + (selectedAnswer === currentQuestion.answer ? 1 : 0);
       console.log('[handleNextQuestion] Quiz complete:', {
         finalScore,
@@ -385,7 +377,7 @@ function QuizContent() {
               {currentQuestion.question}
             </h2>
 
-            {!answered && !showingWrongAnswer ? (
+            {!answered ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <CyberButton
@@ -394,7 +386,7 @@ function QuizContent() {
                     onClick={() => handleAnswer(true)}
                     className="h-24 text-2xl font-bold"
                   >
-                    VRAI
+                    OUI
                   </CyberButton>
                   <CyberButton
                     size="xl"
@@ -402,39 +394,59 @@ function QuizContent() {
                     onClick={() => handleAnswer(false)}
                     className="h-24 text-2xl font-bold"
                   >
-                    FAUX
+                    NON
                   </CyberButton>
                 </div>
               </div>
-            ) : showingWrongAnswer ? (
+            ) : (
               <div className="space-y-4">
-                <div className="text-center p-6 rounded-lg bg-destructive/10 border-2 border-destructive">
+                <div className={`text-center p-6 rounded-lg ${
+                  selectedAnswer === currentQuestion.answer 
+                    ? "bg-secondary/10 border-2 border-secondary" 
+                    : "bg-destructive/10 border-2 border-destructive"
+                }`}>
                   <div className="flex items-center justify-center gap-3 mb-2">
-                    <XCircle className="h-8 w-8 text-destructive" />
-                    <span className="text-2xl font-bold text-destructive">
-                      {selectedAnswer === null ? "Temps écoulé !" : "Mauvaise réponse !"}
-                    </span>
+                    {selectedAnswer === currentQuestion.answer ? (
+                      <>
+                        <CheckCircle2 className="h-8 w-8 text-secondary" />
+                        <span className="text-2xl font-bold text-secondary">Bonne réponse !</span>
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-8 w-8 text-destructive" />
+                        <span className="text-2xl font-bold text-destructive">Mauvaise réponse 😅</span>
+                      </>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground">
                     La bonne réponse était : <span className="font-bold text-foreground underline underline-offset-4 decoration-2 decoration-secondary">
-                      {currentQuestion.answer ? "VRAI" : "FAUX"}
+                      {currentQuestion.answer ? "OUI" : "NON"}
                     </span>
                   </p>
                   
-                  {/* Countdown before quiz ends */}
+                  {/* Auto-advance countdown */}
                   <div className="mt-4 pt-4 border-t border-border space-y-3">
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Fin du quiz dans: <span className="font-bold text-lg text-destructive">{wrongAnswerTimer}s</span>
-                    </p>
-                    <Progress value={(wrongAnswerTimer / 3) * 100} className="h-1" />
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Prochaine question dans: <span className="font-bold text-lg text-primary">{answerTimeLeft}s</span>
+                      </p>
+                      <Progress value={(answerTimeLeft / 5) * 100} className="h-1" />
+                    </div>
+                    <CyberButton 
+                      onClick={() => handleNextQuestion()}
+                      variant="secondary"
+                      className="w-full"
+                    >
+                      Question suivante
+                    </CyberButton>
                   </div>
                 </div>
               </div>
-            ) : null}
+            )}
           </div>
         </div>
 
-        {/* No answer display on correct - we go directly to next question */}
+        {/* No timer progress - using default elapsed time mode */}
 
         {/* Footer with stop button */}
         <div className="flex justify-center pt-4">

@@ -73,10 +73,13 @@ export default function Leaderboard() {
                   {getMedalIcon(index)}
                   <div>
                     <div className="font-semibold">{score.username}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {score.topic ? `Topic: ${score.topic}` : 'General Quiz'}
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-bold text-primary">{score.score * 10} pts</div>
+                  <div className="font-bold text-primary">{score.accuracyPercentage.toFixed(0)}%</div>
                 </div>
               </div>
             ))}

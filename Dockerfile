@@ -15,21 +15,28 @@ RUN npm ci
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# Build-time args for environment configuration
+ARG DATABASE_URL
+ARG JWT_SECRET
+ARG OLLAMA_BASE_URL
+ARG QDRANT_URL
+ARG ALLOW_EXTERNAL_AI
+ARG NODE_ENV=production
+
+# Convert build args to environment variables for build process
+ENV DATABASE_URL=${DATABASE_URL}
+ENV JWT_SECRET=${JWT_SECRET}
+ENV OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+ENV QDRANT_URL=${QDRANT_URL}
+ENV ALLOW_EXTERNAL_AI=${ALLOW_EXTERNAL_AI}
+ENV NODE_ENV=${NODE_ENV}
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Generate Prisma Client
 RUN npx prisma generate
-
-# Build-time args — avoid passing secrets at build; supply them at runtime via env/secrets.
-# NOTE: Do NOT bake `NODE_ENV` into the image. The runtime (docker-compose / orchestrator)
-# should provide `NODE_ENV` via `env_file` or environment variables so it can differ
-# between environments (development/production) and avoid image-specific behavior.
-
-# Build should not require secrets; enable relaxed env validation only during build.
-# Do NOT pass DATABASE_URL or JWT_SECRET as build args to avoid baking secrets into image layers.
-ARG SKIP_ENV_VALIDATION=true
-ENV SKIP_ENV_VALIDATION=$SKIP_ENV_VALIDATION
 
 # Build Next.js
 RUN npm run build

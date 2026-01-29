@@ -9,6 +9,9 @@
 import { NextResponse } from 'next/server';
 import { getGenerationStatus } from '@/lib/services/pool-maintenance';
 
+// Force dynamic rendering - this endpoint requires admin auth at request time
+export const dynamic = 'force-dynamic';
+
 // Store connected clients for broadcasting
 const connectedClients = new Set<ReadableStreamDefaultController>();
 

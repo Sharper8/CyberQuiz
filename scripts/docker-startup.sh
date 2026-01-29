@@ -1,60 +1,20 @@
-#!/bin/bash
+#!/bin/sh
 # Startup script for production
-# Ensures migrations, admin user, and settings exist before starting the app
+# Ensures admin user exists before starting the app
 
-set -e  # Exit on any error
+echo "ðŸš€ [Startup] Initializing CyberQuiz..."
 
-echo "[Startup] ========================================"
-echo "[Startup] Initializing CyberQuiz Production..."
-echo "[Startup] ========================================"
-
-# Wait for database to be fully ready
-echo "[Startup] Waiting for database connection..."
-max_attempts=30
-attempt=0
-while [ $attempt -lt $max_attempts ]; do
-  if npx prisma db execute --stdin <<< "SELECT 1" &>/dev/null; then
-    echo "[Startup] ✓ Database connection established"
-    break
-  fi
-  attempt=$((attempt + 1))
-  echo "[Startup]   Attempt $attempt/$max_attempts..."
-  sleep 2
-done
-
-if [ $attempt -eq $max_attempts ]; then
-  echo "[Startup] ✗ Failed to connect to database after $max_attempts attempts"
-  exit 1
-fi
-
-# Note: Prisma Client was already generated during Docker build
-# No need to regenerate at runtime - it causes permission issues
+# Regenerate Prisma Client with runtime DATABASE_URL
+echo "ðŸ”§ [Startup] Regenerating Prisma Client..."
+npx prisma generate
 
 # Run database migrations
-echo "[Startup] Running database migrations..."
-if npx prisma migrate deploy; then
-  echo "[Startup] ✓ Migrations completed successfully"
-else
-  echo "[Startup] ✗ Migration deployment failed"
-  exit 1
-fi
-
-# Verify critical tables exist
-echo "[Startup] Verifying database schema..."
-tables_to_check=("AdminUser" "GenerationSettings" "Question" "QuizSession" "Score")
-for table in "${tables_to_check[@]}"; do
-  if npx prisma db execute --stdin <<< "SELECT 1 FROM \"$table\" LIMIT 1" &>/dev/null; then
-    echo "[Startup]   ✓ Table $table exists"
-  else
-    echo "[Startup]   ✗ Table $table missing - schema verification failed"
-    exit 1
-  fi
-done
-echo "[Startup] ✓ Database schema verified"
+echo "ðŸ“¦ [Startup] Running database migrations..."
+npx prisma migrate deploy
 
 # Ensure admin user exists
-echo "[Startup] Ensuring admin user..."
-node << 'EOJS'
+echo "ðŸ‘¤ [Startup] Ensuring admin user..."
+node -e "
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
@@ -84,20 +44,20 @@ async function ensureAdmin() {
       }
     });
 
-    console.log('[Admin] Created admin user:', adminEmail);
+    console.log('[Admin] âœ… Created admin user:', adminEmail);
   } catch (error) {
-    console.error('[Admin] Failed:', error.message);
+    console.error('[Admin] âŒ Failed:', error.message);
   } finally {
-    await prisma.$disconnect();
+    await prisma.\$disconnect();
   }
 }
 
 ensureAdmin().catch(console.error);
-EOJS
+"
 
 # Ensure generation settings exist
-echo "[Startup] Ensuring generation settings..."
-node << 'EOJS'
+echo "⚙️  [Startup] Ensuring generation settings..."
+node -e "
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
@@ -107,78 +67,48 @@ async function ensureSettings() {
     const settings = await prisma.generationSettings.findFirst();
 
     if (!settings) {
-      console.log('  No generation settings found, creating defaults...');
-      
-      const domains = [
-        'Network Security',
-        'Application Security',
-        'Cloud Security',
-        'Identity & Access',
-        'Threat Intelligence',
-        'Incident Response',
-        'Cryptography',
-        'Compliance & Governance'
-      ];
-
-      const skillTypes = [
-        'Detection',
-        'Prevention',
-        'Analysis',
-        'Configuration',
-        'Best Practices'
-      ];
-
-      const difficulties = [
-        'Beginner',
-        'Intermediate',
-        'Advanced',
-        'Expert'
-      ];
-
-      const granularities = [
-        'Conceptual',
-        'Procedural',
-        'Technical',
-        'Strategic'
-      ];
+      console.log('  ℹ️  No generation settings found, creating defaults...');
       
       await prisma.generationSettings.create({
         data: {
-          bufferSize: 50,
-          autoRefillEnabled: true,
-          structuredSpaceEnabled: false,
-          enabledDomains: domains,
-          enabledSkillTypes: skillTypes,
-          enabledDifficulties: difficulties,
-          enabledGranularities: granularities,
-          defaultModel: 'ollama:mistral:7b',
-          fallbackModel: 'ollama:mistral:7b',
+          targetPoolSize: 50,
+          autoGenerateEnabled: true,
+          generationTopic: 'Cybersecurity',
+          generationDifficulty: 'medium',
           maxConcurrentGeneration: 10,
         },
       });
 
-      console.log('  Created default generation settings');
+      console.log('  ✓ Created default generation settings');
     } else {
-      console.log('  Generation settings already configured');
-      console.log(`    - Buffer size: ${settings.bufferSize}`);
-      console.log(`    - Auto-refill: ${settings.autoRefillEnabled ? 'enabled' : 'disabled'}`);
+      console.log('  ✓ Generation settings already configured');
+      console.log(\`    - Target pool size: \${settings.targetPoolSize}\`);
+      console.log(\`    - Auto-generate: \${settings.autoGenerateEnabled ? 'enabled' : 'disabled'}\`);
     }
   } catch (error) {
-    console.error('  Failed to ensure generation settings:', error.message);
+    console.error('  ❌ Failed to ensure generation settings:', error.message);
   } finally {
-    await prisma.$disconnect();
+    await prisma.\$disconnect();
   }
 }
 
 ensureSettings().catch(console.error);
-EOJS
+"
 
-echo "[Startup] ========================================"
-echo "[Startup] ✓ Initialization complete!"
-echo "[Startup] ========================================"
-echo "[Startup] Starting Next.js server..."
-echo ""
+echo "✅ [Startup] Initialization complete!"
+echo "🚀 [Startup] Starting Next.js server..."
 
-# Start the Next.js server directly (no backgrounding)
-# The /api/init endpoint will be called on first request
-exec node server.js
+# Start the Next.js server in the background to allow initialization
+node server.js &
+SERVER_PID=$!
+
+# Wait for server to be ready
+echo "⏳ [Startup] Waiting for server to be ready..."
+sleep 5
+
+# Initialize background services via API
+echo "🔄 [Startup] Starting background services..."
+curl -X POST http://localhost:3000/api/init || echo "  ⚠️  Background service initialization failed (will retry on next request)"
+
+# Bring server process to foreground
+wait $SERVER_PID

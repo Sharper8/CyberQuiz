@@ -4,9 +4,11 @@ import "../src/index.css";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Providers } from "./providers";
-import { AccessibilitySettings } from "@/components/AccessibilitySettings";
+import { ReactNode } from "react";
+
+// Skip static generation for the entire app since it requires runtime context and database access
+export const dynamic = 'force-dynamic';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
@@ -48,7 +50,6 @@ export default function RootLayout({
             <main id="main-content">
               {children}
             </main>
-            <AccessibilitySettings />
           </TooltipProvider>
         </Providers>
       </body>

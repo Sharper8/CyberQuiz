@@ -28,9 +28,17 @@ const AccessibilityContext = createContext<AccessibilityContextType | undefined>
 export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Only run on client side - prevents SSR/prerendering errors
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Load from localStorage on mount (client-side only to avoid hydration mismatch)
   useEffect(() => {
+    if (!isMounted) return;
+    
     const saved = localStorage.getItem("cyberquiz-a11y");
     if (saved) {
       try {
@@ -40,7 +48,7 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     }
     setIsLoaded(true);
-  }, []);
+  }, [isMounted]);
 
   // Apply settings to document element (only after client hydration)
   useEffect(() => {

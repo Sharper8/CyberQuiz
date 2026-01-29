@@ -10,6 +10,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import CyberBackground from "@/components/CyberBackground";
 import Leaderboard from "@/components/Leaderboard";
 
+// Skip static generation - this page uses client context and dynamic routing
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [pseudo, setPseudo] = useState("");
   const [error, setError] = useState("");

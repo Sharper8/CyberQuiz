@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminCredentials, generateAdminToken } from '@/lib/auth/admin-auth';
 import { logAuthEvent } from '@/lib/logging/logger';

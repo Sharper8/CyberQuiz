@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
 import { maintainQuestionPool, getGenerationStatus } from '@/lib/services/pool-maintenance';
