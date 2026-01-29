@@ -100,7 +100,7 @@ Critères de Qualité des questions:
 Exigences:
 - Formule la question de manière claire et sans ambiguïté en FRANÇAIS
 - Respecte les critères de qualité (Variété • Véracité • Non-interprétable)
-- Pour true-false: fournis exactement 2 options (exemple: ["Vrai", "Faux"] ou ["OUI", "NON"])
+- Pour true-false: fournis exactement 2 options (exemple: ["Vrai", "Faux"])
 - Pour multiple-choice: fournis exactement 4 options
 - La clé correctAnswer doit correspondre exactement à l'une des options
 - Fournis une explication concise mais techniquement précise en FRANÇAIS

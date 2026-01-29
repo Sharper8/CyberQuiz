@@ -275,8 +275,8 @@ export default function AdminPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="true">OUI (Vrai)</SelectItem>
-                      <SelectItem value="false">NON (Faux)</SelectItem>
+                      <SelectItem value="true">Vrai</SelectItem>
+                      <SelectItem value="false">Faux</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -347,11 +347,10 @@ export default function AdminPage() {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
               const rawAnswer = question.correctAnswer || (question.answer ? 'Vrai' : 'Faux');
-              // Normalize answer to handle all possible formats (True/False, Vrai/Faux, OUI/NON, true/false)
+              // Normalize answer to handle all possible formats (True/False, Vrai/Faux, true/false)
               const isCorrectTrue = 
                 String(rawAnswer).toLowerCase() === 'true' ||
                 String(rawAnswer).toLowerCase() === 'vrai' ||
-                String(rawAnswer).toLowerCase() === 'oui' ||
                 String(rawAnswer) === '1' ||
                 String(rawAnswer).toLowerCase() === 'yes';
               const potentialDuplicates = (() => {
@@ -457,7 +456,7 @@ export default function AdminPage() {
                       )}
                       <p className="text-sm text-muted-foreground">
                         Réponse correcte : <span className="font-semibold text-foreground">
-                          {isCorrectTrue ? "OUI (Vrai)" : "NON (Faux)"}
+                          {isCorrectTrue ? "Vrai" : "Faux"}
                         </span>
                       </p>
                       
@@ -614,8 +613,8 @@ export default function AdminPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="True">OUI (Vrai)</SelectItem>
-                      <SelectItem value="False">NON (Faux)</SelectItem>
+                      <SelectItem value="True">Vrai</SelectItem>
+                      <SelectItem value="False">Faux</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

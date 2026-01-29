@@ -91,10 +91,28 @@ export async function ensureBufferFilled(): Promise<void> {
     return;
   }
 
-  logger.info('[Buffer] Refilling buffer', { questionsNeeded, currentSize: status.currentSize });
+  // Check how many jobs are already queued
+  const alreadyQueued = generationQueue.length;
+  const jobsToAdd = Math.max(0, questionsNeeded - alreadyQueued);
+
+  if (jobsToAdd <= 0) {
+    logger.info('[Buffer] Enough jobs already queued', { 
+      questionsNeeded, 
+      alreadyQueued,
+      currentSize: status.currentSize 
+    });
+    return;
+  }
+
+  logger.info('[Buffer] Refilling buffer', { 
+    questionsNeeded, 
+    alreadyQueued, 
+    jobsToAdd,
+    currentSize: status.currentSize 
+  });
 
   // Queue generation jobs (non-blocking)
-  for (let i = 0; i < questionsNeeded; i++) {
+  for (let i = 0; i < jobsToAdd; i++) {
     queueGeneration();
   }
 

@@ -110,7 +110,7 @@ export default async function OpenGraphImage() {
             maxWidth: 940,
           }}
         >
-          Teste ta vigilance numérique
+          Teste tes connaissances en cybersécurité
         </div>
 
         <div

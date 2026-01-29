@@ -345,16 +345,21 @@ export function GenerationSettingsPanel() {
                   step="1"
                   value={settings.bufferSize}
                   onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    // Only update if it's a valid number >= 1, otherwise keep current value
-                    if (!isNaN(value) && value >= 1) {
-                      setSettings({ ...settings, bufferSize: value });
+                    const value = e.target.value;
+                    // Allow empty string (user is deleting) or valid numbers
+                    if (value === '') {
+                      setSettings({ ...settings, bufferSize: '' as any });
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue) && numValue >= 1) {
+                        setSettings({ ...settings, bufferSize: numValue });
+                      }
                     }
                   }}
                   onBlur={(e) => {
                     // On blur, ensure we have a valid value (fallback to 1 if invalid)
-                    const value = parseInt(e.target.value);
-                    if (isNaN(value) || value < 1) {
+                    const value = e.target.value;
+                    if (value === '' || isNaN(parseInt(value)) || parseInt(value) < 1) {
                       setSettings({ ...settings, bufferSize: 1 });
                     }
                   }}

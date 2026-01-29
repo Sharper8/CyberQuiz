@@ -47,7 +47,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Initialize quiz session (usernames can be reused)
+    // Check if username is already taken
+    const existingSession = await prisma.quizSession.findUnique({
+      where: { username: validation.data },
+    });
+
+    if (existingSession) {
+      return NextResponse.json(
+        { error: 'Username is already taken. Please choose a different one.' },
+        { status: 409 }
+      );
+    }
+
+    // Initialize quiz session (usernames must be unique)
     const session = await initializeQuizSession(validation.data);
 
     logAuthEvent('login', validation.data, {

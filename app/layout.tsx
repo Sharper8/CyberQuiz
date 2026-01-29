@@ -14,11 +14,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "CyberQuiz - Teste ta vigilance numérique",
+  title: "CyberQuiz - Teste tes connaissances en cybersécurité",
   description: "Quiz interactif sur la cybersécurité alimenté par l'IA. Testez vos connaissances en matière de sécurité numérique à travers différents modes de jeu.",
   authors: [{ name: "CyberQuiz" }],
   openGraph: {
-    title: "CyberQuiz - Teste ta vigilance numérique",
+    title: "CyberQuiz - Teste tes connaissances en cybersécurité",
     description: "Quiz interactif sur la cybersécurité alimenté par l'IA",
     type: "website",
   },

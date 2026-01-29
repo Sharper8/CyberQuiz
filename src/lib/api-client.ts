@@ -76,17 +76,25 @@ class ApiClient {
     validated?: boolean;
     status?: 'to_review' | 'accepted' | 'rejected';
     includeRejected?: boolean;
+    randomize?: boolean;
   }): Promise<Question[]> {
     const search = new URLSearchParams();
     if (params?.validated !== undefined) search.set('validated', String(params.validated));
     if (params?.status) search.set('status', params.status);
     if (params?.includeRejected) search.set('includeRejected', 'true');
+    if (params?.randomize) search.set('randomize', 'true');
 
     const url = search.toString()
       ? `${this.baseUrl}/questions?${search.toString()}`
       : `${this.baseUrl}/questions`;
 
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      cache: 'no-store', // Disable caching for randomization
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
     if (!res.ok) throw new Error('Failed to fetch questions');
     return res.json();
   }
