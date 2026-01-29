@@ -1,29 +1,22 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
 import { AccessibilityProvider } from "@/lib/accessibility-context";
-
-const queryClientRef = { current: null as QueryClient | null };
+import { useState } from "react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    return <>{children}</>;
-  }
-
-  // Only create QueryClient on client side
-  if (!queryClientRef.current) {
-    queryClientRef.current = new QueryClient();
-  }
+  // Create QueryClient once - useState ensures it's only created once
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Prevent refetch on window focus in dev
+        refetchOnWindowFocus: false,
+      },
+    },
+  }));
 
   return (
-    <QueryClientProvider client={queryClientRef.current}>
+    <QueryClientProvider client={queryClient}>
       <AccessibilityProvider>
         {children}
       </AccessibilityProvider>
