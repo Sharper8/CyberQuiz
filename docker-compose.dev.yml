@@ -13,7 +13,7 @@ services:
         - OLLAMA_BASE_URL=http://ollama:11434
         - QDRANT_URL=http://qdrant:6333
         - ALLOW_EXTERNAL_AI=false
-        - NODE_ENV=development
+        - NODE_ENV=production
     container_name: cyberquiz-nextjs-dev
     env_file:
       - .env.dev
