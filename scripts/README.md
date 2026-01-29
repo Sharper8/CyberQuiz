@@ -4,10 +4,77 @@ This directory contains operational scripts for CyberQuiz deployment, maintenanc
 
 ## 🚀 Deployment Scripts
 
-### `verify-deployment.sh` ⭐ NEW
-**Use before every deployment**
+### `prod-deploy.sh` ⭐ NEW - Automated Production Deployment
+**Complete automated deployment with safety checks**
 
-Pre-deployment validation that checks:
+Features:
+- Runs pre-deployment verification
+- Creates automatic backups
+- Builds and deploys new version
+- Waits for health checks
+- Runs smoke tests
+- Provides rollback instructions
+
+```bash
+./scripts/prod-deploy.sh
+```
+
+What it does:
+1. Pre-deployment verification
+2. Confirms with user
+3. Backs up database + .env
+4. Stops current production
+5. Builds new containers
+6. Waits for health checks
+7. Runs smoke tests
+8. Shows deployment summary
+
+**Use this for all production deployments!**
+
+### `prod-health-check.sh` ⭐ NEW - Production Health Verification
+**Comprehensive health check for production**
+
+Checks:
+- Container status (all 5 containers)
+- Application health endpoint
+- Database connectivity
+- Ollama AI models loaded
+- Disk usage
+- Recent errors
+- Critical API endpoints
+
+```bash
+./scripts/prod-health-check.sh
+```
+
+Exit codes:
+- `0` = All healthy or minor warnings
+- `1` = Critical issues found
+
+Run after deployment or anytime to verify production health.
+
+### `prod-rollback.sh` ⭐ NEW - Quick Production Rollback
+**Fast rollback to previous version**
+
+Use when deployment fails:
+
+```bash
+./scripts/prod-rollback.sh
+```
+
+What it does:
+1. Stops current production
+2. Restores database from latest backup
+3. Rolls back git to previous commit
+4. Rebuilds and restarts
+5. Waits for health checks
+
+**Emergency use only - always try to fix forward first!**
+
+### `verify-deployment.sh`
+**Pre-deployment validation**
+
+Checks:
 - Environment configuration
 - Database migrations present
 - Docker setup correct
@@ -20,6 +87,8 @@ Pre-deployment validation that checks:
 Exit codes:
 - `0` = Safe to deploy
 - `1` = Fix errors first
+
+**Run before EVERY deployment (also included in prod-deploy.sh)**
 
 ### `docker-startup.sh` ⭐ ENHANCED
 **Runs automatically in production container**
