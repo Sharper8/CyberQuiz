@@ -1,5 +1,10 @@
 # CyberQuiz Development Environment
 # Simple one-command setup: docker-compose -f docker-compose.dev.yml up
+#
+# NOTE: NODE_ENV=production during BUILD is intentional - it ensures Next.js builds
+# with optimizations (tree-shaking, minification). The runtime NODE_ENV is set to
+# development below, which allows hot-reload features and verbose logging.
+# This is standard practice: optimize the build, but run in dev mode.
 
 services:
   # Next.js App (Development)
@@ -8,6 +13,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        # Use values from .env.dev - keep in sync!
         - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
         - JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
         - OLLAMA_BASE_URL=http://ollama:11434
@@ -18,7 +24,7 @@ services:
     env_file:
       - .env.dev
     environment:
-      # Override localhost URLs with Docker service names
+      # All credentials from .env.dev
       - DATABASE_URL=postgresql://cyberquiz:changeme@postgres:5432/cyberquiz
       - OLLAMA_BASE_URL=http://ollama:11434
       - QDRANT_URL=http://qdrant:6333
