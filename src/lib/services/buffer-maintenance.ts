@@ -11,9 +11,9 @@ import { selectGenerationSlot, getGenerationSpaceConfig, linkQuestionToSlot } fr
 import { getAIProvider } from '../ai/provider-factory';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { upsertEmbedding, searchSimilar } from '../db/qdrant';
-import { findSimilarQuestions } from './question-generator';
 import { generateQuestionHash } from '../utils/question-hash';
 import { logger } from '../logging/logger';
+import { getRssContextForGeneration, markArticlesAsUsed, syncRssSources } from './rss-fetcher';
 
 interface BufferStatus {
   currentSize: number;
@@ -78,41 +78,14 @@ export async function ensureBufferFilled(): Promise<void> {
   const questionsNeeded = status.targetSize - status.currentSize;
 
   if (questionsNeeded <= 0) {
-    logger.info('[Buffer] Buffer is full or over capacity', { 
-      currentSize: status.currentSize, 
-      targetSize: status.targetSize,
-      queuedJobs: generationQueue.length 
-    });
-    // Clear any remaining queued jobs if buffer is already full
-    if (generationQueue.length > 0) {
-      logger.info('[Buffer] Clearing queued jobs as buffer is full', { cleared: generationQueue.length });
-      generationQueue.length = 0;
-    }
+    logger.info('[Buffer] Buffer is full', { currentSize: status.currentSize, targetSize: status.targetSize });
     return;
   }
 
-  // Check how many jobs are already queued
-  const alreadyQueued = generationQueue.length;
-  const jobsToAdd = Math.max(0, questionsNeeded - alreadyQueued);
-
-  if (jobsToAdd <= 0) {
-    logger.info('[Buffer] Enough jobs already queued', { 
-      questionsNeeded, 
-      alreadyQueued,
-      currentSize: status.currentSize 
-    });
-    return;
-  }
-
-  logger.info('[Buffer] Refilling buffer', { 
-    questionsNeeded, 
-    alreadyQueued, 
-    jobsToAdd,
-    currentSize: status.currentSize 
-  });
+  logger.info('[Buffer] Refilling buffer', { questionsNeeded, currentSize: status.currentSize });
 
   // Queue generation jobs (non-blocking)
-  for (let i = 0; i < jobsToAdd; i++) {
+  for (let i = 0; i < questionsNeeded; i++) {
     queueGeneration();
   }
 
@@ -147,18 +120,6 @@ async function processQueue(): Promise<void> {
   lastGenerationStatus.inFlight = true;
 
   while (generationQueue.length > 0) {
-    // Check if buffer is already full before processing next job
-    const status = await getBufferStatus();
-    if (status.currentSize >= status.targetSize) {
-      logger.info('[Buffer] Target reached, clearing remaining queue', {
-        currentSize: status.currentSize,
-        targetSize: status.targetSize,
-        remainingJobs: generationQueue.length,
-      });
-      generationQueue.length = 0; // Clear the queue
-      break;
-    }
-
     const job = generationQueue.shift();
     if (job) {
       lastGenerationStatus.lastStartedAt = new Date().toISOString();
@@ -199,12 +160,28 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         slot: config.enabled ? slot : undefined,
       });
 
+      // Sync RSS feeds and build optional context
+      await syncRssSources().catch((error) => {
+        logger.warn('[Buffer] RSS sync failed', { error: error?.message || String(error) });
+      });
+
+      const rssContext = await getRssContextForGeneration(3);
+      const additionalContext = rssContext.context || undefined;
+
+      if (additionalContext) {
+        logger.info('[Buffer] Using RSS context for generation', {
+          articleCount: rssContext.articleIds.length,
+          sources: rssContext.articles.map((a) => a.sourceTitle || a.sourceUrl).filter(Boolean),
+        });
+      }
+
       // Generate question
       const response = await provider.generateQuestion({
         topic: config.enabled ? slot.domain : 'Cybersecurity',
         difficulty: config.enabled ? mapDifficultyToLegacy(slot.difficulty) : 'medium',
         questionType: 'true-false',
         count: 1,
+        additionalContext,
       });
 
       if (!response) {
@@ -228,15 +205,34 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         continue; // Retry with different slot
       }
 
-      // Find similar questions for admin review
-      const potentialDuplicates = await findSimilarQuestions(embedding);
+      const primaryArticle = rssContext.articles[0];
+      const rssSourceId = primaryArticle?.sourceId || null;
+      const rssArticleId = primaryArticle?.id || null;
+      const rssSourceLabel = primaryArticle?.sourceTitle || primaryArticle?.sourceUrl || null;
+
+      const baseTags = Array.isArray(generated.tags) ? generated.tags : [];
+      const rssTags = rssSourceLabel ? ['rss', rssSourceLabel] : ['rss'];
+      const mergedTags = Array.from(new Set([...baseTags, ...(rssContext.articleIds.length > 0 ? rssTags : [])]));
+
+      // Log RSS usage
+      if (rssContext.articleIds.length > 0 && primaryArticle) {
+        logger.info('[Buffer] Using RSS context for generation', {
+          articleTitle: primaryArticle.title,
+          articleLink: primaryArticle.link,
+          sourceTitle: primaryArticle.sourceTitle,
+          sourceUrl: primaryArticle.sourceUrl,
+          rssSourceId,
+          rssArticleId,
+          tags: rssTags
+        });
+      }
 
       // Save question to database
       const question = await prisma.question.create({
         data: {
           questionText: generated.questionText,
           questionHash: generateQuestionHash(generated.questionText),
-          options: JSON.stringify(generated.options || ['Vrai', 'Faux']),
+          options: generated.options || ['Vrai', 'Faux'],
           correctAnswer: generated.correctAnswer || 'Vrai',
           explanation: generated.explanation || '',
           difficulty: generated.estimatedDifficulty || 0.5,
@@ -248,11 +244,16 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           generationSkillType: config.enabled ? slot.skillType : null,
           generationDifficulty: config.enabled ? slot.difficulty : null,
           generationGranularity: config.enabled ? slot.granularity : null,
-          mitreTechniques: JSON.stringify(generated.mitreTechniques || []),
-          tags: JSON.stringify(generated.tags || []),
-          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
+          mitreTechniques: generated.mitreTechniques || [],
+          tags: mergedTags,
+          rssSourceId,
+          rssArticleId,
         },
       });
+
+      if (rssContext.articleIds.length > 0) {
+        await markArticlesAsUsed(rssContext.articleIds);
+      }
 
       // Store embedding in Qdrant
       await upsertEmbedding(question.id, embedding, {

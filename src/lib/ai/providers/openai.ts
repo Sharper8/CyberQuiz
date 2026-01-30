@@ -41,7 +41,8 @@ export class OpenAIProvider implements AIProvider {
     const prompt = buildGenerationPrompt({
       topic: params.topic,
       difficulty: params.difficulty,
-      questionType: params.questionType
+      questionType: params.questionType,
+      additionalContext: params.additionalContext,
     });
     const completion = await this.client.chat.completions.create({
       model: this.generationModel,
