@@ -127,21 +127,20 @@ export default function AdminLeaderboardPage() {
               <TableHead>Pseudo</TableHead>
               <TableHead className="text-right">Score</TableHead>
               <TableHead className="text-right">Précision</TableHead>
-              <TableHead>Topic</TableHead>
-              <TableHead>Difficulté</TableHead>
+              <TableHead>Date</TableHead>
               <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : scores.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                   Aucun score.
                 </TableCell>
               </TableRow>
@@ -151,18 +150,17 @@ export default function AdminLeaderboardPage() {
                   <TableCell className="font-semibold">#{s.rank}</TableCell>
                   <TableCell className="font-medium">{s.username}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant="secondary">
-                      {s.score}/{s.totalQuestions}
+                    <Badge variant="secondary" className="text-lg font-bold">
+                      {s.score} pts
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">{Math.round(s.accuracyPercentage)}%</TableCell>
-                  <TableCell className="text-muted-foreground">{s.topic ?? "-"}</TableCell>
-                  <TableCell>
-                    {s.difficulty ? (
-                      <Badge variant="outline">{s.difficulty}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                  <TableCell className="text-right text-muted-foreground">{Math.round(s.accuracyPercentage)}%</TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {new Date(s.completedAt).toLocaleDateString('fr-FR', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">

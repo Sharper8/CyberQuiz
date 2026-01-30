@@ -157,11 +157,11 @@ model GenerationSettings {
   // Structured Generation Space toggle
   structuredSpaceEnabled Boolean  @default(false) // Enable entropy-controlled generation
   
-  // Generation Space Dimensions (String arrays of enabled values)
-  enabledDomains        String[]  @default(["Network Security", "Application Security", "Cloud Security", "Identity & Access", "Threat Intelligence", "Incident Response", "Cryptography", "Compliance & Governance"])
-  enabledSkillTypes     String[]  @default(["Detection", "Prevention", "Analysis", "Configuration", "Best Practices"])
-  enabledDifficulties   String[]  @default(["Beginner", "Intermediate", "Advanced", "Expert"])
-  enabledGranularities  String[]  @default(["Conceptual", "Procedural", "Technical", "Strategic"])
+  // Generation Space Dimensions (JSON arrays of enabled values)
+  enabledDomains        Json      @default("[\"Network Security\", \"Application Security\", \"Cloud Security\", \"Identity & Access\", \"Threat Intelligence\", \"Incident Response\", \"Cryptography\", \"Compliance & Governance\"]")
+  enabledSkillTypes     Json      @default("[\"Detection\", \"Prevention\", \"Analysis\", \"Configuration\", \"Best Practices\"]")
+  enabledDifficulties   Json      @default("[\"Beginner\", \"Intermediate\", \"Advanced\", \"Expert\"]")
+  enabledGranularities  Json      @default("[\"Conceptual\", \"Procedural\", \"Technical\", \"Strategic\"]")
   
   // Model configuration
   defaultModel          String    @default("ollama:mistral:7b") // Default AI model

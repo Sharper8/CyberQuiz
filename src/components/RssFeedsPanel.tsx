@@ -38,13 +38,28 @@ interface RssSettings {
   useRssAsContext: boolean;
 }
 
-export function RssFeedsPanel() {
+interface RssFeedsPanelProps {
+  settings?: RssSettings;
+  onSettingsChange?: (settings: Partial<RssSettings>) => void;
+}
+
+export function RssFeedsPanel({ settings: externalSettings, onSettingsChange }: RssFeedsPanelProps = {}) {
   const [sources, setSources] = useState<RssSource[]>([]);
-  const [settings, setSettings] = useState<RssSettings>({ rssEnabled: false, useRssAsContext: true });
+  const [internalSettings, setInternalSettings] = useState<RssSettings>({ rssEnabled: false, useRssAsContext: true });
   const [loading, setLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [addingFeed, setAddingFeed] = useState(false);
+
+  // Use external settings if provided, otherwise use internal state
+  const settings = externalSettings ?? internalSettings;
+  const setSettings = (newSettings: RssSettings) => {
+    if (onSettingsChange) {
+      onSettingsChange(newSettings);
+    } else {
+      setInternalSettings(newSettings);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -53,20 +68,22 @@ export function RssFeedsPanel() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [sourcesRes, settingsRes] = await Promise.all([
-        fetch('/api/admin/rss/sources'),
-        fetch('/api/admin/buffer/settings'),
-      ]);
+      const sourcesRes = await fetch('/api/admin/rss/sources');
 
       if (sourcesRes.ok) {
         setSources(await sourcesRes.json());
       }
-      if (settingsRes.ok) {
-        const data = await settingsRes.json();
-        setSettings({
-          rssEnabled: data.rssEnabled || false,
-          useRssAsContext: data.useRssAsContext !== false,
-        });
+
+      // Only fetch settings if not using external settings
+      if (!externalSettings) {
+        const settingsRes = await fetch('/api/admin/buffer/settings');
+        if (settingsRes.ok) {
+          const data = await settingsRes.json();
+          setInternalSettings({
+            rssEnabled: data.rssEnabled || false,
+            useRssAsContext: data.useRssAsContext !== false,
+          });
+        }
       }
     } catch (error) {
       console.error('Error fetching RSS data:', error);
@@ -77,8 +94,17 @@ export function RssFeedsPanel() {
   };
 
   const toggleRssEnabled = async () => {
+    const newSettings = { ...settings, rssEnabled: !settings.rssEnabled };
+    
+    // If using external settings (in dialog), just update parent state
+    if (onSettingsChange) {
+      setSettings(newSettings);
+      toast.success('Paramètre RSS mis à jour (n\'oubliez pas de sauvegarder)');
+      return;
+    }
+
+    // Otherwise save directly (standalone mode)
     try {
-      const newSettings = { ...settings, rssEnabled: !settings.rssEnabled };
       const res = await fetch('/api/admin/buffer/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,15 +114,24 @@ export function RssFeedsPanel() {
       if (!res.ok) throw new Error('Failed to update');
       
       setSettings(newSettings);
-      toast.success('RSS settings updated');
+      toast.success('Paramètres RSS mis à jour');
     } catch (error) {
-      toast.error('Failed to update RSS settings');
+      toast.error('Erreur lors de la mise à jour');
     }
   };
 
   const toggleUseAsContext = async () => {
+    const newSettings = { ...settings, useRssAsContext: !settings.useRssAsContext };
+    
+    // If using external settings (in dialog), just update parent state
+    if (onSettingsChange) {
+      setSettings(newSettings);
+      toast.success('Paramètre mis à jour (n\'oubliez pas de sauvegarder)');
+      return;
+    }
+
+    // Otherwise save directly (standalone mode)
     try {
-      const newSettings = { ...settings, useRssAsContext: !settings.useRssAsContext };
       const res = await fetch('/api/admin/buffer/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,9 +141,9 @@ export function RssFeedsPanel() {
       if (!res.ok) throw new Error('Failed to update');
       
       setSettings(newSettings);
-      toast.success('Context usage updated');
+      toast.success('Paramètre mis à jour');
     } catch (error) {
-      toast.error('Failed to update setting');
+      toast.error('Erreur lors de la mise à jour');
     }
   };
 

@@ -28,6 +28,40 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
+// Translation mappings for generation metadata
+const TRANSLATION_MAP: Record<string, string> = {
+  // Domains
+  'Network Security': 'Sécurité Réseau',
+  'Application Security': 'Sécurité Applicative',
+  'Cloud Security': 'Sécurité Cloud',
+  'Identity & Access': 'Identité & Accès',
+  'Threat Intelligence': 'Renseignement sur les Menaces',
+  'Incident Response': 'Réponse aux Incidents',
+  'Cryptography': 'Cryptographie',
+  'Compliance & Governance': 'Conformité & Gouvernance',
+  // Skill Types
+  'Detection': 'Détection',
+  'Prevention': 'Prévention',
+  'Analysis': 'Analyse',
+  'Configuration': 'Configuration',
+  'Best Practices': 'Bonnes Pratiques',
+  // Difficulties
+  'Beginner': 'Débutant',
+  'Intermediate': 'Intermédiaire',
+  'Advanced': 'Avancé',
+  'Expert': 'Expert',
+  // Granularities
+  'Conceptual': 'Conceptuel',
+  'Procedural': 'Procédural',
+  'Technical': 'Technique',
+  'Strategic': 'Stratégique',
+};
+
+const translateValue = (value: string | null | undefined): string => {
+  if (!value) return '';
+  return TRANSLATION_MAP[value] || value;
+};
+
 export default function AdminPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -441,25 +475,25 @@ export default function AdminPage() {
                             {question.generationDomain && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Domaine</span>
-                                <span className="text-foreground">{question.generationDomain}</span>
+                                <span className="text-foreground">{translateValue(question.generationDomain)}</span>
                               </div>
                             )}
                             {question.generationSkillType && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Compétence</span>
-                                <span className="text-foreground">{question.generationSkillType}</span>
+                                <span className="text-foreground">{translateValue(question.generationSkillType)}</span>
                               </div>
                             )}
                             {question.generationDifficulty && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Difficulté</span>
-                                <span className="text-foreground">{question.generationDifficulty}</span>
+                                <span className="text-foreground">{translateValue(question.generationDifficulty)}</span>
                               </div>
                             )}
                             {question.generationGranularity && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Granularité</span>
-                                <span className="text-foreground">{question.generationGranularity}</span>
+                                <span className="text-foreground">{translateValue(question.generationGranularity)}</span>
                               </div>
                             )}
                           </div>

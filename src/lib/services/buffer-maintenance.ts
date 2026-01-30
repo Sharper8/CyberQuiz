@@ -205,6 +205,18 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         continue; // Retry with different slot
       }
 
+      // Find similar questions for admin review (lower threshold than duplicate detection)
+      const SIMILARITY_DISPLAY_THRESHOLD = 0.75;
+      const DUPLICATE_THRESHOLD = 0.90;
+      const similarQuestions = await searchSimilar(embedding, 10);
+      const potentialDuplicates = similarQuestions
+        .filter(r => r.score > SIMILARITY_DISPLAY_THRESHOLD && r.score <= DUPLICATE_THRESHOLD)
+        .map(r => ({ id: r.id, similarity: Number(r.score.toFixed(2)) }));
+
+      if (potentialDuplicates.length > 0) {
+        logger.info('[Buffer] Found similar questions for admin review', { count: potentialDuplicates.length });
+      }
+
       const primaryArticle = rssContext.articles[0];
       const rssSourceId = primaryArticle?.sourceId || null;
       const rssArticleId = primaryArticle?.id || null;
@@ -227,7 +239,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         });
       }
 
-      // Save question to database
+      // Save question to database with potential duplicates for admin review
       const question = await prisma.question.create({
         data: {
           questionText: generated.questionText,
@@ -246,6 +258,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           generationGranularity: config.enabled ? slot.granularity : null,
           mitreTechniques: generated.mitreTechniques || [],
           tags: mergedTags,
+          potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
           rssSourceId,
           rssArticleId,
         },
@@ -356,6 +369,10 @@ export async function updateBufferSettings(updates: {
 }): Promise<void> {
   const settings = await getOrCreateSettings();
   
+  // Check if auto-refill is being enabled (changed from false to true)
+  const wasAutoRefillDisabled = settings.autoRefillEnabled === false;
+  const isEnablingAutoRefill = updates.autoRefillEnabled === true && wasAutoRefillDisabled;
+  
   await prisma.generationSettings.update({
     where: { id: settings.id },
     data: updates,
@@ -363,8 +380,8 @@ export async function updateBufferSettings(updates: {
 
   logger.info('[Buffer] Settings updated', updates);
 
-  // If auto-refill was just enabled, check buffer
-  if (updates.autoRefillEnabled) {
+  // If auto-refill was just enabled (changed from false to true), check buffer
+  if (isEnablingAutoRefill) {
     await ensureBufferFilled();
   }
 }

@@ -39,6 +39,8 @@ interface GenerationSettings {
   autoRefillEnabled: boolean;
   defaultModel: string;
   fallbackModel: string;
+  rssEnabled?: boolean;
+  useRssAsContext?: boolean;
   structuredSpace: {
     enabled: boolean;
     enabledDomains: string[];
@@ -121,7 +123,11 @@ export function GenerationSettingsPanel() {
       const res = await fetch('/api/admin/buffer/settings');
       if (res.ok) {
         const data = await res.json();
-        setSettings(data);
+        setSettings({
+          ...data,
+          rssEnabled: data.rssEnabled ?? false,
+          useRssAsContext: data.useRssAsContext ?? true,
+        });
       }
     } catch (error) {
       console.error('[Settings] Fetch error:', error);
@@ -302,7 +308,7 @@ export function GenerationSettingsPanel() {
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <CyberButton variant="outline" size="lg">
+        <CyberButton variant="outline" size="lg" onClick={fetchSettings}>
           <Settings className="h-5 w-5 mr-2" />
           Paramètres de Génération
         </CyberButton>
@@ -663,7 +669,13 @@ export function GenerationSettingsPanel() {
 
           {/* TAB: RSS Feeds */}
           <TabsContent value="rss">
-            <RssFeedsPanel />
+            <RssFeedsPanel 
+              settings={{
+                rssEnabled: settings.rssEnabled ?? false,
+                useRssAsContext: settings.useRssAsContext ?? true,
+              }}
+              onSettingsChange={(rssSettings) => setSettings({ ...settings, ...rssSettings })}
+            />
           </TabsContent>
         </Tabs>
 

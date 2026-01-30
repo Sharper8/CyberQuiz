@@ -6,14 +6,10 @@
 
 */
 -- AlterTable
-ALTER TABLE "GenerationSettings" ADD COLUMN     "rssEnabled" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "rssRefreshIntervalMin" INTEGER NOT NULL DEFAULT 60,
-ADD COLUMN     "useRssAsContext" BOOLEAN NOT NULL DEFAULT true,
+ALTER TABLE "GenerationSettings" ADD COLUMN IF NOT EXISTS "rssEnabled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS "rssRefreshIntervalMin" INTEGER NOT NULL DEFAULT 60,
+ADD COLUMN IF NOT EXISTS "useRssAsContext" BOOLEAN NOT NULL DEFAULT true,
 ALTER COLUMN "bufferSize" SET DEFAULT 10,
-ALTER COLUMN "enabledDomains" SET DEFAULT ARRAY['Network Security', 'Application Security', 'Cloud Security', 'Identity & Access', 'Threat Intelligence', 'Incident Response', 'Cryptography', 'Compliance & Governance']::TEXT[],
-ALTER COLUMN "enabledSkillTypes" SET DEFAULT ARRAY['Detection', 'Prevention', 'Analysis', 'Configuration', 'Best Practices']::TEXT[],
-ALTER COLUMN "enabledDifficulties" SET DEFAULT ARRAY['Beginner', 'Intermediate', 'Advanced', 'Expert']::TEXT[],
-ALTER COLUMN "enabledGranularities" SET DEFAULT ARRAY['Conceptual', 'Procedural', 'Technical', 'Strategic']::TEXT[],
 ALTER COLUMN "defaultModel" SET NOT NULL,
 ALTER COLUMN "defaultModel" SET DEFAULT 'ollama:mistral:7b',
 ALTER COLUMN "fallbackModel" SET NOT NULL,
@@ -76,5 +72,11 @@ ALTER TABLE "RssSource" ADD CONSTRAINT "RssSource_settingsId_fkey" FOREIGN KEY (
 -- AddForeignKey
 ALTER TABLE "RssArticle" ADD CONSTRAINT "RssArticle_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "RssSource"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- RenameIndex
-ALTER INDEX "GenerationSlotHistory_slot_idx" RENAME TO "GenerationSlotHistory_domain_skillType_difficulty_granulari_idx";
+-- RenameIndex (only if the old index exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'GenerationSlotHistory_slot_idx') THEN
+        ALTER INDEX "GenerationSlotHistory_slot_idx" RENAME TO "GenerationSlotHistory_domain_skillType_difficulty_granulari_idx";
+    END IF;
+END
+$$;
