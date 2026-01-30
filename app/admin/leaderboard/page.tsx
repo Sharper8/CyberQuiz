@@ -128,19 +128,20 @@ export default function AdminLeaderboardPage() {
               <TableHead className="text-right">Score</TableHead>
               <TableHead className="text-right">Précision</TableHead>
               <TableHead>Topic</TableHead>
+              <TableHead>Difficulté</TableHead>
               <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   Chargement...
                 </TableCell>
               </TableRow>
             ) : scores.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                   Aucun score.
                 </TableCell>
               </TableRow>
@@ -156,6 +157,13 @@ export default function AdminLeaderboardPage() {
                   </TableCell>
                   <TableCell className="text-right">{Math.round(s.accuracyPercentage)}%</TableCell>
                   <TableCell className="text-muted-foreground">{s.topic ?? "-"}</TableCell>
+                  <TableCell>
+                    {s.difficulty ? (
+                      <Badge variant="outline">{s.difficulty}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
                       <Button

@@ -14,6 +14,7 @@ interface LeaderboardEntry {
   totalQuestions: number;
   accuracyPercentage: number;
   topic: string | null;
+  difficulty: string | null;
   completedAt: Date;
 }
 
@@ -40,6 +41,7 @@ export async function getTopScores(limit: number = 100): Promise<LeaderboardEntr
     totalQuestions: score.totalQuestions,
     accuracyPercentage: Number(score.accuracyPercentage),
     topic: score.topic,
+    difficulty: null, // TODO: Calculate from session questions
     completedAt: score.createdAt,
   }));
 }
@@ -78,6 +80,7 @@ export async function getUserBestScore(username: string): Promise<LeaderboardEnt
     totalQuestions: score.totalQuestions,
     accuracyPercentage: Number(score.accuracyPercentage),
     topic: score.topic,
+    difficulty: null, // TODO: Calculate from session questions
     completedAt: score.createdAt,
   };
 }
@@ -100,6 +103,7 @@ export async function getUserScoreHistory(username: string, limit: number = 50):
     totalQuestions: score.totalQuestions,
     accuracyPercentage: Number(score.accuracyPercentage),
     topic: score.topic,
+    difficulty: null, // TODO: Calculate from session questions
     completedAt: score.createdAt,
   }));
 }

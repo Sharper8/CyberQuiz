@@ -342,3 +342,5 @@
 {"attempt":2,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 23:24:42"}
 {"level":"info","message":"[Buffer] Question generated successfully","questionId":73,"service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 23:26:08"}
 {"attempt":1,"level":"info","message":"[Buffer] Generating question","service":"cyber-quiz","slot":{"difficulty":"Intermediate","domain":"Cybersecurity","granularity":"Technical","skillType":"General"},"timestamp":"2026-01-22 23:26:08"}
+{"event":"login","level":"info","message":"[Auth]","service":"cyber-quiz","sessionId":46,"timestamp":"2026-01-30 12:18:49","username":"azi"}
+{"event":"login","level":"info","message":"[Auth]","service":"cyber-quiz","sessionId":47,"timestamp":"2026-01-30 12:18:56","username":"azie"}
