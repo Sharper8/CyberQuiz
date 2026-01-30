@@ -38,7 +38,7 @@ export async function getGenerationSpaceConfig(): Promise<GenerationSpaceConfig>
         bufferSize: 10,
         autoRefillEnabled: true,
         structuredSpaceEnabled: false,
-        enabledDomains: JSON.stringify([
+        enabledDomains: [
           'Network Security',
           'Application Security',
           'Cloud Security',
@@ -47,26 +47,26 @@ export async function getGenerationSpaceConfig(): Promise<GenerationSpaceConfig>
           'Incident Response',
           'Cryptography',
           'Compliance & Governance'
-        ]),
-        enabledSkillTypes: JSON.stringify([
+        ],
+        enabledSkillTypes: [
           'Detection',
           'Prevention',
           'Analysis',
           'Configuration',
           'Best Practices'
-        ]),
-        enabledDifficulties: JSON.stringify([
+        ],
+        enabledDifficulties: [
           'Beginner',
           'Intermediate',
           'Advanced',
           'Expert'
-        ]),
-        enabledGranularities: JSON.stringify([
+        ],
+        enabledGranularities: [
           'Conceptual',
           'Procedural',
           'Technical',
           'Strategic'
-        ]),
+        ],
       },
     });
   }
@@ -196,10 +196,10 @@ export async function updateGenerationSpaceConfig(config: Partial<GenerationSpac
     where: { id: settings.id },
     data: {
       structuredSpaceEnabled: config.enabled ?? settings.structuredSpaceEnabled,
-      enabledDomains: config.enabledDomains ? JSON.stringify(config.enabledDomains) : settings.enabledDomains,
-      enabledSkillTypes: config.enabledSkillTypes ? JSON.stringify(config.enabledSkillTypes) : settings.enabledSkillTypes,
-      enabledDifficulties: config.enabledDifficulties ? JSON.stringify(config.enabledDifficulties) : settings.enabledDifficulties,
-      enabledGranularities: config.enabledGranularities ? JSON.stringify(config.enabledGranularities) : settings.enabledGranularities,
+      enabledDomains: config.enabledDomains ?? settings.enabledDomains,
+      enabledSkillTypes: config.enabledSkillTypes ?? settings.enabledSkillTypes,
+      enabledDifficulties: config.enabledDifficulties ?? settings.enabledDifficulties,
+      enabledGranularities: config.enabledGranularities ?? settings.enabledGranularities,
     },
   });
 }

@@ -274,6 +274,7 @@ export default function GenerationPage() {
           <li>• La génération commence au démarrage et lorsque des questions sont validées/rejetées</li>
           <li>• Les questions dupliquées sont détectées et filtrées automatiquement</li>
           <li>• Consultez la "Banque de questions" pour examiner et valider les questions générées</li>
+          <li>• Les flux RSS permettent de générer des questions basées sur l'actualité cybersécurité</li>
         </ul>
       </div>
     </div>

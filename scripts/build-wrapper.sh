@@ -22,3 +22,4 @@ npm run build || { echo "âŒ BUILD FAILED"; exit 1; }
 set +x
 
 echo "âœ… Build script completed"
+

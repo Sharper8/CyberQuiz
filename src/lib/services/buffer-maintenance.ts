@@ -13,6 +13,7 @@ import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { upsertEmbedding, searchSimilar } from '../db/qdrant';
 import { generateQuestionHash } from '../utils/question-hash';
 import { logger } from '../logging/logger';
+import { getRssContextForGeneration, markArticlesAsUsed, syncRssSources } from './rss-fetcher';
 
 interface BufferStatus {
   currentSize: number;
@@ -159,12 +160,28 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         slot: config.enabled ? slot : undefined,
       });
 
+      // Sync RSS feeds and build optional context
+      await syncRssSources().catch((error) => {
+        logger.warn('[Buffer] RSS sync failed', { error: error?.message || String(error) });
+      });
+
+      const rssContext = await getRssContextForGeneration(3);
+      const additionalContext = rssContext.context || undefined;
+
+      if (additionalContext) {
+        logger.info('[Buffer] Using RSS context for generation', {
+          articleCount: rssContext.articleIds.length,
+          sources: rssContext.articles.map((a) => a.sourceTitle || a.sourceUrl).filter(Boolean),
+        });
+      }
+
       // Generate question
       const response = await provider.generateQuestion({
         topic: config.enabled ? slot.domain : 'Cybersecurity',
         difficulty: config.enabled ? mapDifficultyToLegacy(slot.difficulty) : 'medium',
         questionType: 'true-false',
         count: 1,
+        additionalContext,
       });
 
       if (!response) {
@@ -188,12 +205,34 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         continue; // Retry with different slot
       }
 
+      const primaryArticle = rssContext.articles[0];
+      const rssSourceId = primaryArticle?.sourceId || null;
+      const rssArticleId = primaryArticle?.id || null;
+      const rssSourceLabel = primaryArticle?.sourceTitle || primaryArticle?.sourceUrl || null;
+
+      const baseTags = Array.isArray(generated.tags) ? generated.tags : [];
+      const rssTags = rssSourceLabel ? ['rss', rssSourceLabel] : ['rss'];
+      const mergedTags = Array.from(new Set([...baseTags, ...(rssContext.articleIds.length > 0 ? rssTags : [])]));
+
+      // Log RSS usage
+      if (rssContext.articleIds.length > 0 && primaryArticle) {
+        logger.info('[Buffer] Using RSS context for generation', {
+          articleTitle: primaryArticle.title,
+          articleLink: primaryArticle.link,
+          sourceTitle: primaryArticle.sourceTitle,
+          sourceUrl: primaryArticle.sourceUrl,
+          rssSourceId,
+          rssArticleId,
+          tags: rssTags
+        });
+      }
+
       // Save question to database
       const question = await prisma.question.create({
         data: {
           questionText: generated.questionText,
           questionHash: generateQuestionHash(generated.questionText),
-          options: JSON.stringify(generated.options || ['Vrai', 'Faux']),
+          options: generated.options || ['Vrai', 'Faux'],
           correctAnswer: generated.correctAnswer || 'Vrai',
           explanation: generated.explanation || '',
           difficulty: generated.estimatedDifficulty || 0.5,
@@ -205,10 +244,16 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           generationSkillType: config.enabled ? slot.skillType : null,
           generationDifficulty: config.enabled ? slot.difficulty : null,
           generationGranularity: config.enabled ? slot.granularity : null,
-          mitreTechniques: JSON.stringify(generated.mitreTechniques || []),
-          tags: JSON.stringify(generated.tags || []),
+          mitreTechniques: generated.mitreTechniques || [],
+          tags: mergedTags,
+          rssSourceId,
+          rssArticleId,
         },
       });
+
+      if (rssContext.articleIds.length > 0) {
+        await markArticlesAsUsed(rssContext.articleIds);
+      }
 
       // Store embedding in Qdrant
       await upsertEmbedding(question.id, embedding, {

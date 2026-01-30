@@ -27,6 +27,11 @@ interface Question {
   generationSkillType?: string;
   generationGranularity?: string;
   potentialDuplicates?: Array<{ id: number; similarity: number }>;
+  tags?: string[];
+  rssSourceId?: number | null;
+  rssArticleId?: number | null;
+  rssSource?: { title: string; url: string } | null;
+  rssArticle?: { title: string; link: string } | null;
 }
 
 interface BufferStatus {
@@ -230,6 +235,11 @@ export function QuestionReviewQueue() {
                       <Badge className="gap-1">
                         <span className="text-xs">AI: {question.aiProvider}</span>
                       </Badge>
+                      {(question.tags?.includes('rss') || question.rssSourceId) && (
+                        <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
+                          <span className="text-xs">RSS: {question.rssSource?.title || question.tags?.find(t => t !== 'rss' && question.tags?.includes('rss')) || 'News'}</span>
+                        </Badge>
+                      )}
                     </div>
                   </div>
 

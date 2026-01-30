@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # Startup script for production
 # Ensures admin user exists before starting the app
 
@@ -150,3 +150,4 @@ curl -X POST http://localhost:3000/api/init || echo "  Background service initia
 
 # Bring server process to foreground
 wait $SERVER_PID
+

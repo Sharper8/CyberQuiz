@@ -67,3 +67,4 @@ echo "   3. Verify NO difficulty percentage shown"
 echo "   4. Verify quality score displays with criteria"
 echo "   5. Click 'VÃ©rifier similitude' to see similar questions"
 echo ""
+

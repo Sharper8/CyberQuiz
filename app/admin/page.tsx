@@ -347,6 +347,19 @@ export default function AdminPage() {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
               const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const tags = (() => {
+                if (!question.tags) return [] as string[];
+                if (Array.isArray(question.tags)) return question.tags as string[];
+                const raw = String(question.tags).trim();
+                if (!raw) return [] as string[];
+                try {
+                  const parsed = JSON.parse(raw);
+                  return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                  return raw.split(',').map(t => t.trim()).filter(Boolean);
+                }
+              })();
+              const rssLabel = tags.includes('rss') ? (tags.find(t => t !== 'rss') || 'RSS') : null;
               const potentialDuplicates = (() => {
                 if (!question.potentialDuplicates) return [];
                 if (Array.isArray(question.potentialDuplicates)) return question.potentialDuplicates;
@@ -390,6 +403,12 @@ export default function AdminPage() {
                           <Sparkles className="h-3 w-3" />
                           {question.aiModel || question.aiProvider || 'unknown'}
                         </Badge>
+
+                        {rssLabel && (
+                          <Badge className="gap-1 bg-blue-600 text-white hover:bg-blue-700">
+                            RSS: {rssLabel}
+                          </Badge>
+                        )}
 
                         {/* Metadata trigger on the same line */}
                         {(question.generationDomain || question.generationSkillType || question.generationDifficulty || question.generationGranularity) && (

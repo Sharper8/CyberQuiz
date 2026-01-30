@@ -43,26 +43,58 @@ function extractJSONFromStreamed(raw: string): any {
       continue;
     }
   }
-  
-  // Now extract JSON from the accumulated response text
-  const start = fullResponse.indexOf('{');
-  const end = fullResponse.lastIndexOf('}');
-  
-  if (start === -1 || end === -1) {
-    console.error('Raw response:', fullResponse);
-    throw new Error('No JSON object found in model output');
+
+  // Extract the first valid JSON object from the accumulated response text
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < fullResponse.length; i++) {
+    const char = fullResponse[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escape = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      continue;
+    }
+
+    if (char === '{') {
+      if (depth === 0) {
+        start = i;
+      }
+      depth++;
+    } else if (char === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        const slice = fullResponse.slice(start, i + 1);
+        try {
+          // Clean out line comments the model sometimes adds (e.g. "// Command and Control")
+          const cleaned = slice.replace(/\/\/.*$/gm, '');
+          return JSON.parse(cleaned);
+        } catch (e) {
+          console.error('Failed to parse JSON slice:', slice);
+          continue;
+        }
+      }
+    }
   }
-  
-  const slice = fullResponse.slice(start, end + 1);
-  
-  try {
-    // Clean out line comments the model sometimes adds (e.g. "// Command and Control")
-    const cleaned = slice.replace(/\/\/.*$/gm, '');
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.error('Failed to parse JSON slice:', slice);
-    throw new Error(`Invalid JSON in model output: ${e}`);
-  }
+
+  console.error('Raw response:', fullResponse);
+  throw new Error('No JSON object found in model output');
 }
 
 export class OllamaProvider implements AIProvider {
@@ -129,7 +161,8 @@ export class OllamaProvider implements AIProvider {
     const prompt = buildGenerationPrompt({
       topic: params.topic,
       difficulty: params.difficulty,
-      questionType: params.questionType
+      questionType: params.questionType,
+      additionalContext: params.additionalContext,
     });
 
     const rawParts: string[] = [];
