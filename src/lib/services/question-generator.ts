@@ -13,8 +13,8 @@ interface GenerationContext {
   provider: AIProvider;
 }
 
-const DUPLICATE_SIMILARITY_THRESHOLD = 0.95;
-const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions
+const DUPLICATE_SIMILARITY_THRESHOLD = 0.97; // 97% similarity = strict duplicate
+const SEMANTIC_SIMILARITY_THRESHOLD = 0.75; // Show admin similar questions (75-97% range)
 const MAX_GENERATION_RETRIES = 3;
 const CACHE_TARGET = 5; // Keep 5 questions in to_review cache per category
 

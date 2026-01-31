@@ -37,7 +37,7 @@ const lastGenerationStatus: BufferStatus['lastGeneration'] = {
   inFlight: false,
 };
 
-const SEMANTIC_DUPLICATE_THRESHOLD = 0.90; // Higher than display threshold
+const SEMANTIC_DUPLICATE_THRESHOLD = 0.97; // Higher than display threshold (97% similarity = strict duplicate)
 const MAX_GENERATION_RETRIES = 3;
 const RECENT_QUESTIONS_WINDOW_HOURS = 48; // Check against questions from last 48h
 
@@ -207,7 +207,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
 
       // Find similar questions for admin review (lower threshold than duplicate detection)
       const SIMILARITY_DISPLAY_THRESHOLD = 0.75;
-      const DUPLICATE_THRESHOLD = 0.90;
+      const DUPLICATE_THRESHOLD = 0.97;
       const similarQuestions = await searchSimilar(embedding, 10);
       const potentialDuplicates = similarQuestions
         .filter(r => r.score > SIMILARITY_DISPLAY_THRESHOLD && r.score <= DUPLICATE_THRESHOLD)
