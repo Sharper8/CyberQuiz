@@ -181,9 +181,9 @@ function QuizContent() {
     if (answered) return; // Stop when answered
     
     if (timeLeft <= 0) {
-      // Time's up! Auto-submit as wrong answer
+      // Time's up! Auto-submit as timeout (null = no answer selected)
       if (!answered) {
-        handleAnswer(false, true); // Submit wrong answer with time expired flag
+        handleAnswer(null, true); // Submit timeout with null answer
       }
       return;
     }
@@ -238,7 +238,7 @@ function QuizContent() {
   const handleStopQuiz = async () => {
     setStoppingQuiz(true);
     try {
-      const finalScore = answered ? score + (selectedAnswer === currentQuestion.answer ? 1 : 0) : score;
+      const finalScore = answered ? score + (selectedAnswer === currentQuestion.answer ? 10 : 0) : score;
       const totalQuestions = questionsAnswered + (answered ? 1 : 0);
       console.log('[handleStopQuiz] Stopping quiz:', {
         finalScore,
@@ -247,10 +247,10 @@ function QuizContent() {
         answered,
       });
       await saveScore(finalScore, totalQuestions);
+      router.push(`/score?score=${finalScore}&total=${totalQuestions}&mode=${mode}&pseudo=${pseudo}`);
     } catch (error) {
       console.error('Error saving score:', error);
-    } finally {
-      router.push("/");
+      router.push(`/score?score=${score}&total=${questionsAnswered}&mode=${mode}&pseudo=${pseudo}`);
     }
   };
 
@@ -287,7 +287,6 @@ function QuizContent() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
 
   const saveScore = async (finalScore: number, totalQuestions: number) => {
     try {
@@ -353,12 +352,12 @@ function QuizContent() {
       setAnswered(false);
       setSelectedAnswer(null);
       setIsTimeExpired(false); // Reset timeout flag
-      setAnswerTimeLeft(10);
+      setAnswerTimeLeft(null); // Reset answer countdown - only appears after answering
       setTimeLeft(10); // Reset to 10 seconds for next question
       setQuestionStartTime(Date.now());
       setElapsedTime(0);
     } else {
-      const finalScore = score + (selectedAnswer === currentQuestion.answer ? 1 : 0);
+      const finalScore = score + (selectedAnswer === currentQuestion.answer ? 10 : 0);
       console.log('[handleNextQuestion] Quiz complete:', {
         finalScore,
         totalQuestions,
@@ -402,11 +401,6 @@ function QuizContent() {
           </div>
           
           <div />
-        </div>
-
-        {/* Progress bar */}
-        <div className="space-y-2">
-          <Progress value={progress} className="h-2 bg-secondary/20" />
         </div>
 
         {/* Question Card with Timer Animation */}
@@ -498,8 +492,8 @@ function QuizContent() {
                     </div>
                   )}
                   
-                  {/* Auto-advance countdown - for correct answers */}
-                  {selectedAnswer === currentQuestion.answer && answerTimeLeft !== null && (
+                  {/* Auto-advance countdown - for correct answers ONLY (not timeouts) */}
+                  {selectedAnswer === currentQuestion.answer && !isTimeExpired && answerTimeLeft !== null && (
                     <div className="mt-4 pt-4 border-t border-border space-y-3">
                       <div>
                         <p className="text-xs text-muted-foreground mb-2">

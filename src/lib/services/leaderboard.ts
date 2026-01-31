@@ -14,6 +14,7 @@ interface LeaderboardEntry {
   totalQuestions: number;
   accuracyPercentage: number;
   topic: string | null;
+  difficulty: string | null;
   completedAt: Date;
 }
 
@@ -22,6 +23,12 @@ interface LeaderboardEntry {
  * Returns top N entries, sorted by score descending
  */
 export async function getTopScores(limit: number = 100): Promise<LeaderboardEntry[]> {
+  // Get list of banned usernames
+  const bannedUsers = await prisma.bannedUser.findMany({
+    select: { username: true },
+  });
+  const bannedUsernames = new Set(bannedUsers.map(u => u.username));
+
   const scores = await prisma.score.findMany({
     where: {
       createdAt: {
@@ -29,10 +36,15 @@ export async function getTopScores(limit: number = 100): Promise<LeaderboardEntr
       },
     },
     orderBy: [{ score: 'desc' }, { createdAt: 'asc' }], // Tiebreaker: earliest completion wins
-    take: limit,
+    take: limit * 2, // Fetch more to account for banned users
   });
 
-  return scores.map((score, index) => ({
+  // Filter out banned users and limit results
+  const filteredScores = scores
+    .filter(score => !bannedUsernames.has(score.username))
+    .slice(0, limit);
+
+  return filteredScores.map((score, index) => ({
     id: score.id,
     rank: index + 1,
     username: score.username,
@@ -40,6 +52,7 @@ export async function getTopScores(limit: number = 100): Promise<LeaderboardEntr
     totalQuestions: score.totalQuestions,
     accuracyPercentage: Number(score.accuracyPercentage),
     topic: score.topic,
+    difficulty: null, // TODO: Calculate from session questions
     completedAt: score.createdAt,
   }));
 }
@@ -78,6 +91,7 @@ export async function getUserBestScore(username: string): Promise<LeaderboardEnt
     totalQuestions: score.totalQuestions,
     accuracyPercentage: Number(score.accuracyPercentage),
     topic: score.topic,
+    difficulty: null, // TODO: Calculate from session questions
     completedAt: score.createdAt,
   };
 }
@@ -100,6 +114,7 @@ export async function getUserScoreHistory(username: string, limit: number = 50):
     totalQuestions: score.totalQuestions,
     accuracyPercentage: Number(score.accuracyPercentage),
     topic: score.topic,
+    difficulty: null, // TODO: Calculate from session questions
     completedAt: score.createdAt,
   }));
 }

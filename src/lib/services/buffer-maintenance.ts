@@ -11,9 +11,9 @@ import { selectGenerationSlot, getGenerationSpaceConfig, linkQuestionToSlot } fr
 import { getAIProvider } from '../ai/provider-factory';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { upsertEmbedding, searchSimilar } from '../db/qdrant';
-import { findSimilarQuestions } from './question-generator';
 import { generateQuestionHash } from '../utils/question-hash';
 import { logger } from '../logging/logger';
+import { getRssContextForGeneration, markArticlesAsUsed, syncRssSources } from './rss-fetcher';
 
 interface BufferStatus {
   currentSize: number;
@@ -37,7 +37,7 @@ const lastGenerationStatus: BufferStatus['lastGeneration'] = {
   inFlight: false,
 };
 
-const SEMANTIC_DUPLICATE_THRESHOLD = 0.90; // Higher than display threshold
+const SEMANTIC_DUPLICATE_THRESHOLD = 0.97; // Higher than display threshold (97% similarity = strict duplicate)
 const MAX_GENERATION_RETRIES = 3;
 const RECENT_QUESTIONS_WINDOW_HOURS = 48; // Check against questions from last 48h
 
@@ -78,41 +78,14 @@ export async function ensureBufferFilled(): Promise<void> {
   const questionsNeeded = status.targetSize - status.currentSize;
 
   if (questionsNeeded <= 0) {
-    logger.info('[Buffer] Buffer is full or over capacity', { 
-      currentSize: status.currentSize, 
-      targetSize: status.targetSize,
-      queuedJobs: generationQueue.length 
-    });
-    // Clear any remaining queued jobs if buffer is already full
-    if (generationQueue.length > 0) {
-      logger.info('[Buffer] Clearing queued jobs as buffer is full', { cleared: generationQueue.length });
-      generationQueue.length = 0;
-    }
+    logger.info('[Buffer] Buffer is full', { currentSize: status.currentSize, targetSize: status.targetSize });
     return;
   }
 
-  // Check how many jobs are already queued
-  const alreadyQueued = generationQueue.length;
-  const jobsToAdd = Math.max(0, questionsNeeded - alreadyQueued);
-
-  if (jobsToAdd <= 0) {
-    logger.info('[Buffer] Enough jobs already queued', { 
-      questionsNeeded, 
-      alreadyQueued,
-      currentSize: status.currentSize 
-    });
-    return;
-  }
-
-  logger.info('[Buffer] Refilling buffer', { 
-    questionsNeeded, 
-    alreadyQueued, 
-    jobsToAdd,
-    currentSize: status.currentSize 
-  });
+  logger.info('[Buffer] Refilling buffer', { questionsNeeded, currentSize: status.currentSize });
 
   // Queue generation jobs (non-blocking)
-  for (let i = 0; i < jobsToAdd; i++) {
+  for (let i = 0; i < questionsNeeded; i++) {
     queueGeneration();
   }
 
@@ -147,18 +120,6 @@ async function processQueue(): Promise<void> {
   lastGenerationStatus.inFlight = true;
 
   while (generationQueue.length > 0) {
-    // Check if buffer is already full before processing next job
-    const status = await getBufferStatus();
-    if (status.currentSize >= status.targetSize) {
-      logger.info('[Buffer] Target reached, clearing remaining queue', {
-        currentSize: status.currentSize,
-        targetSize: status.targetSize,
-        remainingJobs: generationQueue.length,
-      });
-      generationQueue.length = 0; // Clear the queue
-      break;
-    }
-
     const job = generationQueue.shift();
     if (job) {
       lastGenerationStatus.lastStartedAt = new Date().toISOString();
@@ -199,12 +160,28 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         slot: config.enabled ? slot : undefined,
       });
 
+      // Sync RSS feeds and build optional context
+      await syncRssSources().catch((error) => {
+        logger.warn('[Buffer] RSS sync failed', { error: error?.message || String(error) });
+      });
+
+      const rssContext = await getRssContextForGeneration(3);
+      const additionalContext = rssContext.context || undefined;
+
+      if (additionalContext) {
+        logger.info('[Buffer] Using RSS context for generation', {
+          articleCount: rssContext.articleIds.length,
+          sources: rssContext.articles.map((a) => a.sourceTitle || a.sourceUrl).filter(Boolean),
+        });
+      }
+
       // Generate question
       const response = await provider.generateQuestion({
         topic: config.enabled ? slot.domain : 'Cybersecurity',
         difficulty: config.enabled ? mapDifficultyToLegacy(slot.difficulty) : 'medium',
         questionType: 'true-false',
         count: 1,
+        additionalContext,
       });
 
       if (!response) {
@@ -228,15 +205,46 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
         continue; // Retry with different slot
       }
 
-      // Find similar questions for admin review
-      const potentialDuplicates = await findSimilarQuestions(embedding);
+      // Find similar questions for admin review (lower threshold than duplicate detection)
+      const SIMILARITY_DISPLAY_THRESHOLD = 0.75;
+      const DUPLICATE_THRESHOLD = 0.97;
+      const similarQuestions = await searchSimilar(embedding, 10);
+      const potentialDuplicates = similarQuestions
+        .filter(r => r.score > SIMILARITY_DISPLAY_THRESHOLD && r.score <= DUPLICATE_THRESHOLD)
+        .map(r => ({ id: r.id, similarity: Number(r.score.toFixed(2)) }));
 
-      // Save question to database
+      if (potentialDuplicates.length > 0) {
+        logger.info('[Buffer] Found similar questions for admin review', { count: potentialDuplicates.length });
+      }
+
+      const primaryArticle = rssContext.articles[0];
+      const rssSourceId = primaryArticle?.sourceId || null;
+      const rssArticleId = primaryArticle?.id || null;
+      const rssSourceLabel = primaryArticle?.sourceTitle || primaryArticle?.sourceUrl || null;
+
+      const baseTags = Array.isArray(generated.tags) ? generated.tags : [];
+      const rssTags = rssSourceLabel ? ['rss', rssSourceLabel] : ['rss'];
+      const mergedTags = Array.from(new Set([...baseTags, ...(rssContext.articleIds.length > 0 ? rssTags : [])]));
+
+      // Log RSS usage
+      if (rssContext.articleIds.length > 0 && primaryArticle) {
+        logger.info('[Buffer] Using RSS context for generation', {
+          articleTitle: primaryArticle.title,
+          articleLink: primaryArticle.link,
+          sourceTitle: primaryArticle.sourceTitle,
+          sourceUrl: primaryArticle.sourceUrl,
+          rssSourceId,
+          rssArticleId,
+          tags: rssTags
+        });
+      }
+
+      // Save question to database with potential duplicates for admin review
       const question = await prisma.question.create({
         data: {
           questionText: generated.questionText,
           questionHash: generateQuestionHash(generated.questionText),
-          options: JSON.stringify(generated.options || ['Vrai', 'Faux']),
+          options: generated.options || ['Vrai', 'Faux'],
           correctAnswer: generated.correctAnswer || 'Vrai',
           explanation: generated.explanation || '',
           difficulty: generated.estimatedDifficulty || 0.5,
@@ -248,11 +256,17 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           generationSkillType: config.enabled ? slot.skillType : null,
           generationDifficulty: config.enabled ? slot.difficulty : null,
           generationGranularity: config.enabled ? slot.granularity : null,
-          mitreTechniques: JSON.stringify(generated.mitreTechniques || []),
-          tags: JSON.stringify(generated.tags || []),
+          mitreTechniques: generated.mitreTechniques || [],
+          tags: mergedTags,
           potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
+          rssSourceId,
+          rssArticleId,
         },
       });
+
+      if (rssContext.articleIds.length > 0) {
+        await markArticlesAsUsed(rssContext.articleIds);
+      }
 
       // Store embedding in Qdrant
       await upsertEmbedding(question.id, embedding, {
@@ -355,6 +369,10 @@ export async function updateBufferSettings(updates: {
 }): Promise<void> {
   const settings = await getOrCreateSettings();
   
+  // Check if auto-refill is being enabled (changed from false to true)
+  const wasAutoRefillDisabled = settings.autoRefillEnabled === false;
+  const isEnablingAutoRefill = updates.autoRefillEnabled === true && wasAutoRefillDisabled;
+  
   await prisma.generationSettings.update({
     where: { id: settings.id },
     data: updates,
@@ -362,8 +380,8 @@ export async function updateBufferSettings(updates: {
 
   logger.info('[Buffer] Settings updated', updates);
 
-  // If auto-refill was just enabled, check buffer
-  if (updates.autoRefillEnabled) {
+  // If auto-refill was just enabled (changed from false to true), check buffer
+  if (isEnablingAutoRefill) {
     await ensureBufferFilled();
   }
 }

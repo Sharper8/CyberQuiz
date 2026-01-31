@@ -35,6 +35,12 @@ model Question {
   generationDifficulty String?      // Beginner, Intermediate, Advanced, Expert
   generationGranularity String?     // Conceptual, Procedural, Technical, Strategic
   
+  // RSS Feed source tracking
+  rssSourceId     Int?              // RSS source this question was based on
+  rssSource       RssSource?        @relation(fields: [rssSourceId], references: [id], onDelete: SetNull)
+  rssArticleId    Int?              // Specific article this question was based on
+  rssArticle      RssArticle?       @relation(fields: [rssArticleId], references: [id], onDelete: SetNull)
+  
   potentialDuplicates Json?        // [{id: 123, similarity: 0.85}, ...] for admin review
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
@@ -48,6 +54,8 @@ model Question {
   @@index([isRejected])
   @@index([createdAt])
   @@index([questionHash])
+  @@index([rssSourceId])
+  @@index([rssArticleId])
 }
 
 model QuestionMetadata {
@@ -159,12 +167,18 @@ model GenerationSettings {
   defaultModel          String    @default("ollama:mistral:7b") // Default AI model
   fallbackModel         String    @default("ollama:mistral:7b") // Fallback if default fails
   
+  // RSS Feed configuration
+  rssEnabled            Boolean   @default(false) // Enable RSS-based question generation
+  useRssAsContext       Boolean   @default(true) // Use RSS content as context for generation
+  rssRefreshIntervalMin Int       @default(60) // Refresh RSS feeds every N minutes
+  
   // Legacy fields for backwards compatibility
   maxConcurrentGeneration Int    @default(5)
   
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   generationLogs        GenerationLog[]
+  rssSources            RssSource[]
 }
 
 model BannedWord {
@@ -230,4 +244,46 @@ model GenerationSlotHistory {
   
   @@index([usedAt])
   @@index([domain, skillType, difficulty, granularity])
+}
+
+// RSS Feed management for content-based question generation
+model RssSource {
+  id                Int       @id @default(autoincrement())
+  settingsId        Int
+  settings          GenerationSettings @relation(fields: [settingsId], references: [id], onDelete: Cascade)
+  url               String    @db.Text // Feed URL
+  title             String?   // Feed title (cached from metadata)
+  enabled           Boolean   @default(true)
+  refreshIntervalMin Int      @default(60) // Override global interval
+  lastFetchedAt     DateTime?
+  lastFetchError    String?
+  articles          RssArticle[]
+  questions         Question[] // Questions generated from this source
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@unique([settingsId, url])
+  @@index([enabled])
+  @@index([lastFetchedAt])
+}
+
+// Cached RSS articles for reference
+model RssArticle {
+  id              Int       @id @default(autoincrement())
+  sourceId        Int
+  source          RssSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  title           String    @db.Text
+  link            String    @db.Text
+  description     String?   @db.Text
+  content         String?   @db.Text // Full article content if available
+  pubDate         DateTime?
+  guid            String?   // RSS GUID for deduplication
+  usedForQuestion Boolean   @default(false) // Mark if already used for generation
+  lastUsedAt      DateTime?
+  questions       Question[] // Questions generated from this article
+  createdAt       DateTime  @default(now())
+  
+  @@unique([sourceId, guid])
+  @@index([sourceId, usedForQuestion])
+  @@index([pubDate])
 }

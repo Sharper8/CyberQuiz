@@ -1,20 +1,20 @@
-#!/bin/sh
+﻿#!/bin/bash
 # Startup script for production
 # Ensures admin user exists before starting the app
 
-echo "ðŸš€ [Startup] Initializing CyberQuiz..."
+echo "[Startup] Initializing CyberQuiz..."
 
 # Regenerate Prisma Client with runtime DATABASE_URL
-echo "ðŸ”§ [Startup] Regenerating Prisma Client..."
+echo "[Startup] Regenerating Prisma Client..."
 npx prisma generate
 
 # Run database migrations
-echo "ðŸ“¦ [Startup] Running database migrations..."
+echo "[Startup] Running database migrations..."
 npx prisma migrate deploy
 
 # Ensure admin user exists
-echo "ðŸ‘¤ [Startup] Ensuring admin user..."
-node -e "
+echo "[Startup] Ensuring admin user..."
+node << 'EOJS'
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
@@ -44,20 +44,20 @@ async function ensureAdmin() {
       }
     });
 
-    console.log('[Admin] âœ… Created admin user:', adminEmail);
+    console.log('[Admin] Created admin user:', adminEmail);
   } catch (error) {
-    console.error('[Admin] âŒ Failed:', error.message);
+    console.error('[Admin] Failed:', error.message);
   } finally {
-    await prisma.\$disconnect();
+    await prisma.$disconnect();
   }
 }
 
 ensureAdmin().catch(console.error);
-"
+EOJS
 
 # Ensure generation settings exist
-echo "⚙️  [Startup] Ensuring generation settings..."
-node -e "
+echo "[Startup] Ensuring generation settings..."
+node << 'EOJS'
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient();
@@ -67,48 +67,87 @@ async function ensureSettings() {
     const settings = await prisma.generationSettings.findFirst();
 
     if (!settings) {
-      console.log('  ℹ️  No generation settings found, creating defaults...');
+      console.log('  No generation settings found, creating defaults...');
+      
+      const domains = [
+        'Network Security',
+        'Application Security',
+        'Cloud Security',
+        'Identity & Access',
+        'Threat Intelligence',
+        'Incident Response',
+        'Cryptography',
+        'Compliance & Governance'
+      ];
+
+      const skillTypes = [
+        'Detection',
+        'Prevention',
+        'Analysis',
+        'Configuration',
+        'Best Practices'
+      ];
+
+      const difficulties = [
+        'Beginner',
+        'Intermediate',
+        'Advanced',
+        'Expert'
+      ];
+
+      const granularities = [
+        'Conceptual',
+        'Procedural',
+        'Technical',
+        'Strategic'
+      ];
       
       await prisma.generationSettings.create({
         data: {
-          targetPoolSize: 50,
-          autoGenerateEnabled: true,
-          generationTopic: 'Cybersecurity',
-          generationDifficulty: 'medium',
+          bufferSize: 50,
+          autoRefillEnabled: true,
+          structuredSpaceEnabled: false,
+          enabledDomains: domains,
+          enabledSkillTypes: skillTypes,
+          enabledDifficulties: difficulties,
+          enabledGranularities: granularities,
+          defaultModel: 'ollama:mistral:7b',
+          fallbackModel: 'ollama:mistral:7b',
           maxConcurrentGeneration: 10,
         },
       });
 
-      console.log('  ✓ Created default generation settings');
+      console.log('  Created default generation settings');
     } else {
-      console.log('  ✓ Generation settings already configured');
-      console.log(\`    - Target pool size: \${settings.targetPoolSize}\`);
-      console.log(\`    - Auto-generate: \${settings.autoGenerateEnabled ? 'enabled' : 'disabled'}\`);
+      console.log('  Generation settings already configured');
+      console.log(`    - Buffer size: ${settings.bufferSize}`);
+      console.log(`    - Auto-refill: ${settings.autoRefillEnabled ? 'enabled' : 'disabled'}`);
     }
   } catch (error) {
-    console.error('  ❌ Failed to ensure generation settings:', error.message);
+    console.error('  Failed to ensure generation settings:', error.message);
   } finally {
-    await prisma.\$disconnect();
+    await prisma.$disconnect();
   }
 }
 
 ensureSettings().catch(console.error);
-"
+EOJS
 
-echo "✅ [Startup] Initialization complete!"
-echo "🚀 [Startup] Starting Next.js server..."
+echo "[Startup] Initialization complete!"
+echo "[Startup] Starting Next.js server..."
 
 # Start the Next.js server in the background to allow initialization
 node server.js &
 SERVER_PID=$!
 
 # Wait for server to be ready
-echo "⏳ [Startup] Waiting for server to be ready..."
+echo "[Startup] Waiting for server to be ready..."
 sleep 5
 
 # Initialize background services via API
-echo "🔄 [Startup] Starting background services..."
-curl -X POST http://localhost:3000/api/init || echo "  ⚠️  Background service initialization failed (will retry on next request)"
+echo "[Startup] Starting background services..."
+curl -X POST http://localhost:3000/api/init || echo "  Background service initialization failed (will retry on next request)"
 
 # Bring server process to foreground
 wait $SERVER_PID
+

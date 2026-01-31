@@ -28,6 +28,40 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
+// Translation mappings for generation metadata
+const TRANSLATION_MAP: Record<string, string> = {
+  // Domains
+  'Network Security': 'Sécurité Réseau',
+  'Application Security': 'Sécurité Applicative',
+  'Cloud Security': 'Sécurité Cloud',
+  'Identity & Access': 'Identité & Accès',
+  'Threat Intelligence': 'Renseignement sur les Menaces',
+  'Incident Response': 'Réponse aux Incidents',
+  'Cryptography': 'Cryptographie',
+  'Compliance & Governance': 'Conformité & Gouvernance',
+  // Skill Types
+  'Detection': 'Détection',
+  'Prevention': 'Prévention',
+  'Analysis': 'Analyse',
+  'Configuration': 'Configuration',
+  'Best Practices': 'Bonnes Pratiques',
+  // Difficulties
+  'Beginner': 'Débutant',
+  'Intermediate': 'Intermédiaire',
+  'Advanced': 'Avancé',
+  'Expert': 'Expert',
+  // Granularities
+  'Conceptual': 'Conceptuel',
+  'Procedural': 'Procédural',
+  'Technical': 'Technique',
+  'Strategic': 'Stratégique',
+};
+
+const translateValue = (value: string | null | undefined): string => {
+  if (!value) return '';
+  return TRANSLATION_MAP[value] || value;
+};
+
 export default function AdminPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -346,13 +380,27 @@ export default function AdminPage() {
             paginatedQuestions.map((question) => {
               // Parse JSON fields if they're strings
               const questionText = question.questionText || question.question || '';
-              const rawAnswer = question.correctAnswer || (question.answer ? 'Vrai' : 'Faux');
+              const correctAnswer = question.correctAnswer || (question.answer ? 'True' : 'False');
+              const rawAnswer = correctAnswer;
               // Normalize answer to handle all possible formats (True/False, Vrai/Faux, true/false)
               const isCorrectTrue = 
                 String(rawAnswer).toLowerCase() === 'true' ||
                 String(rawAnswer).toLowerCase() === 'vrai' ||
                 String(rawAnswer) === '1' ||
                 String(rawAnswer).toLowerCase() === 'yes';
+              const tags = (() => {
+                if (!question.tags) return [] as string[];
+                if (Array.isArray(question.tags)) return question.tags as string[];
+                const raw = String(question.tags).trim();
+                if (!raw) return [] as string[];
+                try {
+                  const parsed = JSON.parse(raw);
+                  return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                  return raw.split(',').map(t => t.trim()).filter(Boolean);
+                }
+              })();
+              const rssLabel = tags.includes('rss') ? (tags.find(t => t !== 'rss') || 'RSS') : null;
               const potentialDuplicates = (() => {
                 if (!question.potentialDuplicates) return [];
                 if (Array.isArray(question.potentialDuplicates)) return question.potentialDuplicates;
@@ -397,6 +445,12 @@ export default function AdminPage() {
                           {question.aiModel || question.aiProvider || 'unknown'}
                         </Badge>
 
+                        {rssLabel && (
+                          <Badge className="gap-1 bg-blue-600 text-white hover:bg-blue-700">
+                            RSS: {rssLabel}
+                          </Badge>
+                        )}
+
                         {/* Metadata trigger on the same line */}
                         {(question.generationDomain || question.generationSkillType || question.generationDifficulty || question.generationGranularity) && (
                           <Badge
@@ -421,25 +475,25 @@ export default function AdminPage() {
                             {question.generationDomain && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Domaine</span>
-                                <span className="text-foreground">{question.generationDomain}</span>
+                                <span className="text-foreground">{translateValue(question.generationDomain)}</span>
                               </div>
                             )}
                             {question.generationSkillType && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Compétence</span>
-                                <span className="text-foreground">{question.generationSkillType}</span>
+                                <span className="text-foreground">{translateValue(question.generationSkillType)}</span>
                               </div>
                             )}
                             {question.generationDifficulty && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Difficulté</span>
-                                <span className="text-foreground">{question.generationDifficulty}</span>
+                                <span className="text-foreground">{translateValue(question.generationDifficulty)}</span>
                               </div>
                             )}
                             {question.generationGranularity && (
                               <div className="bg-muted/40 rounded p-2">
                                 <span className="block text-muted-foreground font-semibold mb-1">Granularité</span>
-                                <span className="text-foreground">{question.generationGranularity}</span>
+                                <span className="text-foreground">{translateValue(question.generationGranularity)}</span>
                               </div>
                             )}
                           </div>

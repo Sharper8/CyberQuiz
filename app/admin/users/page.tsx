@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, User, Shield, Calendar, Clock, Lock, Users, Trophy, Gamepad2, Trash2, Gavel, Undo2 } from "lucide-react";
+import { Plus, User, Shield, Calendar, Clock, Lock, Users, Trophy, Gamepad2, Trash2, Gavel, Undo2, Ban } from "lucide-react";
 import CyberButton from "@/components/CyberButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -262,7 +262,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         {/* ADMINS SECTION */}
         <div className="bg-card border border-border rounded-lg p-6 space-y-6">
           <div className="flex items-center justify-between">
@@ -560,6 +560,68 @@ export default function AdminUsersPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* BANNED USERS SECTION */}
+      <div className="bg-card border border-destructive/30 rounded-lg p-6 space-y-6">
+        <div className="flex items-center gap-2">
+          <Gavel className="h-5 w-5 text-destructive" />
+          <h2 className="text-xl font-bold">Pseudos bannis ({bannedUsers.length})</h2>
+        </div>
+
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">Chargement...</div>
+        ) : bannedUsers.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground bg-muted/20 rounded-lg border border-dashed border-border">
+            Aucun pseudo banni.
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+            {bannedUsers.map((bannedUser) => (
+              <div
+                key={bannedUser.id}
+                className="flex items-center justify-between p-4 rounded-lg border bg-destructive/10 border-destructive/50 transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center bg-destructive/20 text-destructive">
+                    <Ban className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-destructive line-through">
+                      {bannedUser.username}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(bannedUser.bannedAt).toLocaleDateString('fr-FR', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </span>
+                      {bannedUser.reason && (
+                        <>
+                          <span>•</span>
+                          <span className="italic">{bannedUser.reason}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <CyberButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleUnbanUser(bannedUser.username)}
+                  className="h-8 w-8 p-0 flex items-center justify-center text-green-500 border-green-500/50 hover:bg-green-500/10"
+                  title="Débannir"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </CyberButton>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

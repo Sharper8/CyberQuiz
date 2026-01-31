@@ -44,3 +44,5 @@ echo "âœ… Ollama server started and models pulled"
 
 # Keep container running
 wait $OLLAMA_PID
+
+

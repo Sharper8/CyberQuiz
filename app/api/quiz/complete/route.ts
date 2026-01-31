@@ -39,7 +39,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate accuracy percentage (avoid division by zero)
-    const accuracyPercentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+    // Score is in points (10 per correct answer), so divide by 10 to get number of correct answers
+    const correctAnswers = score / 10;
+    const accuracyPercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
     // Create score record
     const scoreRecord = await prisma.score.create({

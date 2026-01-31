@@ -303,7 +303,83 @@ async function main() {
 
   console.log(`✅ Admin user created: ${admin.email}`);
 
-  // 2. Create seed questions
+  // 2. Create or get GenerationSettings
+  console.log('⚙️  Setting up generation configuration...');
+  const generationSettings = await prisma.generationSettings.upsert({
+    where: { id: 1 },
+    update: {},
+    create: {
+      bufferSize: 50,
+      autoRefillEnabled: true,
+      structuredSpaceEnabled: false,
+      enabledDomains: ["Network Security", "Application Security", "Cloud Security", "Identity & Access", "Threat Intelligence", "Incident Response", "Cryptography", "Compliance & Governance"],
+      enabledSkillTypes: ["Detection", "Prevention", "Analysis", "Configuration", "Best Practices"],
+      enabledDifficulties: ["Beginner", "Intermediate", "Advanced", "Expert"],
+      enabledGranularities: ["Conceptual", "Procedural", "Technical", "Strategic"],
+      defaultModel: "ollama:mistral:7b",
+      fallbackModel: "ollama:mistral:7b",
+      rssEnabled: true,
+      useRssAsContext: true,
+      rssRefreshIntervalMin: 60,
+    },
+  });
+  console.log(`✅ Generation settings configured`);
+
+  // 3. Create default RSS feeds
+  console.log('📡 Creating default RSS feeds...');
+  
+  const defaultFeeds = [
+    {
+      name: 'BleepingComputer',
+      url: 'https://www.bleepingcomputer.com/feed/',
+      description: 'Cybersecurity news and incident reporting',
+      enabled: true,
+    },
+    {
+      name: 'Krebs on Security',
+      url: 'https://krebsonsecurity.com/feed/',
+      description: 'Security news and in-depth investigations',
+      enabled: true,
+    },
+    {
+      name: 'The Hacker News',
+      url: 'https://feeds.feedburner.com/TheHackersNews',
+      description: 'Latest cybersecurity news and trends',
+      enabled: true,
+    },
+  ];
+
+  let feedsCreated = 0;
+  for (const feed of defaultFeeds) {
+    try {
+      await prisma.rssSource.upsert({
+        where: { 
+          settingsId_url: {
+            settingsId: generationSettings.id,
+            url: feed.url,
+          }
+        },
+        update: {
+          title: feed.name,
+          enabled: feed.enabled,
+        },
+        create: {
+          settingsId: generationSettings.id,
+          title: feed.name,
+          url: feed.url,
+          enabled: feed.enabled,
+        },
+      });
+      feedsCreated++;
+      console.log(`   ✓ ${feed.name}`);
+    } catch (error) {
+      console.error(`   ✗ Failed to create feed "${feed.name}":`, error);
+    }
+  }
+
+  console.log(`✅ Created/updated ${feedsCreated} default RSS feeds`);
+
+  // 4. Create seed questions
   console.log(`📝 Creating ${seedQuestions.length} seed questions...`);
   
   let createdCount = 0;
@@ -438,6 +514,7 @@ async function main() {
   console.log('\n🎉 Database seeded successfully!');
   console.log('\n📊 Summary:');
   console.log(`   - 1 admin user (${ADMIN_EMAIL})`);
+  console.log(`   - ${feedsCreated} default RSS feeds for content-based question generation`);
   console.log(`   - ${createdCount} validated questions across 9 categories`);
   console.log(`   - 1 sample quiz session`);
   console.log(`   - ${sampleScores.length} leaderboard entries`);

@@ -91,3 +91,4 @@ echo "âœ… Tests terminÃ©s!"
 echo ""
 echo "ðŸ“ Fichiers gÃ©nÃ©rÃ©s:"
 ls -lh export_test_* 2>/dev/null || echo "   (aucun fichier)"
+

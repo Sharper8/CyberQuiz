@@ -43,6 +43,7 @@ export interface Score {
   totalQuestions: number;
   accuracyPercentage: number;
   topic: string | null;
+  difficulty: string | null;
   completedAt: Date;
 }
 

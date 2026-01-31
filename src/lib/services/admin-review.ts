@@ -40,6 +40,20 @@ export async function getPendingQuestions(
       orderBy: { createdAt: 'desc' },
       include: {
         metadata: true,
+        rssSource: {
+          select: {
+            id: true,
+            title: true,
+            url: true,
+          },
+        },
+        rssArticle: {
+          select: {
+            id: true,
+            title: true,
+            link: true,
+          },
+        },
       },
     }),
     prisma.question.count({ where }),

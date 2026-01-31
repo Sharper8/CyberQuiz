@@ -16,6 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { RssFeedsPanel } from './RssFeedsPanel';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +39,8 @@ interface GenerationSettings {
   autoRefillEnabled: boolean;
   defaultModel: string;
   fallbackModel: string;
+  rssEnabled?: boolean;
+  useRssAsContext?: boolean;
   structuredSpace: {
     enabled: boolean;
     enabledDomains: string[];
@@ -119,7 +123,11 @@ export function GenerationSettingsPanel() {
       const res = await fetch('/api/admin/buffer/settings');
       if (res.ok) {
         const data = await res.json();
-        setSettings(data);
+        setSettings({
+          ...data,
+          rssEnabled: data.rssEnabled ?? false,
+          useRssAsContext: data.useRssAsContext ?? true,
+        });
       }
     } catch (error) {
       console.error('[Settings] Fetch error:', error);
@@ -300,7 +308,7 @@ export function GenerationSettingsPanel() {
   return (
     <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <DialogTrigger asChild>
-        <CyberButton variant="outline" size="lg">
+        <CyberButton variant="outline" size="lg" onClick={fetchSettings}>
           <Settings className="h-5 w-5 mr-2" />
           Paramètres de Génération
         </CyberButton>
@@ -309,13 +317,21 @@ export function GenerationSettingsPanel() {
         <DialogHeader>
           <DialogTitle>Paramètres de Génération</DialogTitle>
           <DialogDescription>
-            Configurer la taille du buffer, l'espace de génération structuré et la sélection de modèle
+            Configurer la taille du buffer, l'espace de génération structuré, la sélection de modèle et les flux RSS
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Buffer Configuration */}
-          <Card>
+        <Tabs defaultValue="general" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="general">Général</TabsTrigger>
+            <TabsTrigger value="space">Espace Structuré</TabsTrigger>
+            <TabsTrigger value="rss">Flux RSS</TabsTrigger>
+          </TabsList>
+
+          {/* TAB: General Settings */}
+          <TabsContent value="general" className="space-y-6">
+            {/* Buffer Configuration */}
+            <Card>
             <CardHeader>
               <CardTitle>Configuration du Buffer</CardTitle>
               <CardDescription>Contrôler la génération automatique et la taille du buffer</CardDescription>
@@ -370,8 +386,10 @@ export function GenerationSettingsPanel() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
 
-          {/* Structured Generation Space */}
+        {/* Structured Generation Space */}
+        <TabsContent value="space" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Espace de Génération Structuré</CardTitle>
@@ -647,7 +665,19 @@ export function GenerationSettingsPanel() {
               </div>
             </CardContent>
           </Card>
-        </div>
+        </TabsContent>
+
+          {/* TAB: RSS Feeds */}
+          <TabsContent value="rss">
+            <RssFeedsPanel 
+              settings={{
+                rssEnabled: settings.rssEnabled ?? false,
+                useRssAsContext: settings.useRssAsContext ?? true,
+              }}
+              onSettingsChange={(rssSettings) => setSettings({ ...settings, ...rssSettings })}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Save Button */}
         <div className="flex justify-end gap-3 pt-4 border-t">

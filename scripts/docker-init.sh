@@ -79,3 +79,4 @@ echo "   - Stop all: docker-compose down"
 echo "   - Restart: docker-compose restart"
 echo "   - Reset DB: docker-compose down -v && ./scripts/docker-init.sh"
 echo ""
+

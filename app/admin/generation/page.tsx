@@ -54,7 +54,7 @@ export default function GenerationPage() {
     if (bufferStatus?.buffer && !bufferStatus.buffer.isGenerating && bufferStatus.buffer.autoRefillEnabled && bufferStatus.buffer.missing > 0) {
       handleStartGeneration();
     }
-  }, [bufferStatus?.buffer.missing, bufferStatus?.buffer.autoRefillEnabled, bufferStatus?.buffer.isGenerating]);
+  }, [bufferStatus?.buffer.missing, bufferStatus?.buffer.isGenerating]);
 
   const refreshAll = async () => {
     await Promise.all([fetchBufferStatus(), fetchHealth(), fetchPendingPreview()]);
@@ -171,21 +171,11 @@ export default function GenerationPage() {
             </div>
 
             <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-muted-foreground text-sm mb-1">Génération</p>
-              <p className={`text-lg font-bold ${bufferStatus.buffer.isGenerating ? 'text-cyber-orange' : 'text-secondary'}`}>
-                {bufferStatus.buffer.isGenerating ? '🔄 En cours' : 'Prête'}
+              <p className="text-muted-foreground text-sm mb-1">Questions manquantes</p>
+              <p className="text-3xl font-bold text-primary">{bufferStatus.buffer.missing}</p>
+              <p className={`text-xs mt-2 ${bufferStatus.buffer.isGenerating ? 'text-cyber-orange' : 'text-muted-foreground'}`}>
+                {bufferStatus.buffer.isGenerating ? '🔄 Génération en cours' : 'Système prêt'}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                File: {bufferStatus.buffer.queuedJobs} · Manquantes: {bufferStatus.buffer.missing}
-              </p>
-              {bufferStatus.buffer.lastGeneration.lastStartedAt && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Dernier démarrage: {new Date(bufferStatus.buffer.lastGeneration.lastStartedAt).toLocaleTimeString()}
-                </p>
-              )}
-              {bufferStatus.buffer.lastGeneration.lastFinishedAt && (
-                <p className="text-xs text-muted-foreground">Dernière fin: {new Date(bufferStatus.buffer.lastGeneration.lastFinishedAt).toLocaleTimeString()}</p>
-              )}
               {bufferStatus.buffer.lastGeneration.lastError && (
                 <p className="text-xs text-cyber-orange mt-1">Erreur: {bufferStatus.buffer.lastGeneration.lastError}</p>
               )}
@@ -274,6 +264,7 @@ export default function GenerationPage() {
           <li>• La génération commence au démarrage et lorsque des questions sont validées/rejetées</li>
           <li>• Les questions dupliquées sont détectées et filtrées automatiquement</li>
           <li>• Consultez la "Banque de questions" pour examiner et valider les questions générées</li>
+          <li>• Les flux RSS permettent de générer des questions basées sur l'actualité cybersécurité</li>
         </ul>
       </div>
     </div>
