@@ -8,6 +8,7 @@ export interface Question {
   correctAnswer: string;
   explanation: string;
   difficulty: number;
+  adminDifficulty?: string | null; // Beginner | Intermediate | Advanced | Expert
   qualityScore?: number;
   category: string;
   questionType: string;

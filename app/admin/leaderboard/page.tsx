@@ -27,6 +27,7 @@ export default function AdminLeaderboardPage() {
   const [selectedScore, setSelectedScore] = useState<Score | null>(null);
   const [deleteAction, setDeleteAction] = useState<'delete' | 'ban'>('delete');
   const [clearLoading, setClearLoading] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -101,8 +102,20 @@ export default function AdminLeaderboardPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold text-gradient mb-2">Leaderboard</h1>
+          <p className="text-muted-foreground">
+            {showAll ? `Affichage de tous les ${scores.length} scores` : `Affichage des 10 premiers scores`}
+          </p>
         </div>
         <div className="flex gap-2">
+          {scores.length > 10 && (
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => setShowAll(!showAll)}
+            >
+              {showAll ? 'Voir moins' : 'Voir tout'}
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={load} disabled={loading}>
             <RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} />
             Actualiser
@@ -126,7 +139,6 @@ export default function AdminLeaderboardPage() {
               <TableHead className="w-[80px]">Rang</TableHead>
               <TableHead>Pseudo</TableHead>
               <TableHead className="text-right">Score</TableHead>
-              <TableHead className="text-right">Précision</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
@@ -145,16 +157,15 @@ export default function AdminLeaderboardPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              scores.map((s) => (
+              scores.slice(0, showAll ? undefined : 10).map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-semibold">#{s.rank}</TableCell>
                   <TableCell className="font-medium">{s.username}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant="secondary" className="text-lg font-bold">
+                    <Badge variant="secondary" className="font-semibold">
                       {s.score} pts
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">{Math.round(s.accuracyPercentage)}%</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {new Date(s.completedAt).toLocaleDateString('fr-FR', {
                       year: 'numeric',

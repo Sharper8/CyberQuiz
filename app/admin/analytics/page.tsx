@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, TrendingUp, AlertTriangle, CheckCircle2, Target, Zap } from "lucide-react";
+import { TrendingUp, AlertTriangle, CheckCircle2, Target, Zap } from "lucide-react";
+import { DuplicateLogsPanel } from "@/components/admin/DuplicateLogsPanel";
 
 interface AnalyticsData {
   generationEfficiency: {
@@ -16,7 +16,9 @@ interface AnalyticsData {
     recentDuplicates: number;
     duplicatesByMethod: Array<{ method: string; count: number }>;
     efficiencyOverTime: Array<{
-      batch: number;
+      sessionNumber: number;
+      sessionStart: string;
+      sessionEnd: string;
       duplicateCount: number;
       totalGenerated: number;
       efficiencyRate: number;
@@ -55,6 +57,7 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAllSessions, setShowAllSessions] = useState(false);
 
   useEffect(() => {
     fetchAnalytics();
@@ -188,10 +191,10 @@ export default function AnalyticsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                Efficacité par Lot de Questions
+                Efficacité par Session de Génération
               </CardTitle>
               <CardDescription>
-                Taux d'efficacité (questions uniques / total généré) par lots de 10 questions
+                Sessions de génération groupées par période d'activité (5 min max entre les questions)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -201,37 +204,74 @@ export default function AnalyticsPage() {
                     Pas encore assez de données de génération
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {data.generationEfficiency.efficiencyOverTime.map((batch) => (
-                      <div key={batch.batch} className="flex items-center gap-4">
-                        <div className="w-24 text-sm text-muted-foreground">
-                          Lot #{batch.batch}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 h-8 bg-muted rounded-lg overflow-hidden">
-                              <div
-                                className={`h-full transition-all ${
-                                  batch.efficiencyRate >= 80
-                                    ? 'bg-green-500'
-                                    : batch.efficiencyRate >= 60
-                                    ? 'bg-yellow-500'
-                                    : 'bg-red-500'
-                                }`}
-                                style={{ width: `${batch.efficiencyRate}%` }}
-                              />
+                  <>
+                    <div className="space-y-3">
+                      {data.generationEfficiency.efficiencyOverTime.slice(0, showAllSessions ? undefined : 5).map((session) => {
+                        const startDate = new Date(session.sessionStart);
+                        const endDate = new Date(session.sessionEnd);
+                        const isSameTime = startDate.getTime() === endDate.getTime();
+                        
+                        return (
+                          <div key={session.sessionNumber} className="border rounded-lg p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="space-y-1">
+                                <div className="text-sm font-semibold">
+                                  Session #{session.sessionNumber}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {isSameTime ? (
+                                    <span>
+                                      {startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                      {' à '}
+                                      {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  ) : (
+                                    <span>
+                                      {startDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                      {' → '}
+                                      {endDate.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                      {' • '}
+                                      {startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {session.duplicateCount} duplicata{session.duplicateCount > 1 ? 's' : ''} sur {session.totalGenerated}
+                              </div>
                             </div>
-                            <div className="w-20 text-right font-bold">
-                              {batch.efficiencyRate.toFixed(1)}%
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-6 bg-muted rounded overflow-hidden">
+                                <div
+                                  className={`h-full transition-all ${
+                                    session.efficiencyRate >= 80
+                                      ? 'bg-green-500'
+                                      : session.efficiencyRate >= 60
+                                      ? 'bg-yellow-500'
+                                      : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${session.efficiencyRate}%` }}
+                                />
+                              </div>
+                              <div className="w-16 text-right font-bold">
+                                {session.efficiencyRate.toFixed(1)}%
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          {batch.duplicateCount} duplicatas sur {batch.totalGenerated}
-                        </div>
+                        );
+                      })}
+                    </div>
+                    {data.generationEfficiency.efficiencyOverTime.length > 5 && (
+                      <div className="flex justify-center mt-4">
+                        <button
+                          onClick={() => setShowAllSessions(!showAllSessions)}
+                          className="text-sm text-primary hover:underline"
+                        >
+                          {showAllSessions ? 'Voir moins' : `Voir tout (${data.generationEfficiency.efficiencyOverTime.length} sessions)`}
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             </CardContent>
@@ -252,6 +292,12 @@ export default function AnalyticsPage() {
                     <div key={method.method} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{method.method}</Badge>
+                        {method.method === 'embedding' && (
+                          <span className="text-xs text-muted-foreground">(sémantique)</span>
+                        )}
+                        {method.method === 'hash' && (
+                          <span className="text-xs text-muted-foreground">(texte exact)</span>
+                        )}
                       </div>
                       <div className="text-lg font-semibold">{method.count}</div>
                     </div>
@@ -261,43 +307,8 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          {/* Recommendations */}
-          <Card className="border-yellow-500/50 bg-yellow-500/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                Recommandations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {data.generationEfficiency.currentEfficiencyRate < 60 && (
-                <div className="flex items-start gap-2">
-                  <span className="text-yellow-500">⚠️</span>
-                  <p>
-                    <strong>Efficacité faible détectée.</strong> Activez les options RSS et/ou Structured Space 
-                    pour diversifier la génération et réduire les duplicatas.
-                  </p>
-                </div>
-              )}
-              {data.generationEfficiency.currentEfficiencyRate >= 60 && data.generationEfficiency.currentEfficiencyRate < 80 && (
-                <div className="flex items-start gap-2">
-                  <span className="text-yellow-500">💡</span>
-                  <p>
-                    <strong>Efficacité modérée.</strong> Envisagez d'activer plus de domaines dans Structured Space 
-                    ou d'ajouter des sources RSS pour améliorer la diversité.
-                  </p>
-                </div>
-              )}
-              {data.generationEfficiency.currentEfficiencyRate >= 80 && (
-                <div className="flex items-start gap-2">
-                  <span className="text-green-500">✅</span>
-                  <p>
-                    <strong>Excellent taux d'efficacité!</strong> La génération produit principalement des questions uniques.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* Duplicate Detection Logs */}
+          <DuplicateLogsPanel />
         </TabsContent>
 
         {/* Question Difficulty Tab */}
@@ -311,7 +322,7 @@ export default function AnalyticsPage() {
                   Questions les Plus Difficiles
                 </CardTitle>
                 <CardDescription>
-                  Basé sur le taux d'échec des utilisateurs (minimum 5 tentatives)
+                  Basé sur le taux d'échec des utilisateurs (minimum 3 tentatives)
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -364,7 +375,7 @@ export default function AnalyticsPage() {
                   Questions les Plus Faciles
                 </CardTitle>
                 <CardDescription>
-                  Basé sur le taux de réussite des utilisateurs (minimum 5 tentatives)
+                  Basé sur le taux de réussite des utilisateurs (minimum 3 tentatives)
                 </CardDescription>
               </CardHeader>
               <CardContent>

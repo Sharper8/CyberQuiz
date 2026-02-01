@@ -338,7 +338,8 @@ export default function AdminPage() {
             </div>
             
             {/* Filter Tabs */}
-            <div className="flex gap-2">
+            <div>
+              <div className="flex gap-2">
               <CyberButton
                 variant={filter === 'all' ? 'primary' : 'outline'}
                 size="default"
@@ -367,6 +368,13 @@ export default function AdminPage() {
               >
                 Rejetées ({stats.rejected})
               </CyberButton>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-right">
+                {filter === 'all' && 'Toutes les questions de la banque'}
+                {filter === 'to_review' && 'Questions à valider par l\'administrateur'}
+                {filter === 'accepted' && 'Questions disponibles dans le quiz'}
+                {filter === 'rejected' && 'Questions exclues du pool actif'}
+              </p>
             </div>
           </div>
           

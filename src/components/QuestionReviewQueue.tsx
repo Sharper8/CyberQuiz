@@ -15,6 +15,13 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Question {
   id: number;
@@ -23,9 +30,12 @@ interface Question {
   explanation: string;
   category: string;
   aiProvider: string;
+  adminDifficulty?: string | null;
+  difficulty?: number;
   generationDomain?: string;
   generationSkillType?: string;
   generationGranularity?: string;
+  generationDifficulty?: string;
   potentialDuplicates?: Array<{ id: number; similarity: number }>;
   tags?: string[];
   rssSourceId?: number | null;
@@ -130,6 +140,7 @@ export function QuestionReviewQueue() {
       questionText: question.questionText,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation,
+      adminDifficulty: question.adminDifficulty || undefined,
     });
   };
 
@@ -151,6 +162,25 @@ export function QuestionReviewQueue() {
       toast.success('Question updated');
     } catch (error) {
       toast.error('Failed to update question');
+    }
+  };
+
+  const updateDifficulty = async (questionId: number, newDifficulty: string) => {
+    try {
+      const res = await fetch(`/api/admin/questions/${questionId}/difficulty`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminDifficulty: newDifficulty }),
+      });
+
+      if (!res.ok) throw new Error('Failed to update difficulty');
+
+      setQuestions(prev => prev.map(q => 
+        q.id === questionId ? { ...q, adminDifficulty: newDifficulty } : q
+      ));
+      toast.success(`Difficulty updated to ${newDifficulty}`);
+    } catch (error) {
+      toast.error('Failed to update difficulty');
     }
   };
 
@@ -221,8 +251,28 @@ export function QuestionReviewQueue() {
                       <p className="text-lg font-medium">{question.questionText}</p>
                     )}
                     
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 items-center">
                       <Badge variant="outline">{question.category}</Badge>
+                      
+                      {/* Admin Difficulty Selector */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Difficulty:</span>
+                        <Select
+                          value={question.adminDifficulty || 'Intermediate'}
+                          onValueChange={(value) => updateDifficulty(question.id, value)}
+                        >
+                          <SelectTrigger className="w-[140px] h-7 text-xs border-cyber-blue/30 hover:border-cyber-blue">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Beginner">Beginner</SelectItem>
+                            <SelectItem value="Intermediate">Intermediate</SelectItem>
+                            <SelectItem value="Advanced">Advanced</SelectItem>
+                            <SelectItem value="Expert">Expert</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
                       {question.generationDomain && (
                         <Badge variant="secondary">{question.generationDomain}</Badge>
                       )}
@@ -303,21 +353,30 @@ export function QuestionReviewQueue() {
                   </>
                 )}
 
-                {question.potentialDuplicates && question.potentialDuplicates.length > 0 && (
-                  <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded">
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                      <span className="text-sm font-semibold text-yellow-500">
-                        {question.potentialDuplicates.length} similar question(s) detected
-                      </span>
-                    </div>
-                    {question.potentialDuplicates.slice(0, 2).map((dup, idx) => (
-                      <div key={idx} className="text-xs text-muted-foreground">
-                        → ID {dup.id}: {(dup.similarity * 100).toFixed(0)}% similar
+                {(() => {
+                  const significantDuplicates = (question.potentialDuplicates || []).filter(d => d.similarity >= 0.80);
+                  if (significantDuplicates.length === 0) return null;
+                  return (
+                    <div className="mt-3 p-3 bg-cyber-orange/10 border border-cyber-orange/30 rounded">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-cyber-orange" />
+                        <span className="text-sm font-semibold text-cyber-orange">
+                          {significantDuplicates.length} similar question(s) detected (≥80%)
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      {significantDuplicates.slice(0, 2).map((dup, idx) => (
+                        <div key={idx} className="text-xs text-muted-foreground font-semibold">
+                          → ID {dup.id}: <span className="text-cyber-orange">{(dup.similarity * 100).toFixed(0)}%</span> similar
+                        </div>
+                      ))}
+                      {significantDuplicates.length > 2 && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          +{significantDuplicates.length - 2} more
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           ))
