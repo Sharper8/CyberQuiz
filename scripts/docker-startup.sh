@@ -144,12 +144,6 @@ SERVER_PID=$!
 echo "[Startup] Waiting for server to be ready..."
 sleep 5
 
-# Pull additional models in background (non-blocking)
-echo "[Startup] Pulling additional models..."
-(
-  docker exec cyberquiz-ollama-prod ollama pull llama3.1:8b 2>&1 | head -5 &
-) || echo "  Model pull queued (will complete in background)"
-
 # Initialize background services via API
 echo "[Startup] Starting background services..."
 curl -X POST http://localhost:3000/api/init || echo "  Background service initialization failed (will retry on next request)"
