@@ -164,6 +164,8 @@ model GenerationSettings {
   enabledGranularities  Json      @default("[\"Conceptual\", \"Procedural\", \"Technical\", \"Strategic\"]")
   
   // Model configuration
+  // Available models: mistral:7b (default), llama3.1:8b, gemma2:2b, tinyllama:latest
+  // Models are auto-pulled on first use when selected in admin panel
   defaultModel          String    @default("mistral:7b") // Default AI model
   fallbackModel         String    @default("tinyllama:latest") // Fallback if default fails
   
