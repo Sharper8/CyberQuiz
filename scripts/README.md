@@ -2,6 +2,44 @@
 
 This directory contains operational scripts for CyberQuiz deployment, maintenance, and development.
 
+## 🤖 AI Model Management
+
+### `pull-ollama-models.sh` ⭐ NEW
+**Pull Ollama models locally or in docker container**
+
+Pulls a set of base models for reproducible testing. Tries local `ollama` CLI first, falls back to docker exec.
+
+```bash
+# Pull default models (mistral:7b, llama3.1:8b, gemma2:2b, nomic-embed-text, tinyllama)
+./scripts/pull-ollama-models.sh
+
+# Pull specific models
+./scripts/pull-ollama-models.sh mistral:7b llama3.1:8b
+```
+
+Default models:
+- `mistral:7b` - Balanced (4.4 GB)
+- `llama3.1:8b` - High quality (4.7 GB)
+- `gemma2:2b` - Fast/testing (1.6 GB)
+- `nomic-embed-text:latest` - Embeddings (274 MB)
+- `tinyllama:latest` - Lightweight (637 MB)
+
+### `normalize-model-names.sh` ⭐ NEW
+**Remove 'ollama:' prefixes from database model names**
+
+Fixes model name format mismatches (e.g., `ollama:mistral:7b` → `mistral:7b`).
+
+```bash
+# Using docker postgres container
+./scripts/normalize-model-names.sh
+
+# Using PG environment variables
+PGHOST=localhost PGPORT=5432 PGUSER=cyberquiz PGPASSWORD=changeme \
+  ./scripts/normalize-model-names.sh
+```
+
+Run this if you see "No AI provider available" errors.
+
 ## 🚀 Deployment Scripts
 
 ### `verify-deployment.sh` ⭐ NEW

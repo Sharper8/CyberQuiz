@@ -62,6 +62,16 @@ const translateValue = (value: string | null | undefined): string => {
   return TRANSLATION_MAP[value] || value;
 };
 
+const translateDifficultyToEnglish = (frenchDifficulty: string): string => {
+  const reverseMap: Record<string, string> = {
+    'Débutant': 'Beginner',
+    'Intermédiaire': 'Intermediate',
+    'Avancé': 'Advanced',
+    'Expert': 'Expert',
+  };
+  return reverseMap[frenchDifficulty] || frenchDifficulty;
+};
+
 export default function AdminPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,10 +167,12 @@ export default function AdminPage() {
       
       if (!res.ok) throw new Error('Failed to update difficulty');
 
+      // Update local state - map English to French for UI
+      const frenchDifficulty = TRANSLATION_MAP[newDifficulty] || newDifficulty;
       setQuestions(prev => prev.map(q => 
-        q.id === questionId ? { ...q, adminDifficulty: newDifficulty } : q
+        q.id === questionId ? { ...q, generationDifficulty: frenchDifficulty } : q
       ));
-      toast.success(`Difficulté mise à jour: ${newDifficulty}`);
+      toast.success(`Difficulté mise à jour: ${frenchDifficulty}`);
     } catch (error) {
       toast.error('Erreur lors de la mise à jour de la difficulté');
     }
@@ -523,7 +535,7 @@ export default function AdminPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Difficulté:</span>
                           <Select
-                            value={question.adminDifficulty || 'Intermediate'}
+                            value={translateDifficultyToEnglish(question.generationDifficulty || 'Intermédiaire')}
                             onValueChange={(value) => updateDifficulty(question.id, value)}
                           >
                             <SelectTrigger className="w-[140px] h-7 text-xs border-primary/30 hover:border-primary">
