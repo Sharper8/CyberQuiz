@@ -32,12 +32,7 @@ if /bin/ollama pull mistral:7b; then
 else
   echo "âš ï¸  mistral:7b pull failed"
 fi
-echo "📥 Pulling llama3.1:8b model (this may take a few minutes)..."
-if /bin/ollama pull llama3.1:8b; then
-  echo "✅ llama3.1:8b pulled successfully"
-else
-  echo "⚠️  llama3.1:8b pull failed"
-fi
+
 echo "ðŸ“¥ Pulling nomic-embed-text model..."
 if /bin/ollama pull nomic-embed-text; then
   echo "âœ… nomic-embed-text pulled successfully"
