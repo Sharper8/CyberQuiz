@@ -125,8 +125,10 @@ export function GenerationSettingsPanel() {
       console.error('[Settings] Failed to fetch models:', error);
       // Set fallback models if fetch fails
       setAvailableModels([
-        { value: 'mistral:7b', label: 'Ollama - mistral:7b', provider: 'ollama' },
-        { value: 'tinyllama', label: 'Ollama - tinyllama', provider: 'ollama' },
+        { value: 'mistral:7b', label: 'Ollama - Mistral 7B (Balanced)', provider: 'ollama' },
+        { value: 'llama3.1:8b', label: 'Ollama - Llama 3.1 8B (High Quality)', provider: 'ollama' },
+        { value: 'gemma2:2b', label: 'Ollama - Gemma 2 2B (Fast)', provider: 'ollama' },
+        { value: 'tinyllama:latest', label: 'Ollama - TinyLlama (Lightweight)', provider: 'ollama' },
       ]);
     }
   };
