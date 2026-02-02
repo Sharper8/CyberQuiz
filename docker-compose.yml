@@ -68,6 +68,8 @@ services:
     container_name: cyberquiz-ollama-prod
     env_file:
       - .env
+    environment:
+      - OLLAMA_KEEP_ALIVE=2m  # Unload models after 2 min idle to prevent multiple models in RAM
     ports:
       - "11434:11434"
     volumes:
@@ -79,7 +81,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 6G  # Limit for 7.6GB host (mistral:7b needs ~4.5GB)
+          memory: 6G  # Supports mistral:7b (4.5GB) or llama3.1:8b (4.8GB) one at a time
 
     # GPU support (optional)
     # deploy:

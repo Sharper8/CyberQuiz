@@ -3,19 +3,22 @@
 echo "ðŸš€ Starting Ollama server and pulling models..."
 
 # ============================================================================
-# âš ï¸  IMPORTANT: Model Selection
+# ⚠️  IMPORTANT: Model Selection & Memory Management
 # ============================================================================
-# Current model: tinyllama:1b (~600 MB RAM required)
+# Set aggressive model unloading to prevent multiple models in RAM
+export OLLAMA_KEEP_ALIVE=2m  # Unload model after 2 minutes of inactivity
+# ============================================================================
+# Available models: mistral:7b (~4.5 GB RAM) and llama3.1:8b (~4.8 GB RAM)
 # 
-# Lightweight model chosen due to VM RAM constraints (7.6 GB total)
-# mistral:7b requires 4.5 GB but only 3.2 GB is available
-# llama3.1:8b requires 4.8 GB (too large)
+# IMPORTANT: Only ONE model is loaded in RAM at a time (VM has 7.6 GB total, 5+ GB available)
+# Ollama automatically unloads models after OLLAMA_KEEP_ALIVE timeout (set to 2m)
+# This prevents both models from being loaded simultaneously (which would exceed 6GB container limit)
 #
-# If you need a larger/better model:
-# 1. Upgrade VM to at least 16 GB RAM
-# 2. Switch to mistral:7b or llama3.1:8b
-# 3. Update generation settings via admin panel
-# 4. Test thoroughly in dev environment first
+# Model lifecycle:
+# - First request: Model loads into RAM (~10-15 seconds)
+# - During use: Model stays in RAM for fast responses
+# - After 2 minutes idle: Model unloads automatically to free RAM
+# - Next request: Different model can load without memory conflict
 # ============================================================================
 
 # Start Ollama server in background
@@ -26,11 +29,18 @@ OLLAMA_PID=$!
 sleep 5
 
 # Pull models in FOREGROUND to ensure they're ready before container is marked healthy
-echo "📥 Pulling tinyllama model (lightweight, ~600MB RAM)..."
-if /bin/ollama pull tinyllama; then
-  echo "✅ tinyllama pulled successfully"
+echo "📥 Pulling mistral:7b model (this may take a few minutes)..."
+if /bin/ollama pull mistral:7b; then
+  echo "✅ mistral:7b pulled successfully"
 else
-  echo "⚠️  tinyllama pull failed"
+  echo "⚠️  mistral:7b pull failed"
+fi
+
+echo "📥 Pulling llama3.1:8b model (this may take a few minutes)..."
+if /bin/ollama pull llama3.1:8b; then
+  echo "✅ llama3.1:8b pulled successfully"
+else
+  echo "⚠️  llama3.1:8b pull failed"
 fi
 
 echo "ðŸ“¥ Pulling nomic-embed-text model..."
