@@ -164,8 +164,8 @@ model GenerationSettings {
   enabledGranularities  Json      @default("[\"Conceptual\", \"Procedural\", \"Technical\", \"Strategic\"]")
   
   // Model configuration
-  defaultModel          String    @default("ollama:mistral:7b") // Default AI model
-  fallbackModel         String    @default("ollama:mistral:7b") // Fallback if default fails
+  defaultModel          String    @default("mistral:7b") // Default AI model
+  fallbackModel         String    @default("tinyllama:latest") // Fallback if default fails
   
   // RSS Feed configuration
   rssEnabled            Boolean   @default(false) // Enable RSS-based question generation
