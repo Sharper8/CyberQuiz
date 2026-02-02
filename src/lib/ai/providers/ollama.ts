@@ -129,6 +129,16 @@ export class OllamaProvider implements AIProvider {
     }
   }
 
+  /**
+   * Update the generation model at runtime
+   * @param modelName - Model name (e.g., 'tinyllama:latest', 'mistral:7b')
+   */
+  setModel(modelName: string): void {
+    this.generationModel = modelName;
+    this.model = modelName;
+    this.validationModel = modelName; // Use same model for validation
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       const res = await fetch(`${this.baseUrl}/api/tags`);

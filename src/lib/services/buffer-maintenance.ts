@@ -187,7 +187,13 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
       logger.info('[Buffer] Generating question', { slot, attempt: attempt + 1 });
 
       // Get AI provider
-      const provider = await getAIProvider(settings.defaultModel || 'ollama');
+      const provider = await getAIProvider('ollama');
+      
+      // Set the model from database settings
+      if ('setModel' in provider && typeof provider.setModel === 'function') {
+        provider.setModel(settings.defaultModel || 'mistral:7b');
+        logger.info('[Buffer] Using model from settings', { model: settings.defaultModel });
+      }
 
       // Build prompt with slot constraints
       const prompt = buildGenerationPrompt({
@@ -290,7 +296,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           aiProvider: settings.defaultModel || 'ollama',
           generationDomain: config.enabled ? slot.domain : null,
           generationSkillType: config.enabled ? slot.skillType : null,
-          generationDifficulty: config.enabled ? slot.difficulty : mapNumericToAdminDifficulty(estimatedDifficulty),
+          generationDifficulty: config.enabled ? slot.difficulty : null,
           generationGranularity: config.enabled ? slot.granularity : null,
           mitreTechniques: generated.mitreTechniques || [],
           tags: mergedTags,

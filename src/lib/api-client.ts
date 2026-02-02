@@ -22,6 +22,10 @@ export interface Question {
   generationSkillType?: string | null;
   generationDifficulty?: string | null;
   generationGranularity?: string | null;
+  rssSourceId?: number | null;
+  rssArticleId?: number | null;
+  rssSource?: { title: string; url: string } | null;
+  rssArticle?: { title: string; link: string } | null;
   createdAt: string;
   updatedAt: string;
   metadata?: any;

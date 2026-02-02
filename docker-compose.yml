@@ -5,18 +5,21 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # Build args reference .env file variables
-        - DATABASE_URL=${DATABASE_URL}
+        # Build args use Docker internal hostnames (not localhost)
+        - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
         - JWT_SECRET=${JWT_SECRET}
-        - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
-        - QDRANT_URL=${QDRANT_URL}
+        - OLLAMA_BASE_URL=http://ollama:11434
+        - QDRANT_URL=http://qdrant:6333
         - ALLOW_EXTERNAL_AI=${ALLOW_EXTERNAL_AI}
         - NODE_ENV=production
     container_name: cyberquiz-nextjs-prod
     env_file:
       - .env  # Loads all variables
     environment:
-      # Only override NODE_ENV (rest comes from env_file)
+      # Override URLs for Docker internal networking
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      OLLAMA_BASE_URL: http://ollama:11434
+      QDRANT_URL: http://qdrant:6333
       NODE_ENV: production
     ports:
       - "3100:3000"
