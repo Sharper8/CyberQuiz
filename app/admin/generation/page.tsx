@@ -44,8 +44,8 @@ export default function GenerationPage() {
 
   useEffect(() => {
     refreshAll();
-    // Poll for status updates every 2 seconds
-    const interval = setInterval(refreshAll, 2000);
+    // Poll for status updates every 10 seconds (reduced from 2s to avoid Ollama API spam)
+    const interval = setInterval(refreshAll, 10000);
     return () => clearInterval(interval);
   }, []);
 
