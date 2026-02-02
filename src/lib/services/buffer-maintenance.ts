@@ -158,10 +158,11 @@ async function processQueue(): Promise<void> {
     const job = generationQueue.shift();
     if (job) {
       lastGenerationStatus.lastStartedAt = new Date().toISOString();
+      // Clear previous errors when starting a new generation
+      lastGenerationStatus.lastError = undefined;
       try {
         await job();
         lastGenerationStatus.lastFinishedAt = new Date().toISOString();
-        lastGenerationStatus.lastError = undefined;
       } catch (error: any) {
         lastGenerationStatus.lastError = error?.message || 'Unknown error';
       }

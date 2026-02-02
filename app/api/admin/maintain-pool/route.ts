@@ -2,11 +2,11 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/auth/admin-auth';
-import { maintainQuestionPool, getGenerationStatus } from '@/lib/services/pool-maintenance';
+import { ensureBufferFilled, getBufferStatus } from '@/lib/services/buffer-maintenance';
 
 /**
  * GET /api/admin/maintain-pool
- * Get current generation status
+ * Get current buffer status
  */
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const status = getGenerationStatus();
+    const status = await getBufferStatus();
     return NextResponse.json(status);
   } catch (error) {
     console.error('[MaintainPool GET] Error:', error);
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/admin/maintain-pool
- * Manually trigger background generation to maintain question pool
+ * Manually trigger buffer generation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -43,20 +43,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await maintainQuestionPool();
+    // Trigger buffer refill (non-blocking)
+    await ensureBufferFilled();
 
-    if (result.skipped) {
-      return NextResponse.json({
-        message: 'Generation already in progress or disabled',
-        ...result,
-      });
-    }
+    // Get updated status
+    const status = await getBufferStatus();
 
     return NextResponse.json({
-      poolSizeBefore: result.poolSizeBefore,
-      poolSizeAfter: result.poolSizeAfter,
-      generated: result.generated,
-      message: `Pool maintained: ${result.generated} questions generated`,
+      message: 'Buffer refill triggered',
+      status,
     });
   } catch (error: any) {
     console.error('[MaintainPool POST] Error:', error);
@@ -69,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: 'Failed to maintain pool', message: error.message },
+      { error: 'Failed to trigger buffer refill', message: error.message },
       { status: 500 }
     );
   }
