@@ -52,18 +52,42 @@ interface SheetContentProps
     VariantProps<typeof sheetVariants> {}
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ side = "right", className, children, ...props }, ref) => (
-    <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
-        {children}
-        <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
-      </SheetPrimitive.Content>
-    </SheetPortal>
-  ),
+  ({ side = "right", className, children, ...props }, ref) => {
+    // Ensure accessibility: inject hidden Title/Description when missing
+    const childrenArray = React.Children.toArray(children);
+
+    const hasTitle = childrenArray.some((c) => {
+      return (
+        React.isValidElement(c) &&
+        (c.type === SheetPrimitive.Title || (c.type as any)?.displayName === SheetPrimitive.Title.displayName || (c.type as any)?.displayName === 'SheetTitle')
+      );
+    });
+
+    const hasDescription = childrenArray.some((c) => {
+      return (
+        React.isValidElement(c) &&
+        (c.type === SheetPrimitive.Description || (c.type as any)?.displayName === SheetPrimitive.Description.displayName || (c.type as any)?.displayName === 'SheetDescription')
+      );
+    });
+
+    return (
+      <SheetPortal>
+        <SheetOverlay />
+        <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
+          {/* inject hidden title/description when missing to satisfy Radix a11y requirements */}
+          {!hasTitle && <SheetTitle className="sr-only">Sheet</SheetTitle>}
+          {!hasDescription && <SheetDescription className="sr-only">Sheet content</SheetDescription>}
+          
+          {children}
+          
+          <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        </SheetPrimitive.Content>
+      </SheetPortal>
+    );
+  },
 );
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 

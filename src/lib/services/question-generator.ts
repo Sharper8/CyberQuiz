@@ -218,6 +218,14 @@ export async function generateQuestionsForCache(
       const normalizedOptions = normalizeOptions(question.options);
       const normalizedAnswer = normalizeAnswer(question.correctAnswer);
 
+      // Map numeric difficulty to admin difficulty level
+      const mapDifficulty = (num: number): string => {
+        if (num <= 0.25) return 'Débutant';
+        if (num <= 0.50) return 'Intermédiaire';
+        if (num <= 0.75) return 'Avancé';
+        return 'Expert';
+      };
+
       const stored = await prisma.question.create({
         data: {
           questionText: question.questionText,
@@ -233,6 +241,7 @@ export async function generateQuestionsForCache(
           aiModel: provider.model,
           mitreTechniques: question.mitreTechniques || [],
           tags: question.tags || [],
+          generationDifficulty: mapDifficulty(question.estimatedDifficulty || 0.5),
           potentialDuplicates: potentialDuplicates.length > 0 ? potentialDuplicates : null,
           metadata: {
             create: {
