@@ -9,6 +9,8 @@ const UpdateSettingsSchema = z.object({
   bufferSize: z.number().int().min(1).max(500).optional(),
   autoRefillEnabled: z.boolean().optional(),
   maxConcurrentGeneration: z.number().int().min(1).max(20).optional(),
+  defaultModel: z.string().optional(),
+  fallbackModel: z.string().optional(),
 });
 
 /**
