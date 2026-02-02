@@ -151,8 +151,8 @@ export class OllamaProvider implements AIProvider {
       const data = await res.json();
       const models = data.models || [];
       
-      console.debug(`[Ollama] Available models: ${models.map((m: any) => m.name).join(', ')}`);
-      console.debug(`[Ollama] Looking for: ${this.generationModel}, ${this.embeddingModel}`);
+      console.log(`[Ollama] Available models: ${models.map((m: any) => m.name).join(', ')}`);
+      console.log(`[Ollama] Looking for: ${this.generationModel}, ${this.embeddingModel}`);
       
       const hasGenerationModel = models.some((m: any) => m.name.includes(this.generationModel.split(':')[0]));
       const hasEmbeddingModel = models.some((m: any) => m.name.includes(this.embeddingModel.split(':')[0]));
