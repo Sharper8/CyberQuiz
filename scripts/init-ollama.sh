@@ -26,11 +26,11 @@ OLLAMA_PID=$!
 sleep 5
 
 # Pull models in FOREGROUND to ensure they're ready before container is marked healthy
-echo "📥 Pulling tinyllama:1b model (lightweight, ~600MB RAM)..."
-if /bin/ollama pull tinyllama:1b; then
-  echo "✅ tinyllama:1b pulled successfully"
+echo "📥 Pulling tinyllama model (lightweight, ~600MB RAM)..."
+if /bin/ollama pull tinyllama; then
+  echo "✅ tinyllama pulled successfully"
 else
-  echo "⚠️  tinyllama:1b pull failed"
+  echo "⚠️  tinyllama pull failed"
 fi
 
 echo "ðŸ“¥ Pulling nomic-embed-text model..."
