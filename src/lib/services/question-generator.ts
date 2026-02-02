@@ -219,10 +219,11 @@ export async function generateQuestionsForCache(
       const normalizedAnswer = normalizeAnswer(question.correctAnswer);
 
       // Map numeric difficulty to admin difficulty level
+      // Adjusted thresholds to match AI generation patterns (most questions are 0.4-0.7)
       const mapDifficulty = (num: number): string => {
-        if (num <= 0.25) return 'Débutant';
-        if (num <= 0.50) return 'Intermédiaire';
-        if (num <= 0.75) return 'Avancé';
+        if (num <= 0.35) return 'Débutant';
+        if (num <= 0.60) return 'Intermédiaire';
+        if (num <= 0.80) return 'Avancé';
         return 'Expert';
       };
 
