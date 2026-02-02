@@ -74,12 +74,12 @@ export async function getAIProvider(preferredName?: string): Promise<AIProvider>
 /**
  * Get all available providers
  */
-export function getAvailableProviders(): string[] {
+export async function getAvailableProviders(): Promise<string[]> {
   initializeProviders();
   const available: string[] = [];
 
-  if (ollamaProvider?.isAvailable()) available.push('ollama');
-  if (openaiProvider?.isAvailable()) available.push('openai');
+  if (ollamaProvider && await ollamaProvider.isAvailable()) available.push('ollama');
+  if (openaiProvider && await openaiProvider.isAvailable()) available.push('openai');
 
   return available;
 }
