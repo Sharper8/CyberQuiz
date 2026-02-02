@@ -104,6 +104,8 @@ export class OllamaProvider implements AIProvider {
   private generationModel: string;
   private embeddingModel: string;
   private validationModel: string;
+  private lastAvailabilityCheck: { available: boolean; timestamp: number } | null = null;
+  private availabilityCacheDuration = 5000; // Cache for 5 seconds
 
   constructor() {
     const env = getEnv();
@@ -186,12 +188,19 @@ export class OllamaProvider implements AIProvider {
 
   async isAvailable(): Promise<boolean> {
     try {
+      // Return cached result if still valid
+      if (this.lastAvailabilityCheck && 
+          (Date.now() - this.lastAvailabilityCheck.timestamp) < this.availabilityCacheDuration) {
+        return this.lastAvailabilityCheck.available;
+      }
+
       // Auto-pull generation model if not available
       await this.ensureModelPulled(this.generationModel);
       
       const res = await fetch(`${this.baseUrl}/api/tags`);
       if (!res.ok) {
         console.warn(`[Ollama] Tags endpoint returned ${res.status}`);
+        this.lastAvailabilityCheck = { available: false, timestamp: Date.now() };
         return false;
       }
       
@@ -208,9 +217,13 @@ export class OllamaProvider implements AIProvider {
       const available = hasGenerationModel && hasEmbeddingModel;
       console.log(`[Ollama] Provider availability: ${available} (generation: ${hasGenerationModel}, embedding: ${hasEmbeddingModel})`);
       
+      // Cache the result
+      this.lastAvailabilityCheck = { available, timestamp: Date.now() };
+      
       return available;
     } catch (error) {
       console.error(`[Ollama] isAvailable check failed:`, error);
+      this.lastAvailabilityCheck = { available: false, timestamp: Date.now() };
       return false;
     }
   }
