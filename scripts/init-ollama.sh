@@ -5,16 +5,16 @@ echo "ðŸš€ Starting Ollama server and pulling models..."
 # ============================================================================
 # âš ï¸  IMPORTANT: Model Selection
 # ============================================================================
-# Current model: mistral:7b (~3.8 GB RAM required)
+# Current model: tinyllama:1b (~600 MB RAM required)
 # 
-# Do NOT change to llama3.1:8b or llama2:13b as they require:
-# - llama3.1:8b: 4.8 GB RAM (causes OOM on production VM with 7.6 GB total)
-# - llama2:13b: 7+ GB RAM (exceeds VM memory)
+# Lightweight model chosen due to VM RAM constraints (7.6 GB total)
+# mistral:7b requires 4.5 GB but only 3.2 GB is available
+# llama3.1:8b requires 4.8 GB (too large)
 #
-# If you need a larger model:
+# If you need a larger/better model:
 # 1. Upgrade VM to at least 16 GB RAM
-# 2. Update this script
-# 3. Update src/lib/ai/providers/ollama.ts default model
+# 2. Switch to mistral:7b or llama3.1:8b
+# 3. Update generation settings via admin panel
 # 4. Test thoroughly in dev environment first
 # ============================================================================
 
@@ -26,11 +26,11 @@ OLLAMA_PID=$!
 sleep 5
 
 # Pull models in FOREGROUND to ensure they're ready before container is marked healthy
-echo "ðŸ“¥ Pulling mistral:7b model (this may take a few minutes)..."
-if /bin/ollama pull mistral:7b; then
-  echo "âœ… mistral:7b pulled successfully"
+echo "📥 Pulling tinyllama:1b model (lightweight, ~600MB RAM)..."
+if /bin/ollama pull tinyllama:1b; then
+  echo "✅ tinyllama:1b pulled successfully"
 else
-  echo "âš ï¸  mistral:7b pull failed"
+  echo "⚠️  tinyllama:1b pull failed"
 fi
 
 echo "ðŸ“¥ Pulling nomic-embed-text model..."
