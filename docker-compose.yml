@@ -75,6 +75,11 @@ services:
       - ./scripts/init-ollama.sh:/init-ollama.sh
     entrypoint: ["/bin/sh", "/init-ollama.sh"]
     restart: unless-stopped
+    shm_size: '6gb'  # Shared memory for model loading
+    deploy:
+      resources:
+        limits:
+          memory: 8G  # Increase memory limit for LLM models
 
     # GPU support (optional)
     # deploy:
