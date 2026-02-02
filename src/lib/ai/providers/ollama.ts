@@ -139,8 +139,56 @@ export class OllamaProvider implements AIProvider {
     this.validationModel = modelName; // Use same model for validation
   }
 
+  /**
+   * Ensure a model is pulled and available
+   * @param modelName - Model name to pull if not available
+   */
+  private async ensureModelPulled(modelName: string): Promise<boolean> {
+    try {
+      // Check if model is already available
+      const res = await fetch(`${this.baseUrl}/api/tags`);
+      if (!res.ok) {
+        console.warn(`[Ollama] Cannot check model availability: ${res.status}`);
+        return false;
+      }
+      
+      const data = await res.json();
+      const models = data.models || [];
+      const modelExists = models.some((m: any) => 
+        m.name === modelName || m.name.startsWith(modelName.split(':')[0])
+      );
+      
+      if (modelExists) {
+        console.log(`[Ollama] Model ${modelName} already available`);
+        return true;
+      }
+      
+      // Model not found, pull it
+      console.log(`[Ollama] Pulling model ${modelName}...`);
+      const pullRes = await fetch(`${this.baseUrl}/api/pull`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: modelName, stream: false })
+      });
+      
+      if (!pullRes.ok) {
+        console.error(`[Ollama] Failed to pull model ${modelName}: ${pullRes.status}`);
+        return false;
+      }
+      
+      console.log(`[Ollama] Successfully pulled model ${modelName}`);
+      return true;
+    } catch (error) {
+      console.error(`[Ollama] Error pulling model ${modelName}:`, error);
+      return false;
+    }
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
+      // Auto-pull generation model if not available
+      await this.ensureModelPulled(this.generationModel);
+      
       const res = await fetch(`${this.baseUrl}/api/tags`);
       if (!res.ok) {
         console.warn(`[Ollama] Tags endpoint returned ${res.status}`);
