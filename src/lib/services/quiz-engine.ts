@@ -42,9 +42,12 @@ export async function initializeQuizSession(username: string, topic = 'General',
 }
 
 /**
- * Fetch next question from database (no generation during quiz)
- * During warm-up: fetch up to 5 questions in sequence
- * Post warm-up: randomly select from DB (avoiding already-answered questions)
+ * Fetch next question from database with progressive difficulty
+ * Uses generationDifficulty to create a smooth progression curve:
+ * - Questions 1-10: 70% Beginner, 25% Intermediate, 5% Advanced
+ * - Questions 11-20: 60% Intermediate, 20% Beginner, 20% Advanced
+ * - Questions 21-30: 60% Advanced, 30% Intermediate, 10% Expert
+ * - Questions 31+: 50% Advanced, 40% Expert, 10% Intermediate
  */
 export async function getNextQuestion(
   sessionId: number
@@ -68,9 +71,15 @@ export async function getNextQuestion(
   if (!session) throw new Error(`Session ${sessionId} not found`);
 
   const answeredIds = session.sessionQuestions.map((q) => q.questionId);
+  const questionNumber = answeredIds.length + 1;
 
-  // Fetch next question: random from DB, excluding already-answered
-  // Use raw SQL for true randomization with ORDER BY RANDOM()
+  // Determine difficulty distribution based on progression
+  const difficultyWeights = getDifficultyWeightsForQuestion(questionNumber);
+  
+  // Pick a random difficulty level based on weights
+  const selectedDifficulty = selectWeightedDifficulty(difficultyWeights);
+
+  // Fetch question with selected difficulty
   let question;
   
   if (answeredIds.length > 0) {
@@ -87,12 +96,36 @@ export async function getNextQuestion(
       WHERE status = 'accepted'
         AND "isRejected" = false
         AND "questionType" = 'true-false'
+        AND "generationDifficulty" = ${selectedDifficulty}
         AND id NOT IN (${Prisma.join(answeredIds)})
       ORDER BY RANDOM()
       LIMIT 1
     `;
     question = questions?.[0];
+    
+    // Fallback: if no question with this difficulty, try any difficulty
+    if (!question) {
+      const fallbackQuestions = await prisma.$queryRaw<Array<{
+        id: number;
+        questionText: string;
+        options: any;
+        correctAnswer: string;
+        difficulty: any;
+        explanation: string;
+      }>>`
+        SELECT id, "questionText", options, "correctAnswer", difficulty, explanation
+        FROM "Question"
+        WHERE status = 'accepted'
+          AND "isRejected" = false
+          AND "questionType" = 'true-false'
+          AND id NOT IN (${Prisma.join(answeredIds)})
+        ORDER BY RANDOM()
+        LIMIT 1
+      `;
+      question = fallbackQuestions?.[0];
+    }
   } else {
+    // First question: always start with selected difficulty
     const questions = await prisma.$queryRaw<Array<{
       id: number;
       questionText: string;
@@ -106,10 +139,32 @@ export async function getNextQuestion(
       WHERE status = 'accepted'
         AND "isRejected" = false
         AND "questionType" = 'true-false'
+        AND "generationDifficulty" = ${selectedDifficulty}
       ORDER BY RANDOM()
       LIMIT 1
     `;
     question = questions?.[0];
+    
+    // Fallback for first question too
+    if (!question) {
+      const fallbackQuestions = await prisma.$queryRaw<Array<{
+        id: number;
+        questionText: string;
+        options: any;
+        correctAnswer: string;
+        difficulty: any;
+        explanation: string;
+      }>>`
+        SELECT id, "questionText", options, "correctAnswer", difficulty, explanation
+        FROM "Question"
+        WHERE status = 'accepted'
+          AND "isRejected" = false
+          AND "questionType" = 'true-false'
+        ORDER BY RANDOM()
+        LIMIT 1
+      `;
+      question = fallbackQuestions?.[0];
+    }
   }
 
   if (!question) {
@@ -124,6 +179,58 @@ export async function getNextQuestion(
     difficulty: question.difficulty,
     explanation: question.explanation,
   };
+}
+
+/**
+ * Get difficulty weights based on question number
+ * Returns percentages for each difficulty level
+ */
+function getDifficultyWeightsForQuestion(questionNumber: number): {
+  Beginner: number;
+  Intermediate: number;
+  Advanced: number;
+  Expert: number;
+} {
+  if (questionNumber <= 10) {
+    return { Beginner: 70, Intermediate: 25, Advanced: 5, Expert: 0 };
+  } else if (questionNumber <= 20) {
+    return { Beginner: 20, Intermediate: 60, Advanced: 20, Expert: 0 };
+  } else if (questionNumber <= 30) {
+    return { Beginner: 0, Intermediate: 30, Advanced: 60, Expert: 10 };
+  } else {
+    return { Beginner: 0, Intermediate: 10, Advanced: 50, Expert: 40 };
+  }
+}
+
+/**
+ * Select a difficulty level based on weighted probabilities
+ */
+function selectWeightedDifficulty(weights: {
+  Beginner: number;
+  Intermediate: number;
+  Advanced: number;
+  Expert: number;
+}): string {
+  const rand = Math.random() * 100;
+  let cumulative = 0;
+
+  // Map English to French difficulty levels
+  const difficultyMap: Record<string, string> = {
+    'Beginner': 'Débutant',
+    'Intermediate': 'Intermédiaire',
+    'Advanced': 'Avancé',
+    'Expert': 'Expert',
+  };
+
+  for (const [difficulty, weight] of Object.entries(weights)) {
+    cumulative += weight;
+    if (rand < cumulative) {
+      return difficultyMap[difficulty] || difficulty;
+    }
+  }
+
+  // Fallback (should never reach here)
+  return 'Intermédiaire';
 }
 
 /**

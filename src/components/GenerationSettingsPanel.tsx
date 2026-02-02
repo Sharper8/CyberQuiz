@@ -50,12 +50,6 @@ interface GenerationSettings {
   };
 }
 
-const AVAILABLE_MODELS = [
-  { value: 'ollama:mistral:7b', label: 'Ollama - Mistral 7B (Default)' },
-  { value: 'ollama:llama3.1:8b', label: 'Ollama - Llama 3.1 8B' },
-  { value: 'openai:gpt-4', label: 'OpenAI GPT-4 (Requires API key)' },
-];
-
 const DEFAULT_DOMAINS = [
   'Sécurité Réseau',
   'Sécurité Applicative',
@@ -101,6 +95,7 @@ export function GenerationSettingsPanel() {
   const [settings, setSettings] = useState<GenerationSettings | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [availableModels, setAvailableModels] = useState<Array<{ value: string; label: string; provider: string }>>([]);
   
   // State for managing available dimension values
   const [availableDomains, setAvailableDomains] = useState<string[]>(DEFAULT_DOMAINS);
@@ -116,18 +111,59 @@ export function GenerationSettingsPanel() {
 
   useEffect(() => {
     fetchSettings();
+    fetchAvailableModels();
   }, []);
+
+  const fetchAvailableModels = async () => {
+    try {
+      const res = await fetch('/api/models/available');
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableModels(data.models || []);
+      }
+    } catch (error) {
+      console.error('[Settings] Failed to fetch models:', error);
+      // Set fallback models if fetch fails
+      setAvailableModels([
+        { value: 'mistral:7b', label: 'Ollama - mistral:7b', provider: 'ollama' },
+        { value: 'tinyllama', label: 'Ollama - tinyllama', provider: 'ollama' },
+      ]);
+    }
+  };
 
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/admin/buffer/settings');
       if (res.ok) {
         const data = await res.json();
-        setSettings({
+        // Deduplicate enabled arrays to fix data corruption
+        const dedupedSettings = {
           ...data,
           rssEnabled: data.rssEnabled ?? false,
           useRssAsContext: data.useRssAsContext ?? true,
-        });
+          structuredSpace: {
+            ...data.structuredSpace,
+            enabledDomains: [...new Set(data.structuredSpace?.enabledDomains || [])],
+            enabledSkillTypes: [...new Set(data.structuredSpace?.enabledSkillTypes || [])],
+            enabledDifficulties: [...new Set(data.structuredSpace?.enabledDifficulties || [])],
+            enabledGranularities: [...new Set(data.structuredSpace?.enabledGranularities || [])],
+          },
+        };
+        
+        // Merge database values with defaults to ensure all enabled items are in available lists
+        if (dedupedSettings.structuredSpace) {
+          const allDomains = [...new Set([...DEFAULT_DOMAINS, ...(dedupedSettings.structuredSpace.enabledDomains || [])])];
+          const allSkillTypes = [...new Set([...DEFAULT_SKILL_TYPES, ...(dedupedSettings.structuredSpace.enabledSkillTypes || [])])];
+          const allDifficulties = [...new Set([...DEFAULT_DIFFICULTIES, ...(dedupedSettings.structuredSpace.enabledDifficulties || [])])];
+          const allGranularities = [...new Set([...DEFAULT_GRANULARITIES, ...(dedupedSettings.structuredSpace.enabledGranularities || [])])];
+          
+          setAvailableDomains(allDomains);
+          setAvailableSkillTypes(allSkillTypes);
+          setAvailableDifficulties(allDifficulties);
+          setAvailableGranularities(allGranularities);
+        }
+        
+        setSettings(dedupedSettings);
       }
     } catch (error) {
       console.error('[Settings] Fetch error:', error);
@@ -140,10 +176,22 @@ export function GenerationSettingsPanel() {
 
     setLoading(true);
     try {
+      // Deduplicate arrays before saving to prevent corruption
+      const cleanSettings = {
+        ...settings,
+        structuredSpace: {
+          ...settings.structuredSpace,
+          enabledDomains: [...new Set(settings.structuredSpace.enabledDomains)],
+          enabledSkillTypes: [...new Set(settings.structuredSpace.enabledSkillTypes)],
+          enabledDifficulties: [...new Set(settings.structuredSpace.enabledDifficulties)],
+          enabledGranularities: [...new Set(settings.structuredSpace.enabledGranularities)],
+        },
+      };
+
       const res = await fetch('/api/admin/buffer/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(cleanSettings),
       });
 
       if (!res.ok) throw new Error('Failed to save');
@@ -633,7 +681,7 @@ export function GenerationSettingsPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {AVAILABLE_MODELS.map((model) => (
+                    {availableModels.map((model) => (
                       <SelectItem key={model.value} value={model.value}>
                         {model.label}
                       </SelectItem>
@@ -652,7 +700,7 @@ export function GenerationSettingsPanel() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {AVAILABLE_MODELS.map((model) => (
+                    {availableModels.map((model) => (
                       <SelectItem key={model.value} value={model.value}>
                         {model.label}
                       </SelectItem>

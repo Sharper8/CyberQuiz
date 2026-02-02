@@ -346,7 +346,7 @@ export default function AdminUsersPage() {
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {admin.lastLoginAt ? new Date(admin.lastLoginAt).toLocaleString('fr-FR', { 
+                            {admin.lastLoginAt && admin.lastLoginAt !== '1970-01-01T00:00:00.000Z' ? new Date(admin.lastLoginAt).toLocaleString('fr-FR', { 
                               year: 'numeric', 
                               month: 'short', 
                               day: 'numeric', 

@@ -8,6 +8,7 @@ export interface Question {
   correctAnswer: string;
   explanation: string;
   difficulty: number;
+  adminDifficulty?: string | null; // Beginner | Intermediate | Advanced | Expert
   qualityScore?: number;
   category: string;
   questionType: string;
@@ -21,6 +22,10 @@ export interface Question {
   generationSkillType?: string | null;
   generationDifficulty?: string | null;
   generationGranularity?: string | null;
+  rssSourceId?: number | null;
+  rssArticleId?: number | null;
+  rssSource?: { title: string; url: string } | null;
+  rssArticle?: { title: string; link: string } | null;
   createdAt: string;
   updatedAt: string;
   metadata?: any;

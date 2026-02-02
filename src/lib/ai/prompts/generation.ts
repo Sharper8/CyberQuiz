@@ -66,10 +66,17 @@ SKILL TYPE DEFINITIONS:
 - Best Practices: Industry standards, compliance, recommended approaches
 
 DIFFICULTY LEVELS:
-- Beginner: Foundational concepts, common tools, basic principles
-- Intermediate: Practical application, scenario-based, some technical depth
-- Advanced: Complex scenarios, deep technical knowledge, edge cases
-- Expert: Cutting-edge techniques, rare scenarios, highly specialized knowledge
+- Beginner: VERY SIMPLE foundational concepts that a complete beginner can understand. Use simple language, avoid technical jargon, focus on well-known facts. Examples: "HTTPS encrypts web traffic", "Passwords should be longer than 8 characters", "Firewalls block unauthorized network access"
+- Intermediate: Practical application, scenario-based, some technical depth. Requires basic security knowledge.
+- Advanced: Complex scenarios, deep technical knowledge, edge cases. For experienced professionals.
+- Expert: Cutting-edge techniques, rare scenarios, highly specialized knowledge. For security experts only.
+
+CRITICAL FOR BEGINNER DIFFICULTY:
+- Use SIMPLE everyday language (avoid: asymmetric encryption, key derivation, cipher suites)
+- Focus on WELL-KNOWN concepts everyone has heard of (passwords, HTTPS, antivirus, firewalls)
+- Ask about COMMON knowledge, not technical specifications
+- Example BAD Beginner question: "AES uses keys up to 256 bits" (too technical)
+- Example GOOD Beginner question: "Strong passwords should contain a mix of letters and numbers" (simple, practical)
 
 OUTPUT FORMAT (JSON ONLY - NO ADDITIONAL TEXT):
 {

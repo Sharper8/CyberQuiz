@@ -147,6 +147,25 @@ export default function AdminPage() {
     }
   };
 
+  const updateDifficulty = async (questionId: number, newDifficulty: string) => {
+    try {
+      const res = await fetch(`/api/admin/questions/${questionId}/difficulty`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminDifficulty: newDifficulty }),
+      });
+      
+      if (!res.ok) throw new Error('Failed to update difficulty');
+
+      setQuestions(prev => prev.map(q => 
+        q.id === questionId ? { ...q, adminDifficulty: newDifficulty } : q
+      ));
+      toast.success(`Difficulté mise à jour: ${newDifficulty}`);
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour de la difficulté');
+    }
+  };
+
   const handleAddQuestion = async () => {
     try {
       const data = await api.createQuestion({
@@ -338,7 +357,8 @@ export default function AdminPage() {
             </div>
             
             {/* Filter Tabs */}
-            <div className="flex gap-2">
+            <div>
+              <div className="flex gap-2">
               <CyberButton
                 variant={filter === 'all' ? 'primary' : 'outline'}
                 size="default"
@@ -367,6 +387,13 @@ export default function AdminPage() {
               >
                 Rejetées ({stats.rejected})
               </CyberButton>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-right">
+                {filter === 'all' && 'Toutes les questions de la banque'}
+                {filter === 'to_review' && 'Questions à valider par l\'administrateur'}
+                {filter === 'accepted' && 'Questions disponibles dans le quiz'}
+                {filter === 'rejected' && 'Questions exclues du pool actif'}
+              </p>
             </div>
           </div>
           
@@ -417,10 +444,57 @@ export default function AdminPage() {
                   key={question.id}
                   className="bg-card border border-border rounded-lg p-6 hover:border-primary transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      {/* Status, AI provider, and one-line metadata */}
-                      <div className="flex items-center gap-2 mb-3 flex-wrap text-sm">
+                  {/* Buttons floating on the right */}
+                  <div className="float-right flex gap-2 flex-wrap justify-end ml-4 mb-4">
+                    <CyberButton
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEditDialog(question)}
+                    >
+                      Modifier
+                    </CyberButton>
+                    {question.status === 'to_review' && (
+                      <>
+                        <CyberButton
+                          variant="correct"
+                          onClick={() => handleAccept(question.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Accepter
+                        </CyberButton>
+                        <CyberButton
+                          variant="incorrect"
+                          onClick={() => handleReject(question.id)}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Rejeter
+                        </CyberButton>
+                      </>
+                    )}
+                    {question.status === 'accepted' && (
+                      <CyberButton
+                        variant="incorrect"
+                        onClick={() => handleReject(question.id)}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Déplacer vers rejetées
+                      </CyberButton>
+                    )}
+                    {question.status === 'rejected' && (
+                      <CyberButton
+                        variant="correct"
+                        onClick={() => handleAccept(question.id)}
+                      >
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Déplacer vers acceptées
+                      </CyberButton>
+                    )}
+                  </div>
+
+                  {/* Content that can flow under buttons */}
+                  <div>
+                    {/* Status, AI provider, and one-line metadata */}
+                    <div className="flex items-center gap-2 mb-3 flex-wrap text-sm">
                         {/* Status and Model - Primary emphasis */}
                         {question.status === 'accepted' ? (
                           <Badge className="bg-secondary text-secondary-foreground gap-1 font-semibold">
@@ -445,58 +519,99 @@ export default function AdminPage() {
                           {question.aiModel || question.aiProvider || 'unknown'}
                         </Badge>
 
-                        {rssLabel && (
-                          <Badge className="gap-1 bg-blue-600 text-white hover:bg-blue-700">
-                            RSS: {rssLabel}
-                          </Badge>
-                        )}
-
-                        {/* Metadata trigger on the same line */}
-                        {(question.generationDomain || question.generationSkillType || question.generationDifficulty || question.generationGranularity) && (
-                          <Badge
-                            variant="outline"
-                            className="gap-1 cursor-pointer hover:bg-accent transition-colors"
-                            onClick={() => toggleMetadata(question.id)}
+                        {/* Admin Difficulty Selector */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Difficulté:</span>
+                          <Select
+                            value={question.adminDifficulty || 'Intermediate'}
+                            onValueChange={(value) => updateDifficulty(question.id, value)}
                           >
-                            Options
-                            <ChevronDown
-                              className="h-3 w-3 transition-transform duration-200"
-                              style={{ transform: expandedMetadata.has(question.id) ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                            />
-                          </Badge>
-                        )}
+                            <SelectTrigger className="w-[140px] h-7 text-xs border-primary/30 hover:border-primary">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Beginner">Débutant</SelectItem>
+                              <SelectItem value="Intermediate">Intermédiaire</SelectItem>
+                              <SelectItem value="Advanced">Avancé</SelectItem>
+                              <SelectItem value="Expert">Expert</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Metadata trigger - always show since category is always present */}
+                        <Badge
+                          variant="outline"
+                          className="gap-1 cursor-pointer hover:bg-accent transition-colors"
+                          onClick={() => toggleMetadata(question.id)}
+                        >
+                          Métadonnées
+                          <ChevronDown
+                            className="h-3 w-3 transition-transform duration-200"
+                            style={{ transform: expandedMetadata.has(question.id) ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                          />
+                        </Badge>
 
                       </div>
 
                       {/* Metadata content near top when open */}
                       {expandedMetadata.has(question.id) && (
-                        <div className="mb-3">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                            {question.generationDomain && (
+                        <div className="mb-3 space-y-3">
+                          {/* General Information Section */}
+                          <div className="border border-border rounded-lg p-3">
+                            <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Informations</div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                               <div className="bg-muted/40 rounded p-2">
-                                <span className="block text-muted-foreground font-semibold mb-1">Domaine</span>
-                                <span className="text-foreground">{translateValue(question.generationDomain)}</span>
+                                <span className="block text-muted-foreground font-semibold mb-1">Catégorie</span>
+                                <span className="text-foreground">{question.category}</span>
                               </div>
-                            )}
-                            {question.generationSkillType && (
-                              <div className="bg-muted/40 rounded p-2">
-                                <span className="block text-muted-foreground font-semibold mb-1">Compétence</span>
-                                <span className="text-foreground">{translateValue(question.generationSkillType)}</span>
-                              </div>
-                            )}
-                            {question.generationDifficulty && (
-                              <div className="bg-muted/40 rounded p-2">
-                                <span className="block text-muted-foreground font-semibold mb-1">Difficulté</span>
-                                <span className="text-foreground">{translateValue(question.generationDifficulty)}</span>
-                              </div>
-                            )}
-                            {question.generationGranularity && (
-                              <div className="bg-muted/40 rounded p-2">
-                                <span className="block text-muted-foreground font-semibold mb-1">Granularité</span>
-                                <span className="text-foreground">{translateValue(question.generationGranularity)}</span>
-                              </div>
-                            )}
+                            </div>
                           </div>
+                          
+                          {/* Structured Space Section */}
+                          {(question.generationDomain || question.generationSkillType || question.generationDifficulty || question.generationGranularity) && (
+                            <div className="border border-border rounded-lg p-3">
+                              <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Espace Structuré</div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                {question.generationDomain && (
+                                  <div className="bg-muted/40 rounded p-2">
+                                    <span className="block text-muted-foreground font-semibold mb-1">Domaine</span>
+                                    <span className="text-foreground">{translateValue(question.generationDomain)}</span>
+                                  </div>
+                                )}
+                                {question.generationSkillType && (
+                                  <div className="bg-muted/40 rounded p-2">
+                                    <span className="block text-muted-foreground font-semibold mb-1">Compétence</span>
+                                    <span className="text-foreground">{translateValue(question.generationSkillType)}</span>
+                                  </div>
+                                )}
+                                {question.generationDifficulty && (
+                                  <div className="bg-muted/40 rounded p-2">
+                                    <span className="block text-muted-foreground font-semibold mb-1">Difficulté générée</span>
+                                    <span className="text-foreground">{translateValue(question.generationDifficulty)}</span>
+                                  </div>
+                                )}
+                                {question.generationGranularity && (
+                                  <div className="bg-muted/40 rounded p-2">
+                                    <span className="block text-muted-foreground font-semibold mb-1">Granularité</span>
+                                    <span className="text-foreground">{translateValue(question.generationGranularity)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* RSS Feed Section */}
+                          {rssLabel && (
+                            <div className="border border-blue-500/30 rounded-lg p-3 bg-blue-50/50 dark:bg-blue-950/20">
+                              <div className="text-xs font-bold text-blue-700 dark:text-blue-400 uppercase tracking-wider mb-2">Flux RSS</div>
+                              <div className="text-xs">
+                                <div className="font-semibold text-blue-900 dark:text-blue-300">{rssLabel}</div>
+                                {question.rssArticle?.title && (
+                                  <div className="text-muted-foreground mt-1">{question.rssArticle.title}</div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -544,53 +659,10 @@ export default function AdminPage() {
                           </div>
                         </div>
                       )}
-                    </div>
-                    <div className="flex gap-2 flex-wrap justify-end">
-                      <CyberButton
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditDialog(question)}
-                      >
-                        Modifier
-                      </CyberButton>
-                      {question.status === 'to_review' && (
-                        <>
-                          <CyberButton
-                            variant="correct"
-                            onClick={() => handleAccept(question.id)}
-                          >
-                            <CheckCircle2 className="h-4 w-4 mr-1" />
-                            Accepter
-                          </CyberButton>
-                          <CyberButton
-                            variant="incorrect"
-                            onClick={() => handleReject(question.id)}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Rejeter
-                          </CyberButton>
-                        </>
-                      )}
-                      {question.status === 'accepted' && (
-                        <CyberButton
-                          variant="incorrect"
-                          onClick={() => handleReject(question.id)}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Déplacer vers rejetées
-                        </CyberButton>
-                      )}
-                      {question.status === 'rejected' && (
-                        <CyberButton
-                          variant="correct"
-                          onClick={() => handleAccept(question.id)}
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-1" />
-                          Déplacer vers acceptées
-                        </CyberButton>
-                      )}
-                    </div>
                   </div>
+
+                  {/* Clear float to ensure proper layout */}
+                  <div className="clear-both"></div>
                 </div>
               );
             })

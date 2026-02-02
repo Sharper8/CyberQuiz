@@ -17,35 +17,61 @@ export async function GET(request: NextRequest) {
     const totalGenerated = await prisma.question.count();
     const totalDuplicatesDetected = await prisma.duplicateLog.count();
     
-    // Get duplicate detection over time (grouped by batches of 10 questions)
+    // Get duplicate detection over time (grouped by generation sessions)
+    // A session is defined as questions generated within 5 minutes of each other
     const duplicatesOverTime = await prisma.$queryRaw<Array<{
-      batch: number;
+      session_start: Date;
+      session_end: Date;
+      session_number: number;
       duplicate_count: bigint;
       total_generated: bigint;
       efficiency_rate: number;
     }>>`
-      WITH question_batches AS (
+      WITH question_times AS (
         SELECT 
           id,
-          FLOOR((ROW_NUMBER() OVER (ORDER BY "createdAt")) / 10.0) as batch
+          "createdAt",
+          LAG("createdAt") OVER (ORDER BY "createdAt") as prev_created
         FROM "Question"
         WHERE status != 'rejected'
         ORDER BY "createdAt" DESC
-        LIMIT 200
+        LIMIT 500
+      ),
+      question_sessions AS (
+        SELECT 
+          id,
+          "createdAt",
+          SUM(CASE 
+            WHEN "createdAt" - prev_created > INTERVAL '5 minutes' OR prev_created IS NULL
+            THEN 1 
+            ELSE 0 
+          END) OVER (ORDER BY "createdAt") as session_number
+        FROM question_times
+      ),
+      session_stats AS (
+        SELECT 
+          qs.session_number,
+          MIN(qs."createdAt") as session_start,
+          MAX(qs."createdAt") as session_end,
+          COUNT(DISTINCT qs.id) as total_generated,
+          COUNT(DISTINCT dl.id) as duplicate_count
+        FROM question_sessions qs
+        LEFT JOIN "DuplicateLog" dl ON dl."originalQuestionId" = qs.id
+        GROUP BY qs.session_number
       )
       SELECT 
-        qb.batch::int as batch,
-        COUNT(DISTINCT dl.id)::bigint as duplicate_count,
-        COUNT(DISTINCT qb.id)::bigint as total_generated,
+        session_number::int,
+        session_start,
+        session_end,
+        duplicate_count::bigint,
+        total_generated::bigint,
         CASE 
-          WHEN COUNT(DISTINCT qb.id) > 0 
-          THEN ROUND(CAST((1.0 - (COUNT(DISTINCT dl.id)::float / COUNT(DISTINCT qb.id)::float)) * 100 AS numeric), 2)
+          WHEN total_generated > 0 
+          THEN ROUND(CAST((1.0 - (duplicate_count::float / total_generated::float)) * 100 AS numeric), 2)
           ELSE 100.0
         END as efficiency_rate
-      FROM question_batches qb
-      LEFT JOIN "DuplicateLog" dl ON dl."originalQuestionId" = qb.id
-      GROUP BY qb.batch
-      ORDER BY qb.batch DESC
+      FROM session_stats
+      ORDER BY session_number DESC
       LIMIT 20
     `;
 
@@ -69,10 +95,22 @@ export async function GET(request: NextRequest) {
       : 100;
 
     // 3. Duplicate detection breakdown by method
-    const duplicatesByMethod = await prisma.duplicateLog.groupBy({
+    const duplicatesByMethodRaw = await prisma.duplicateLog.groupBy({
       by: ['detectionMethod'],
       _count: { id: true },
     });
+
+    // Ensure both methods are always present in the response
+    const duplicatesByMethod = [
+      {
+        detectionMethod: 'hash' as const,
+        _count: { id: duplicatesByMethodRaw.find(d => d.detectionMethod === 'hash')?._count.id || 0 },
+      },
+      {
+        detectionMethod: 'embedding' as const,
+        _count: { id: duplicatesByMethodRaw.find(d => d.detectionMethod === 'embedding')?._count.id || 0 },
+      },
+    ];
 
     // 4. Hardest questions for users (based on incorrect answer rate)
     const hardestQuestions = await prisma.$queryRaw<Array<{
@@ -100,7 +138,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN "ResponseHistory" rh ON rh."questionId" = q.id
       WHERE q.status = 'accepted'
       GROUP BY q.id, q."questionText", q.category, q."generationDifficulty"
-      HAVING COUNT(rh.id) >= 5
+      HAVING COUNT(rh.id) >= 3
       ORDER BY difficulty_rate DESC
       LIMIT 50
     `;
@@ -131,7 +169,7 @@ export async function GET(request: NextRequest) {
       INNER JOIN "ResponseHistory" rh ON rh."questionId" = q.id
       WHERE q.status = 'accepted'
       GROUP BY q.id, q."questionText", q.category, q."generationDifficulty"
-      HAVING COUNT(rh.id) >= 5
+      HAVING COUNT(rh.id) >= 3
       ORDER BY difficulty_rate ASC
       LIMIT 50
     `;
@@ -155,7 +193,9 @@ export async function GET(request: NextRequest) {
           count: d._count.id,
         })),
         efficiencyOverTime: duplicatesOverTime.map(d => ({
-          batch: d.batch,
+          sessionNumber: d.session_number,
+          sessionStart: d.session_start,
+          sessionEnd: d.session_end,
           duplicateCount: Number(d.duplicate_count),
           totalGenerated: Number(d.total_generated),
           efficiencyRate: Number(d.efficiency_rate),

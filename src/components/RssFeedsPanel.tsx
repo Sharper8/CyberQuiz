@@ -258,7 +258,7 @@ export function RssFeedsPanel({ settings: externalSettings, onSettingsChange }: 
         {/* Add Feed Dialog */}
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
-            <CyberButton variant="outline" size="sm" disabled={!settings.rssEnabled}>
+            <CyberButton variant="outline" size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Add RSS Feed
             </CyberButton>

@@ -49,13 +49,6 @@ export default function GenerationPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-trigger generation when missing questions and auto-refill is enabled
-  useEffect(() => {
-    if (bufferStatus?.buffer && !bufferStatus.buffer.isGenerating && bufferStatus.buffer.autoRefillEnabled && bufferStatus.buffer.missing > 0) {
-      handleStartGeneration();
-    }
-  }, [bufferStatus?.buffer.missing, bufferStatus?.buffer.isGenerating]);
-
   const refreshAll = async () => {
     await Promise.all([fetchBufferStatus(), fetchHealth(), fetchPendingPreview()]);
   };

@@ -12,6 +12,7 @@ import { getAIProvider } from '../ai/provider-factory';
 import { buildGenerationPrompt } from '../ai/prompts/generation';
 import { upsertEmbedding, searchSimilar } from '../db/qdrant';
 import { generateQuestionHash } from '../utils/question-hash';
+import { mapNumericToAdminDifficulty } from '../utils/difficulty-mapper';
 import { logger } from '../logging/logger';
 import { getRssContextForGeneration, markArticlesAsUsed, syncRssSources } from './rss-fetcher';
 
@@ -82,10 +83,28 @@ export async function ensureBufferFilled(): Promise<void> {
     return;
   }
 
-  logger.info('[Buffer] Refilling buffer', { questionsNeeded, currentSize: status.currentSize });
+  // Don't queue more jobs if we already have enough queued or being generated
+  const totalInProgress = status.queuedJobs + (isCurrentlyGenerating ? 1 : 0);
+  const alreadyQueued = Math.min(questionsNeeded, totalInProgress);
+  const needToQueue = questionsNeeded - alreadyQueued;
 
-  // Queue generation jobs (non-blocking)
-  for (let i = 0; i < questionsNeeded; i++) {
+  if (needToQueue <= 0) {
+    logger.info('[Buffer] Already generating enough questions', { 
+      questionsNeeded, 
+      queuedJobs: status.queuedJobs, 
+      isGenerating: isCurrentlyGenerating 
+    });
+    return;
+  }
+
+  logger.info('[Buffer] Refilling buffer', { 
+    questionsNeeded, 
+    currentSize: status.currentSize, 
+    toQueue: needToQueue 
+  });
+
+  // Queue only the remaining needed jobs (non-blocking)
+  for (let i = 0; i < needToQueue; i++) {
     queueGeneration();
   }
 
@@ -120,6 +139,22 @@ async function processQueue(): Promise<void> {
   lastGenerationStatus.inFlight = true;
 
   while (generationQueue.length > 0) {
+    // Check if buffer is already full before processing next job
+    const settings = await getOrCreateSettings();
+    const currentSize = await prisma.question.count({
+      where: { status: 'to_review' },
+    });
+    
+    if (currentSize >= settings.bufferSize) {
+      logger.info('[Buffer] Buffer is full, clearing remaining queue', { 
+        currentSize, 
+        targetSize: settings.bufferSize, 
+        remainingJobs: generationQueue.length 
+      });
+      generationQueue.length = 0; // Clear the queue
+      break;
+    }
+
     const job = generationQueue.shift();
     if (job) {
       lastGenerationStatus.lastStartedAt = new Date().toISOString();
@@ -152,7 +187,13 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
       logger.info('[Buffer] Generating question', { slot, attempt: attempt + 1 });
 
       // Get AI provider
-      const provider = await getAIProvider(settings.defaultModel || 'ollama');
+      const provider = await getAIProvider('ollama');
+      
+      // Set the model from database settings
+      if ('setModel' in provider && typeof provider.setModel === 'function') {
+        provider.setModel(settings.defaultModel || 'mistral:7b');
+        logger.info('[Buffer] Using model from settings', { model: settings.defaultModel });
+      }
 
       // Build prompt with slot constraints
       const prompt = buildGenerationPrompt({
@@ -240,6 +281,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
       }
 
       // Save question to database with potential duplicates for admin review
+      const estimatedDifficulty = generated.estimatedDifficulty || 0.5;
       const question = await prisma.question.create({
         data: {
           questionText: generated.questionText,
@@ -247,7 +289,7 @@ async function generateSingleQuestionWithRetry(): Promise<void> {
           options: generated.options || ['Vrai', 'Faux'],
           correctAnswer: generated.correctAnswer || 'Vrai',
           explanation: generated.explanation || '',
-          difficulty: generated.estimatedDifficulty || 0.5,
+          difficulty: estimatedDifficulty,
           category: config.enabled ? slot.domain : 'Cybersecurity',
           questionType: 'true-false',
           status: 'to_review',
