@@ -111,8 +111,8 @@ async function ensureSettings() {
           enabledSkillTypes: skillTypes,
           enabledDifficulties: difficulties,
           enabledGranularities: granularities,
-          defaultModel: 'ollama:mistral:7b',
-          fallbackModel: 'ollama:mistral:7b',
+          defaultModel: 'mistral:7b',
+          fallbackModel: 'mistral:7b',
           maxConcurrentGeneration: 10,
         },
       });

@@ -40,8 +40,8 @@ export async function GET() {
     return NextResponse.json({
       bufferSize: settings?.bufferSize || 10,
       autoRefillEnabled: settings?.autoRefillEnabled ?? true,
-      defaultModel: settings?.defaultModel || 'ollama:mistral:7b',
-      fallbackModel: settings?.fallbackModel || 'ollama:mistral:7b',
+      defaultModel: settings?.defaultModel || 'mistral:7b',
+      fallbackModel: settings?.fallbackModel || 'mistral:7b',
       rssEnabled: settings?.rssEnabled ?? false,
       useRssAsContext: settings?.useRssAsContext ?? true,
       structuredSpace: spaceConfig,
